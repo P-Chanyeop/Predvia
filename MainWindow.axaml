@@ -10,8 +10,8 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="80"/>
+            <RowDefinition Height="90"/>
+            <RowDefinition Height="70"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -28,11 +28,11 @@
                     Background="Transparent" 
                     BorderThickness="0"
                     VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="5">
+                <StackPanel Orientation="Horizontal" Spacing="8">
                     <Ellipse Width="24" Height="24" Fill="#FFE4D0"/>
                     <TextBlock Text="다크모드" 
                                VerticalAlignment="Center" 
-                               FontSize="18" 
+                               FontSize="16" 
                                Foreground="#333333"/>
                 </StackPanel>
             </Button>
@@ -42,7 +42,7 @@
                       HorizontalAlignment="Center" 
                       VerticalAlignment="Center">
                 <Image Source="/images/predvia_logo.png" 
-                       Height="40"/>
+                       Height="50"/>
             </StackPanel>
 
             <!-- 오른쪽 로그인/회원가입 버튼 -->
@@ -50,14 +50,14 @@
                     Background="Transparent" 
                     BorderThickness="0"
                     VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="5">
+                <StackPanel Orientation="Horizontal" Spacing="8">
                     <Path Data="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"
                           Fill="#333333"
-                          Width="24"
-                          Height="24"/>
+                          Width="20"
+                          Height="20"/>
                     <TextBlock Text="로그인/회원가입" 
                                VerticalAlignment="Center" 
-                               FontSize="18" 
+                               FontSize="16" 
                                Foreground="#333333"/>
                 </StackPanel>
             </Button>
@@ -68,59 +68,62 @@
                    Text="오늘의 명언: 명언이 길어질경우 자동으로 옆으로 슬라이딩 될수있는지" 
                    HorizontalAlignment="Center" 
                    VerticalAlignment="Center"
-                   FontSize="22"
+                   FontSize="20"
                    Foreground="#333333"/>
 
         <!-- 메인 콘텐츠 영역 -->
         <Grid Grid.Row="2">
-            <Border Width="1200" 
-                    Height="700" 
+            <Border Width="1000" 
+                    Height="600" 
                     HorizontalAlignment="Center" 
                     VerticalAlignment="Center">
                 <Grid>
                     <!-- 배경 삼각형 로고 (반투명) -->
-                    <Image Source="/images/predvia_triangle_bg.png" />
+                    <Image Source="/images/predvia_triangle_bg.png" 
+                           Opacity="1"
+                           Width="1122"
+                           Height="1121"/>
                     
                     <!-- 중앙 텍스트 콘텐츠 -->
                     <StackPanel VerticalAlignment="Center" 
                                 HorizontalAlignment="Center" 
-                                Spacing="15">
+                                Spacing="20">
                         <TextBlock Text="PREDVIA" 
-                                   FontSize="72" 
+                                   FontSize="64" 
                                    FontWeight="Bold" 
                                    Foreground="#F47B20" 
                                    HorizontalAlignment="Center"/>
                         
                         <TextBlock Text="프로그램은" 
-                                   FontSize="36" 
+                                   FontSize="32" 
                                    Foreground="#333333" 
                                    HorizontalAlignment="Center"/>
                         
                         <TextBlock Text="&quot;구매대행, 반자동 그 이상&quot;" 
-                                   FontSize="42" 
+                                   FontSize="38" 
                                    FontWeight="Bold" 
                                    Foreground="#333333" 
                                    HorizontalAlignment="Center"/>
                         
                         <!-- 여러 스타일의 텍스트를 위한 TextBlock -->
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
                             <TextBlock Text="최고의 디테일로 완성된 " 
-                                     FontSize="32" 
+                                     FontSize="28" 
                                      Foreground="#333333"/>
                             <TextBlock Text="스마트 솔루션 프로그램" 
-                                     FontSize="32" 
+                                     FontSize="28" 
                                      FontWeight="Bold" 
                                      Foreground="#F47B20"/>
                             <TextBlock Text="입니다." 
-                                     FontSize="32" 
+                                     FontSize="28" 
                                      Foreground="#333333"/>
                         </StackPanel>
                         
                         <TextBlock Text="최고매출로 함께 나아가세요!" 
-                                   FontSize="36" 
+                                   FontSize="32" 
                                    Foreground="#333333" 
                                    HorizontalAlignment="Center" 
-                                   Margin="0,30,0,0"/>
+                                   Margin="0,25,0,0"/>
                     </StackPanel>
                 </Grid>
             </Border>
