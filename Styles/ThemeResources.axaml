@@ -1,0 +1,29 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="using:Gumaedaehang">
+    
+    <!-- 라이트 테마 색상 -->
+    <SolidColorBrush x:Key="LightBackgroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="LightBackgroundSecondaryBrush" Color="#FFF8F3"/>
+    <SolidColorBrush x:Key="LightForegroundBrush" Color="#333333"/>
+    <SolidColorBrush x:Key="LightAccentBrush" Color="#F47B20"/>
+    <SolidColorBrush x:Key="LightBorderBrush" Color="#DDDDDD"/>
+    <SolidColorBrush x:Key="LightDarkModeIconBrush" Color="#FFE4D0"/>
+    
+    <!-- 다크 테마 색상 -->
+    <SolidColorBrush x:Key="DarkBackgroundBrush" Color="#1E1E1E"/>
+    <SolidColorBrush x:Key="DarkBackgroundSecondaryBrush" Color="#252525"/>
+    <SolidColorBrush x:Key="DarkForegroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="DarkAccentBrush" Color="#F47B20"/>
+    <SolidColorBrush x:Key="DarkBorderBrush" Color="#444444"/>
+    <SolidColorBrush x:Key="DarkDarkModeIconBrush" Color="#F47B20"/>
+    
+    <!-- 동적 테마 리소스 -->
+    <SolidColorBrush x:Key="BackgroundBrush" Color="{DynamicResource BackgroundColor}"/>
+    <SolidColorBrush x:Key="BackgroundSecondaryBrush" Color="{DynamicResource BackgroundSecondaryColor}"/>
+    <SolidColorBrush x:Key="ForegroundBrush" Color="{DynamicResource ForegroundColor}"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource AccentColor}"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource BorderColor}"/>
+    <SolidColorBrush x:Key="DarkModeIconBrush" Color="{DynamicResource DarkModeIconColor}"/>
+    
+</ResourceDictionary>

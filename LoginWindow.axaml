@@ -6,7 +6,7 @@
         Width="1920" Height="1080"
         x:Class="Gumaedaehang.LoginWindow"
         Title="PREDVIA - 로그인"
-        Background="#FFF8F3">
+        Background="{DynamicResource BackgroundSecondaryBrush}">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -26,13 +26,15 @@
             <Button Grid.Column="0" 
                     Background="Transparent" 
                     BorderThickness="0"
-                    VerticalAlignment="Center">
+                    VerticalAlignment="Center"
+                    x:Name="themeToggleButton">
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Ellipse Width="24" Height="24" Fill="#FFE4D0"/>
-                    <TextBlock Text="다크모드" 
+                    <Ellipse Width="24" Height="24" Fill="{DynamicResource DarkModeIconBrush}"/>
+                    <TextBlock x:Name="themeToggleText"
+                               Text="다크모드" 
                                VerticalAlignment="Center" 
                                FontSize="16" 
-                               Foreground="#333333"/>
+                               Foreground="{DynamicResource ForegroundBrush}"/>
                 </StackPanel>
             </Button>
 
@@ -80,13 +82,13 @@
                     VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Path Data="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"
-                          Fill="#333333"
+                          Fill="{DynamicResource ForegroundBrush}"
                           Width="20"
                           Height="20"/>
                     <TextBlock Text="로그인/회원가입" 
                                VerticalAlignment="Center" 
                                FontSize="16" 
-                               Foreground="#333333"/>
+                               Foreground="{DynamicResource ForegroundBrush}"/>
                 </StackPanel>
             </Button>
         </Grid>
@@ -94,11 +96,14 @@
         <!-- 메인 콘텐츠 영역 -->
         <Grid Grid.Row="1">
             <!-- 배경 삼각형 로고 (반투명) -->
-            <Image Source="/images/predvia_triangle_bg.png" 
-                   Opacity="0.15"
+            <Image Source="/images/predvia_triangle_bg.png"
                    Stretch="Uniform"
                    Width="1200"
-                   VerticalAlignment="Center"/>
+                   Height="1200"
+                   Opacity="1"
+                   VerticalAlignment="Top"
+                   Margin="0,-200,0,0"
+                   HorizontalAlignment="Center"/>
             
             <!-- 로그인 폼 -->
             <StackPanel VerticalAlignment="Center" 
@@ -107,16 +112,16 @@
                         Spacing="30">
                 
                 <!-- 로고 -->
-                <Image Source="/images/predvia_logo.png" 
+                <Image Source="/images/predvia_logo.png"
                        Height="100"
                        HorizontalAlignment="Center"
                        Margin="0,0,0,20"/>
                 
                 <!-- 아이디 입력 필드 -->
-                <Border Background="White"
+                <Border Background="{DynamicResource BackgroundBrush}"
                         CornerRadius="5"
-                        BorderBrush="#DDDDDD"
-                        BorderThickness="1"
+                        BorderBrush="#F47B20"
+                        BorderThickness="2"
                         Height="60">
                     <TextBox x:Name="usernameTextBox"
                              Watermark="아이디를 입력해주세요"
@@ -128,10 +133,10 @@
                 </Border>
                 
                 <!-- 비밀번호 입력 필드 -->
-                <Border Background="White"
+                <Border Background="{DynamicResource BackgroundBrush}"
                         CornerRadius="5"
-                        BorderBrush="#DDDDDD"
-                        BorderThickness="1"
+                        BorderBrush="#F47B20"
+                        BorderThickness="2"
                         Height="60">
                     <TextBox x:Name="passwordTextBox"
                              Watermark="비밀번호를 입력해주세요"
@@ -150,10 +155,12 @@
                         Foreground="White"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
                         Height="60"
                         CornerRadius="5"
                         FontSize="20"
-                        FontWeight="Bold"/>
+                        FontWeight="Bold"
+                        Padding="0"/>
                 
                 <!-- 오류 메시지 -->
                 <TextBlock x:Name="errorMessage"

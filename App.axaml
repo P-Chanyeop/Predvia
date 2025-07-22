@@ -1,7 +1,41 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Gumaedaehang.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="/Styles/ThemeResources.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- 기본 라이트 테마 색상 -->
+            <Color x:Key="BackgroundColor">#FFFFFF</Color>
+            <Color x:Key="BackgroundSecondaryColor">#FFF8F3</Color>
+            <Color x:Key="ForegroundColor">#333333</Color>
+            <Color x:Key="AccentColor">#F47B20</Color>
+            <Color x:Key="BorderColor">#DDDDDD</Color>
+            <Color x:Key="DarkModeIconColor">#FFE4D0</Color>
+        </ResourceDictionary>
+    </Application.Resources>
+    
     <Application.Styles>
         <FluentTheme Mode="Light"/>
+        
+        <!-- 전역 버튼 스타일 -->
+        <Style Selector="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <!-- 탭 버튼 스타일 -->
+        <Style Selector="Button.TabButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Button.TabButton:pointerover">
+            <Setter Property="Opacity" Value="0.8"/>
+            <Setter Property="Background" Value="#10F47B20"/>
+        </Style>
     </Application.Styles>
 </Application>
