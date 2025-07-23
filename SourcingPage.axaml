@@ -15,7 +15,8 @@
         <Border Grid.Row="0" 
                 Background="{DynamicResource BackgroundSecondaryBrush}" 
                 Padding="20" 
-                Margin="20,20,20,10">
+                Margin="20,20,20,10"
+                CornerRadius="10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -98,7 +99,8 @@
         <!-- 상품 목록 영역 -->
         <Border Grid.Row="1" 
                 Background="{DynamicResource BackgroundBrush}" 
-                Margin="20,10,20,20">
+                Margin="20,10,20,20"
+                CornerRadius="10">
             <Grid>
                 <!-- 데이터가 있을 때 보여줄 화면 -->
                 <Grid x:Name="DataAvailableView" IsVisible="False">
@@ -109,7 +111,7 @@
                     </Grid.RowDefinitions>
                     
                     <!-- 상품 수 표시 -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10">
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="20,15">
                         <TextBlock Text="총 " FontSize="14" Foreground="{DynamicResource ForegroundBrush}"/>
                         <TextBlock Text="1,234" FontSize="14" FontWeight="Bold" Foreground="#F47B20"/>
                         <TextBlock Text="개의 상품이 검색되었습니다." FontSize="14" Foreground="{DynamicResource ForegroundBrush}"/>
@@ -120,14 +122,14 @@
                         <ItemsControl>
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <WrapPanel/>
+                                    <WrapPanel Margin="10,0"/>
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             
                             <ItemsControl.Items>
                                 <!-- 상품 아이템 샘플 (실제로는 데이터바인딩으로 처리) -->
                                 <!-- 상품 1 -->
-                                <Border Width="280" Height="350" Margin="10" Background="{DynamicResource BackgroundSecondaryBrush}" CornerRadius="5">
+                                <Border Width="280" Height="350" Margin="10" Background="{DynamicResource BackgroundSecondaryBrush}" CornerRadius="10" BoxShadow="0 2 10 0 #20000000">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="200"/>
@@ -135,15 +137,15 @@
                                         </Grid.RowDefinitions>
                                         
                                         <!-- 상품 이미지 -->
-                                        <Border Grid.Row="0" Background="LightGray">
+                                        <Border Grid.Row="0" Background="LightGray" CornerRadius="10,10,0,0">
                                             <TextBlock Text="상품 이미지" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         
                                         <!-- 상품 정보 -->
-                                        <StackPanel Grid.Row="1" Margin="10">
+                                        <StackPanel Grid.Row="1" Margin="15">
                                             <TextBlock Text="[쿠팡] 상품명 예시입니다" FontWeight="Bold" TextWrapping="Wrap" Foreground="{DynamicResource ForegroundBrush}"/>
-                                            <TextBlock Text="25,000원" Foreground="#F47B20" FontWeight="Bold" Margin="0,5,0,0"/>
-                                            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                            <TextBlock Text="25,000원" Foreground="#F47B20" FontWeight="Bold" Margin="0,8,0,0"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                                 <TextBlock Text="리뷰: " FontSize="12" Foreground="{DynamicResource ForegroundBrush}"/>
                                                 <TextBlock Text="123" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource ForegroundBrush}"/>
                                                 <TextBlock Text=" | 평점: " FontSize="12" Margin="5,0,0,0" Foreground="{DynamicResource ForegroundBrush}"/>
@@ -151,8 +153,8 @@
                                             </StackPanel>
                                             <Button Content="상세보기" 
                                                     HorizontalAlignment="Center" 
-                                                    Margin="0,10,0,0" 
-                                                    Padding="15,5" 
+                                                    Margin="0,12,0,0" 
+                                                    Padding="20,8" 
                                                     Background="#F47B20" 
                                                     Foreground="White" 
                                                     CornerRadius="5"/>
@@ -161,7 +163,7 @@
                                 </Border>
                                 
                                 <!-- 상품 2 -->
-                                <Border Width="280" Height="350" Margin="10" Background="{DynamicResource BackgroundSecondaryBrush}" CornerRadius="5">
+                                <Border Width="280" Height="350" Margin="10" Background="{DynamicResource BackgroundSecondaryBrush}" CornerRadius="10" BoxShadow="0 2 10 0 #20000000">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="200"/>
@@ -169,15 +171,15 @@
                                         </Grid.RowDefinitions>
                                         
                                         <!-- 상품 이미지 -->
-                                        <Border Grid.Row="0" Background="LightGray">
+                                        <Border Grid.Row="0" Background="LightGray" CornerRadius="10,10,0,0">
                                             <TextBlock Text="상품 이미지" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         
                                         <!-- 상품 정보 -->
-                                        <StackPanel Grid.Row="1" Margin="10">
+                                        <StackPanel Grid.Row="1" Margin="15">
                                             <TextBlock Text="[네이버] 다른 상품명 예시입니다" FontWeight="Bold" TextWrapping="Wrap" Foreground="{DynamicResource ForegroundBrush}"/>
-                                            <TextBlock Text="32,000원" Foreground="#F47B20" FontWeight="Bold" Margin="0,5,0,0"/>
-                                            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                            <TextBlock Text="32,000원" Foreground="#F47B20" FontWeight="Bold" Margin="0,8,0,0"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                                 <TextBlock Text="리뷰: " FontSize="12" Foreground="{DynamicResource ForegroundBrush}"/>
                                                 <TextBlock Text="56" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource ForegroundBrush}"/>
                                                 <TextBlock Text=" | 평점: " FontSize="12" Margin="5,0,0,0" Foreground="{DynamicResource ForegroundBrush}"/>
@@ -185,8 +187,8 @@
                                             </StackPanel>
                                             <Button Content="상세보기" 
                                                     HorizontalAlignment="Center" 
-                                                    Margin="0,10,0,0" 
-                                                    Padding="15,5" 
+                                                    Margin="0,12,0,0" 
+                                                    Padding="20,8" 
                                                     Background="#F47B20" 
                                                     Foreground="White" 
                                                     CornerRadius="5"/>
@@ -198,22 +200,22 @@
                     </ScrollViewer>
                     
                     <!-- 페이지네이션 -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,10" Spacing="5">
-                        <Button Content="&lt;&lt;" Padding="10,5"/>
-                        <Button Content="&lt;" Padding="10,5"/>
-                        <Button Content="1" Padding="10,5" Background="#F47B20" Foreground="White"/>
-                        <Button Content="2" Padding="10,5"/>
-                        <Button Content="3" Padding="10,5"/>
-                        <Button Content="4" Padding="10,5"/>
-                        <Button Content="5" Padding="10,5"/>
-                        <Button Content="&gt;" Padding="10,5"/>
-                        <Button Content="&gt;&gt;" Padding="10,5"/>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,15" Spacing="5">
+                        <Button Content="&lt;&lt;" Padding="12,8" CornerRadius="5"/>
+                        <Button Content="&lt;" Padding="12,8" CornerRadius="5"/>
+                        <Button Content="1" Padding="12,8" Background="#F47B20" Foreground="White" CornerRadius="5"/>
+                        <Button Content="2" Padding="12,8" CornerRadius="5"/>
+                        <Button Content="3" Padding="12,8" CornerRadius="5"/>
+                        <Button Content="4" Padding="12,8" CornerRadius="5"/>
+                        <Button Content="5" Padding="12,8" CornerRadius="5"/>
+                        <Button Content="&gt;" Padding="12,8" CornerRadius="5"/>
+                        <Button Content="&gt;&gt;" Padding="12,8" CornerRadius="5"/>
                     </StackPanel>
                 </Grid>
                 
                 <!-- 데이터가 없을 때 보여줄 화면 (38.png 기반) -->
                 <Grid x:Name="NoDataView" IsVisible="True">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="25">
                         <!-- 아이콘 -->
                         <Path Data="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,5V19H5V5H19Z M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9"
                               Width="120" Height="120" 

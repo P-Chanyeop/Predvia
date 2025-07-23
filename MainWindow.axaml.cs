@@ -3,9 +3,11 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Gumaedaehang.Services;
 using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace Gumaedaehang
 {
@@ -24,15 +26,25 @@ namespace Gumaedaehang
         private Grid? _mainProductContent;
         private Grid? _settingsContent;
         
+        // 명언 관련 요소
+        private TextBlock? _adviceText;
+        private TextBlock? _adviceAuthor;
+        private readonly AdviceService _adviceService;
+        
         public MainWindow()
         {
             InitializeComponent();
             Debug.WriteLine("MainWindow initialized");
             
+            // 서비스 초기화
+            _adviceService = new AdviceService();
+            
             // UI 요소 참조 가져오기
             var themeToggleButton = this.FindControl<Button>("themeToggleButton");
             var themeToggleText = this.FindControl<TextBlock>("themeToggleText");
             var userWelcomeText = this.FindControl<TextBlock>("userWelcomeText");
+            _adviceText = this.FindControl<TextBlock>("adviceText");
+            _adviceAuthor = this.FindControl<TextBlock>("adviceAuthor");
             
             Debug.WriteLine("Finding tab buttons...");
             // 탭 버튼 참조
@@ -103,6 +115,9 @@ namespace Gumaedaehang
             if (themeToggleText != null)
                 themeToggleText.Text = ThemeManager.Instance.IsDarkTheme ? "라이트모드" : "다크모드";
             
+            // 명언 가져오기
+            LoadRandomAdvice();
+            
             // 테마 변경 이벤트 구독
             ThemeManager.Instance.ThemeChanged += (sender, theme) => {
                 var toggleText = this.FindControl<TextBlock>("themeToggleText");
@@ -151,6 +166,40 @@ namespace Gumaedaehang
         {
             AvaloniaXamlLoader.Load(this);
             Debug.WriteLine("InitializeComponent called");
+        }
+        
+        // 명언 가져오기 메서드
+        private async void LoadRandomAdvice()
+        {
+            try
+            {
+                if (_adviceText != null)
+                {
+                    _adviceText.Text = "명언을 불러오는 중...";
+                    
+                    // API에서 명언 가져오기
+                    var advice = await _adviceService.GetRandomAdviceAsync();
+                    
+                    // UI 스레드에서 업데이트
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (_adviceText != null && _adviceAuthor != null)
+                        {
+                            _adviceText.Text = advice.Message;
+                            _adviceAuthor.Text = advice.Author;
+                            _adviceAuthor.IsVisible = !string.IsNullOrEmpty(advice.Author);
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"명언 로딩 오류: {ex.Message}");
+                if (_adviceText != null)
+                {
+                    _adviceText.Text = "명언을 불러오는 중 오류가 발생했습니다.";
+                }
+            }
         }
         
         private void ThemeToggleButton_Click(object? sender, RoutedEventArgs e)
