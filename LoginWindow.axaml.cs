@@ -3,6 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Gumaedaehang.Services;
+using System;
+using System.Threading.Tasks;
 
 namespace Gumaedaehang
 {
@@ -15,6 +18,10 @@ namespace Gumaedaehang
         private TextBlock? _errorMessage;
         private Button? _themeToggleButton;
         private TextBlock? _themeToggleText;
+        
+        // API 클라이언트
+        private readonly ApiClient _apiClient;
+        private bool _isLoggingIn = false;
 
         public LoginWindow()
         {
@@ -22,6 +29,9 @@ namespace Gumaedaehang
 #if DEBUG
             this.AttachDevTools();
 #endif
+            
+            // API 클라이언트 초기화
+            _apiClient = new ApiClient();
             
             // UI 요소 참조 가져오기
             _usernameTextBox = this.FindControl<TextBox>("usernameTextBox");
@@ -66,32 +76,59 @@ namespace Gumaedaehang
             }
         }
         
-        private void LoginButton_Click(object? sender, RoutedEventArgs e)
+        private async void LoginButton_Click(object? sender, RoutedEventArgs e)
         {
-            if (_usernameTextBox == null || _passwordTextBox == null)
+            if (_usernameTextBox == null || _passwordTextBox == null || _loginButton == null || _errorMessage == null)
                 return;
                 
             string username = _usernameTextBox.Text ?? string.Empty;
             string password = _passwordTextBox.Text ?? string.Empty;
             
-            // 로그인 로직 구현
-            // 실제 구현에서는 데이터베이스나 API를 통해 인증 처리
-            if (AuthenticateUser(username, password))
+            // 입력 유효성 검사
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
-                // 로그인 성공 시 메인 창으로 이동
-                var mainWindow = new MainWindow();
-                mainWindow.SetUsername(username); // 사용자 아이디 전달
-                mainWindow.Show();
+                _errorMessage.Text = "아이디와 비밀번호를 모두 입력해주세요.";
+                _errorMessage.IsVisible = true;
+                return;
+            }
+            
+            // 중복 로그인 방지
+            if (_isLoggingIn)
+                return;
+                
+            _isLoggingIn = true;
+            _loginButton.IsEnabled = false;
+            _errorMessage.IsVisible = false;
+            
+            try
+            {
+                // API 로그인 호출 (테스트 모드)
+                var response = await _apiClient.LoginTestModeAsync(username, password);
+                
+                // 로그인 성공 처리
+                AuthManager.Instance.Login(response.Username, response.Token);
+                
+                // API 키 인증 창으로 이동
+                var apiKeyAuthWindow = new ApiKeyAuthWindow();
+                apiKeyAuthWindow.Show();
                 this.Close();
             }
-            else
+            catch (ApiException ex)
             {
-                // 로그인 실패 시 오류 메시지 표시
-                if (_errorMessage != null)
-                {
-                    _errorMessage.Text = "아이디 또는 비밀번호가 올바르지 않습니다.";
-                    _errorMessage.IsVisible = true;
-                }
+                // 로그인 실패 처리
+                _errorMessage.Text = ex.ErrorDetails;
+                _errorMessage.IsVisible = true;
+            }
+            catch (Exception)
+            {
+                // 기타 예외 처리
+                _errorMessage.Text = "로그인 중 오류가 발생했습니다. 다시 시도해주세요.";
+                _errorMessage.IsVisible = true;
+            }
+            finally
+            {
+                _isLoggingIn = false;
+                _loginButton.IsEnabled = true;
             }
         }
         
@@ -115,14 +152,6 @@ namespace Gumaedaehang
             {
                 _themeToggleText.Text = ThemeManager.Instance.IsDarkTheme ? "라이트모드" : "다크모드";
             }
-        }
-        
-        // 사용자 인증 메서드 (실제 구현에서는 데이터베이스나 API 사용)
-        private bool AuthenticateUser(string username, string password)
-        {
-            // 테스트용 계정
-            return (username == "admin" && password == "admin") || 
-                   (username == "test" && password == "test");
         }
     }
 }

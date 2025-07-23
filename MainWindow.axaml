@@ -74,7 +74,8 @@
                 <Image Source="/images/predvia_logo.png"
                        Height="50"
                        HorizontalAlignment="Center"
-                       VerticalAlignment="Center"/>
+                       VerticalAlignment="Center"
+                       IsHitTestVisible="False"/>
             </Grid>
 
             <!-- 오른쪽 사용자 정보 -->
@@ -126,22 +127,34 @@
                         FontSize="20" 
                         FontWeight="Bold" 
                         Foreground="#F47B20"
-                        Classes="TabButton"/>
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,5"
+                        Cursor="Hand"/>
                 <Button x:Name="MarketCheckTab" 
                         Content="마켓점검" 
                         FontSize="20" 
                         Foreground="{DynamicResource ForegroundBrush}"
-                        Classes="TabButton"/>
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,5"
+                        Cursor="Hand"/>
                 <Button x:Name="MainProductTab" 
                         Content="메인상품찾기(beta)" 
                         FontSize="20" 
                         Foreground="{DynamicResource ForegroundBrush}"
-                        Classes="TabButton"/>
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,5"
+                        Cursor="Hand"/>
                 <Button x:Name="SettingsTab" 
                         Content="설정" 
                         FontSize="20" 
                         Foreground="{DynamicResource ForegroundBrush}"
-                        Classes="TabButton"/>
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,5"
+                        Cursor="Hand"/>
             </StackPanel>
             
             <!-- 메인 콘텐츠 영역 -->
@@ -159,6 +172,7 @@
                                    Width="1122"
                                    Height="1121"
                                    Opacity="1"
+                                   IsHitTestVisible="False"
                                    VerticalAlignment="Top"
                                    Margin="0,-300,0,0"
                                    HorizontalAlignment="Center"/>

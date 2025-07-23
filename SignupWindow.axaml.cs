@@ -1,7 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Gumaedaehang.Services;
+using System;
+using System.Threading.Tasks;
 
 namespace Gumaedaehang
 {
@@ -13,7 +17,12 @@ namespace Gumaedaehang
         private Button? _signupButton;
         private TextBlock? _loginLink;
         private TextBlock? _errorMessage;
-        private Button? _backButton;
+        private Button? _themeToggleButton;
+        private TextBlock? _themeToggleText;
+        
+        // API 클라이언트
+        private readonly ApiClient _apiClient;
+        private bool _isRegistering = false;
 
         public SignupWindow()
         {
@@ -22,6 +31,9 @@ namespace Gumaedaehang
             this.AttachDevTools();
 #endif
             
+            // API 클라이언트 초기화
+            _apiClient = new ApiClient();
+            
             // UI 요소 참조 가져오기
             _usernameTextBox = this.FindControl<TextBox>("usernameTextBox");
             _passwordTextBox = this.FindControl<TextBox>("passwordTextBox");
@@ -29,7 +41,8 @@ namespace Gumaedaehang
             _signupButton = this.FindControl<Button>("signupButton");
             _loginLink = this.FindControl<TextBlock>("loginLink");
             _errorMessage = this.FindControl<TextBlock>("errorMessage");
-            _backButton = this.FindControl<Button>("backButton");
+            _themeToggleButton = this.FindControl<Button>("themeToggleButton");
+            _themeToggleText = this.FindControl<TextBlock>("themeToggleText");
             
             // 이벤트 핸들러 등록
             if (_signupButton != null)
@@ -38,8 +51,14 @@ namespace Gumaedaehang
             if (_loginLink != null)
                 _loginLink.PointerPressed += LoginLink_PointerPressed;
                 
-            if (_backButton != null)
-                _backButton.Click += BackButton_Click;
+            if (_themeToggleButton != null)
+                _themeToggleButton.Click += ThemeToggleButton_Click;
+                
+            // 현재 테마에 맞게 버튼 텍스트 업데이트
+            UpdateThemeToggleText();
+            
+            // 테마 변경 이벤트 구독
+            ThemeManager.Instance.ThemeChanged += (sender, theme) => UpdateThemeToggleText();
         }
 
         private void InitializeComponent()
@@ -47,84 +66,92 @@ namespace Gumaedaehang
             AvaloniaXamlLoader.Load(this);
         }
         
-        private void SignupButton_Click(object? sender, RoutedEventArgs e)
+        private async void SignupButton_Click(object? sender, RoutedEventArgs e)
         {
-            if (_usernameTextBox == null || _passwordTextBox == null || _confirmPasswordTextBox == null)
+            if (_usernameTextBox == null || _passwordTextBox == null || _confirmPasswordTextBox == null || 
+                _signupButton == null || _errorMessage == null)
                 return;
                 
             string username = _usernameTextBox.Text ?? string.Empty;
             string password = _passwordTextBox.Text ?? string.Empty;
             string confirmPassword = _confirmPasswordTextBox.Text ?? string.Empty;
             
-            // 유효성 검사
-            if (string.IsNullOrWhiteSpace(username))
+            // 입력 유효성 검사
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password) || 
+                string.IsNullOrWhiteSpace(confirmPassword))
             {
-                ShowError("아이디를 입력해주세요.");
+                _errorMessage.Text = "모든 필드를 입력해주세요.";
+                _errorMessage.IsVisible = true;
                 return;
             }
             
-            if (string.IsNullOrWhiteSpace(password))
-            {
-                ShowError("비밀번호를 입력해주세요.");
-                return;
-            }
-            
+            // 비밀번호 일치 검사
             if (password != confirmPassword)
             {
-                ShowError("비밀번호가 일치하지 않습니다.");
+                _errorMessage.Text = "비밀번호와 비밀번호 확인이 일치하지 않습니다.";
+                _errorMessage.IsVisible = true;
                 return;
             }
             
-            if (password.Length < 6)
-            {
-                ShowError("비밀번호는 6자 이상이어야 합니다.");
+            // 중복 회원가입 방지
+            if (_isRegistering)
                 return;
-            }
+                
+            _isRegistering = true;
+            _signupButton.IsEnabled = false;
+            _errorMessage.IsVisible = false;
             
-            // 회원가입 로직 구현
-            // 실제 구현에서는 데이터베이스나 API를 통해 사용자 등록
-            if (RegisterUser(username, password))
+            try
             {
-                // 회원가입 성공 시 로그인 창으로 이동
-                var loginWindow = new LoginWindow();
-                loginWindow.Show();
+                // API 회원가입 호출 (테스트 모드)
+                var response = await _apiClient.RegisterTestModeAsync(username, password, confirmPassword);
+                
+                // 회원가입 성공 처리
+                AuthManager.Instance.Login(response.Username, response.Token);
+                
+                // API 키 인증 창으로 이동
+                var apiKeyAuthWindow = new ApiKeyAuthWindow();
+                apiKeyAuthWindow.Show();
                 this.Close();
             }
-            else
+            catch (ApiException ex)
             {
-                ShowError("이미 사용 중인 아이디입니다.");
+                // 회원가입 실패 처리
+                _errorMessage.Text = ex.ErrorDetails;
+                _errorMessage.IsVisible = true;
+            }
+            catch (Exception)
+            {
+                // 기타 예외 처리
+                _errorMessage.Text = "회원가입 중 오류가 발생했습니다. 다시 시도해주세요.";
+                _errorMessage.IsVisible = true;
+            }
+            finally
+            {
+                _isRegistering = false;
+                _signupButton.IsEnabled = true;
             }
         }
         
-        private void LoginLink_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+        private void LoginLink_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
-            // 로그인 페이지로 이동
+            // 로그인 화면으로 이동
             var loginWindow = new LoginWindow();
             loginWindow.Show();
             this.Close();
         }
         
-        private void BackButton_Click(object? sender, RoutedEventArgs e)
+        private void ThemeToggleButton_Click(object? sender, RoutedEventArgs e)
         {
-            // 로그인 페이지로 돌아가기
-            var loginWindow = new LoginWindow();
-            loginWindow.Show();
-            this.Close();
+            // 테마 전환
+            ThemeManager.Instance.ToggleTheme();
         }
         
-        private bool RegisterUser(string username, string password)
+        private void UpdateThemeToggleText()
         {
-            // 실제 구현에서는 데이터베이스나 API를 통해 사용자 등록
-            // 임시 구현: 아이디가 "admin"이 아닌 경우 회원가입 성공
-            return username != "admin";
-        }
-        
-        private void ShowError(string message)
-        {
-            if (_errorMessage != null)
+            if (_themeToggleText != null)
             {
-                _errorMessage.Text = message;
-                _errorMessage.IsVisible = true;
+                _themeToggleText.Text = ThemeManager.Instance.IsDarkTheme ? "라이트모드" : "다크모드";
             }
         }
     }
