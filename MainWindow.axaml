@@ -97,12 +97,30 @@
         </Grid>
 
         <!-- 오늘의 명언 영역 -->
-        <TextBlock Grid.Row="1" 
-                   Text="오늘의 명언: 명언이 길어질경우 자동으로 옆으로 슬라이딩 될수있는지" 
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Center"
-                   FontSize="18"
-                   Foreground="{DynamicResource ForegroundBrush}"/>
+        <StackPanel Grid.Row="1" 
+                  Orientation="Horizontal"
+                  HorizontalAlignment="Center" 
+                  VerticalAlignment="Center"
+                  Spacing="5">
+            <TextBlock Text="오늘의 명언: " 
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource ForegroundBrush}"/>
+            <TextBlock x:Name="adviceText" 
+                       Text="명언을 불러오는 중..." 
+                       FontSize="18"
+                       Foreground="{DynamicResource ForegroundBrush}"/>
+            <TextBlock Text=" - " 
+                       FontSize="18"
+                       Foreground="{DynamicResource ForegroundBrush}"
+                       IsVisible="{Binding ElementName=adviceAuthor, Path=IsVisible}"/>
+            <TextBlock x:Name="adviceAuthor" 
+                       Text="" 
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="#F47B20"
+                       IsVisible="False"/>
+        </StackPanel>
                    
         <!-- 구분선 -->
         <Rectangle Grid.Row="2" 
