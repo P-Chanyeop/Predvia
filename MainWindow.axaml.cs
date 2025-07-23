@@ -108,6 +108,19 @@ namespace Gumaedaehang
                 var toggleText = this.FindControl<TextBlock>("themeToggleText");
                 if (toggleText != null)
                     toggleText.Text = ThemeManager.Instance.IsDarkTheme ? "라이트모드" : "다크모드";
+                
+                // 테마 변경 시 현재 활성화된 탭을 찾아 스타일 업데이트
+                Button? activeTab = null;
+                if (_sourcingTab != null && _sourcingContent != null && _sourcingContent.IsVisible)
+                    activeTab = _sourcingTab;
+                else if (_marketCheckTab != null && _marketCheckContent != null && _marketCheckContent.IsVisible)
+                    activeTab = _marketCheckTab;
+                else if (_mainProductTab != null && _mainProductContent != null && _mainProductContent.IsVisible)
+                    activeTab = _mainProductTab;
+                else if (_settingsTab != null && _settingsContent != null && _settingsContent.IsVisible)
+                    activeTab = _settingsTab;
+                
+                UpdateTabStyles(activeTab);
             };
             
             // 인증 상태 변경 이벤트 구독
@@ -126,6 +139,9 @@ namespace Gumaedaehang
                     }
                 }
             };
+            
+            // 초기 탭 스타일 설정 (소싱 탭이 기본 선택)
+            UpdateTabStyles(_sourcingTab);
             
             // 디버그 메시지 출력
             Debug.WriteLine("MainWindow initialization completed");
@@ -183,6 +199,18 @@ namespace Gumaedaehang
             if (_marketCheckContent != null) _marketCheckContent.IsVisible = contentToShow == _marketCheckContent;
             if (_mainProductContent != null) _mainProductContent.IsVisible = contentToShow == _mainProductContent;
             if (_settingsContent != null) _settingsContent.IsVisible = contentToShow == _settingsContent;
+            
+            // 소싱 페이지가 표시될 때 데이터 상태 설정
+            if (contentToShow == _sourcingContent && _sourcingContent != null)
+            {
+                // 소싱 페이지의 인스턴스 가져오기
+                var sourcingPage = _sourcingContent.Content as SourcingPage;
+                if (sourcingPage != null)
+                {
+                    // 초기에는 데이터가 없는 상태로 설정
+                    sourcingPage.SetHasData(false);
+                }
+            }
         }
         
         // 탭 스타일 업데이트 메서드
@@ -190,29 +218,32 @@ namespace Gumaedaehang
         {
             Debug.WriteLine($"UpdateTabStyles called with {activeTab?.Name}");
             
+            // 현재 테마에 맞는 색상 가져오기
+            var textColor = ThemeManager.Instance.IsDarkTheme ? Colors.White : Colors.Black;
+            
             // 모든 탭 스타일 초기화
             if (_sourcingTab != null)
             {
                 _sourcingTab.FontWeight = FontWeight.Normal;
-                _sourcingTab.Foreground = new SolidColorBrush(Colors.Black);
+                _sourcingTab.Foreground = new SolidColorBrush(textColor);
             }
             
             if (_marketCheckTab != null)
             {
                 _marketCheckTab.FontWeight = FontWeight.Normal;
-                _marketCheckTab.Foreground = new SolidColorBrush(Colors.Black);
+                _marketCheckTab.Foreground = new SolidColorBrush(textColor);
             }
             
             if (_mainProductTab != null)
             {
                 _mainProductTab.FontWeight = FontWeight.Normal;
-                _mainProductTab.Foreground = new SolidColorBrush(Colors.Black);
+                _mainProductTab.Foreground = new SolidColorBrush(textColor);
             }
             
             if (_settingsTab != null)
             {
                 _settingsTab.FontWeight = FontWeight.Normal;
-                _settingsTab.Foreground = new SolidColorBrush(Colors.Black);
+                _settingsTab.Foreground = new SolidColorBrush(textColor);
             }
             
             // 활성 탭 스타일 설정
