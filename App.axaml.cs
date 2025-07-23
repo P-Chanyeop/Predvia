@@ -21,7 +21,8 @@ namespace Gumaedaehang
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = new LoginWindow();
+                // API 키 인증 창을 시작 창으로 설정
+                desktop.MainWindow = new ApiKeyAuthWindow();
             }
 
             base.OnFrameworkInitializationCompleted();

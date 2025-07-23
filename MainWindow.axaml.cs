@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Gumaedaehang.Services;
 using System;
 using System.Diagnostics;
 
@@ -10,9 +11,6 @@ namespace Gumaedaehang
 {
     public partial class MainWindow : Window
     {
-        // 사용자 정보
-        private string _username = "admin"; // 기본값
-        
         // 탭 버튼들
         private Button? _sourcingTab;
         private Button? _marketCheckTab;
@@ -29,29 +27,49 @@ namespace Gumaedaehang
         public MainWindow()
         {
             InitializeComponent();
+            Debug.WriteLine("MainWindow initialized");
             
             // UI 요소 참조 가져오기
             var themeToggleButton = this.FindControl<Button>("themeToggleButton");
             var themeToggleText = this.FindControl<TextBlock>("themeToggleText");
             var userWelcomeText = this.FindControl<TextBlock>("userWelcomeText");
             
+            Debug.WriteLine("Finding tab buttons...");
             // 탭 버튼 참조
             _sourcingTab = this.FindControl<Button>("SourcingTab");
-            _marketCheckTab = this.FindControl<Button>("MarketCheckTab");
-            _mainProductTab = this.FindControl<Button>("MainProductTab");
-            _settingsTab = this.FindControl<Button>("SettingsTab");
+            Debug.WriteLine($"SourcingTab found: {_sourcingTab != null}");
             
+            _marketCheckTab = this.FindControl<Button>("MarketCheckTab");
+            Debug.WriteLine($"MarketCheckTab found: {_marketCheckTab != null}");
+            
+            _mainProductTab = this.FindControl<Button>("MainProductTab");
+            Debug.WriteLine($"MainProductTab found: {_mainProductTab != null}");
+            
+            _settingsTab = this.FindControl<Button>("SettingsTab");
+            Debug.WriteLine($"SettingsTab found: {_settingsTab != null}");
+            
+            Debug.WriteLine("Finding content areas...");
             // 콘텐츠 영역 참조
             _homeContent = this.FindControl<Grid>("HomeContent");
+            Debug.WriteLine($"HomeContent found: {_homeContent != null}");
+            
             _sourcingContent = this.FindControl<ContentControl>("SourcingContent");
+            Debug.WriteLine($"SourcingContent found: {_sourcingContent != null}");
+            
             _marketCheckContent = this.FindControl<Grid>("MarketCheckContent");
+            Debug.WriteLine($"MarketCheckContent found: {_marketCheckContent != null}");
+            
             _mainProductContent = this.FindControl<Grid>("MainProductContent");
+            Debug.WriteLine($"MainProductContent found: {_mainProductContent != null}");
+            
             _settingsContent = this.FindControl<Grid>("SettingsContent");
+            Debug.WriteLine($"SettingsContent found: {_settingsContent != null}");
             
             // 이벤트 핸들러 등록
             if (themeToggleButton != null)
                 themeToggleButton.Click += ThemeToggleButton_Click;
                 
+            Debug.WriteLine("Registering tab button event handlers...");
             // 탭 버튼 이벤트 등록
             if (_sourcingTab != null)
             {
@@ -78,8 +96,8 @@ namespace Gumaedaehang
             }
             
             // 사용자 환영 메시지 업데이트
-            if (userWelcomeText != null)
-                userWelcomeText.Text = $"{_username} 님 어서오세요.";
+            if (userWelcomeText != null && AuthManager.Instance.IsAuthenticated)
+                userWelcomeText.Text = $"{AuthManager.Instance.Username} 님 어서오세요.";
             
             // 현재 테마에 맞게 버튼 텍스트 업데이트
             if (themeToggleText != null)
@@ -92,23 +110,31 @@ namespace Gumaedaehang
                     toggleText.Text = ThemeManager.Instance.IsDarkTheme ? "라이트모드" : "다크모드";
             };
             
+            // 인증 상태 변경 이벤트 구독
+            AuthManager.Instance.AuthStateChanged += (sender, args) => {
+                var welcomeText = this.FindControl<TextBlock>("userWelcomeText");
+                if (welcomeText != null)
+                {
+                    if (args.IsAuthenticated)
+                        welcomeText.Text = $"{args.Username} 님 어서오세요.";
+                    else
+                    {
+                        // 로그아웃 시 API 키 인증 화면으로 이동
+                        var apiKeyAuthWindow = new ApiKeyAuthWindow();
+                        apiKeyAuthWindow.Show();
+                        this.Close();
+                    }
+                }
+            };
+            
             // 디버그 메시지 출력
-            Debug.WriteLine("MainWindow initialized");
+            Debug.WriteLine("MainWindow initialization completed");
         }
         
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
             Debug.WriteLine("InitializeComponent called");
-        }
-        
-        // 로그인한 사용자 이름 설정 메서드
-        public void SetUsername(string username)
-        {
-            _username = username;
-            var userWelcomeText = this.FindControl<TextBlock>("userWelcomeText");
-            if (userWelcomeText != null)
-                userWelcomeText.Text = $"{_username} 님 어서오세요.";
         }
         
         private void ThemeToggleButton_Click(object? sender, RoutedEventArgs e)
@@ -118,28 +144,28 @@ namespace Gumaedaehang
         }
         
         // 탭 전환 메서드들
-        private void SourcingTab_Click(object? sender, RoutedEventArgs e)
+        public void SourcingTab_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("SourcingTab_Click called");
             ShowContent(_sourcingContent);
             UpdateTabStyles(_sourcingTab);
         }
         
-        private void MarketCheckTab_Click(object? sender, RoutedEventArgs e)
+        public void MarketCheckTab_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("MarketCheckTab_Click called");
             ShowContent(_marketCheckContent);
             UpdateTabStyles(_marketCheckTab);
         }
         
-        private void MainProductTab_Click(object? sender, RoutedEventArgs e)
+        public void MainProductTab_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("MainProductTab_Click called");
             ShowContent(_mainProductContent);
             UpdateTabStyles(_mainProductTab);
         }
         
-        private void SettingsTab_Click(object? sender, RoutedEventArgs e)
+        public void SettingsTab_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("SettingsTab_Click called");
             ShowContent(_settingsContent);
