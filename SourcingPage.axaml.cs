@@ -10,8 +10,7 @@ namespace Gumaedaehang
     {
         private Grid? _noDataView;
         private Grid? _dataAvailableView;
-        private Button? _searchButton;
-        private Button? _noDataSearchButton;
+        private TextBlock? _addMoreLink;
         private bool _hasData = false;
         
         public SourcingPage()
@@ -21,15 +20,11 @@ namespace Gumaedaehang
             // UI 요소 참조 가져오기
             _noDataView = this.FindControl<Grid>("NoDataView");
             _dataAvailableView = this.FindControl<Grid>("DataAvailableView");
-            _searchButton = this.FindControl<Button>("SearchButton");
-            _noDataSearchButton = this.FindControl<Button>("NoDataSearchButton");
+            _addMoreLink = this.FindControl<TextBlock>("AddMoreLink");
             
             // 이벤트 핸들러 등록
-            if (_searchButton != null)
-                _searchButton.Click += SearchButton_Click;
-                
-            if (_noDataSearchButton != null)
-                _noDataSearchButton.Click += NoDataSearchButton_Click;
+            if (_addMoreLink != null)
+                _addMoreLink.PointerPressed += AddMoreLink_Click;
                 
             // 초기 상태 설정 (데이터 없음)
             UpdateViewVisibility();
@@ -40,20 +35,11 @@ namespace Gumaedaehang
             AvaloniaXamlLoader.Load(this);
         }
         
-        // 검색 버튼 클릭 이벤트 핸들러
-        private void SearchButton_Click(object? sender, RoutedEventArgs e)
+        // 추가하기+ 링크 클릭 이벤트 핸들러
+        private void AddMoreLink_Click(object? sender, Avalonia.Input.PointerPressedEventArgs e)
         {
-            // 실제 검색 로직 구현 (여기서는 데모로 데이터가 있는 상태로 전환)
-            _hasData = true;
-            UpdateViewVisibility();
-        }
-        
-        // 데이터 없음 화면의 검색 버튼 클릭 이벤트 핸들러
-        private void NoDataSearchButton_Click(object? sender, RoutedEventArgs e)
-        {
-            // 실제 검색 로직 구현 (여기서는 데모로 데이터가 있는 상태로 전환)
-            _hasData = true;
-            UpdateViewVisibility();
+            // 실제 추가 로직 구현
+            Debug.WriteLine("추가하기+ 링크 클릭됨");
         }
         
         // 데이터 유무에 따라 화면 업데이트
@@ -70,6 +56,13 @@ namespace Gumaedaehang
         public void SetHasData(bool hasData)
         {
             _hasData = hasData;
+            UpdateViewVisibility();
+        }
+        
+        // 데이터 초기화 메서드 (테스트용)
+        public void ResetData()
+        {
+            _hasData = false;
             UpdateViewVisibility();
         }
     }
