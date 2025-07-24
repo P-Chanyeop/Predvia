@@ -11,58 +11,68 @@
             <StackPanel Spacing="60" 
                         VerticalAlignment="Center" 
                         HorizontalAlignment="Center"
-                        MaxWidth="1200">
+                        MaxWidth="1200"
+                        Width="1200">
                 
                 <!-- 필터 섹션 -->
-                <StackPanel Spacing="25" HorizontalAlignment="Center">
+                <StackPanel Spacing="25">
                     <TextBlock Text="필터" 
                                FontSize="28" 
-                               FontWeight="Medium" 
+                               FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
-                               HorizontalAlignment="Center"/>
+                               HorizontalAlignment="Left"/>
                     
-                    <StackPanel Orientation="Horizontal" 
-                                Spacing="20" 
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center">
-                        <!-- 최소 가격 입력 -->
-                        <TextBox Width="280" 
-                                 Height="55" 
-                                 Text="1,000"
-                                 Background="#FFE5D3"
-                                 BorderThickness="0"
-                                 CornerRadius="8"
-                                 VerticalContentAlignment="Center"
-                                 HorizontalContentAlignment="Center"
-                                 FontSize="18"
-                                 FontWeight="Medium"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
                         
-                        <TextBlock Text="원 ~" 
-                                   VerticalAlignment="Center" 
-                                   FontSize="20" 
-                                   FontWeight="Medium"
-                                   Foreground="{DynamicResource ForegroundBrush}"/>
-                        
-                        <!-- 최대 가격 입력 -->
-                        <TextBox Width="280" 
-                                 Height="55" 
-                                 Text="100,000"
-                                 Background="#FFE5D3"
-                                 BorderThickness="0"
-                                 CornerRadius="8"
-                                 VerticalContentAlignment="Center"
-                                 HorizontalContentAlignment="Center"
-                                 FontSize="18"
-                                 FontWeight="Medium"/>
-                        
-                        <TextBlock Text="원" 
-                                   VerticalAlignment="Center" 
-                                   FontSize="20" 
-                                   FontWeight="Medium"
-                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                        <!-- 가격 입력 영역 -->
+                        <StackPanel Grid.Column="0" 
+                                    Orientation="Horizontal" 
+                                    Spacing="20" 
+                                    VerticalAlignment="Center">
+                            <!-- 최소 가격 입력 -->
+                            <TextBox Width="280" 
+                                     Height="55" 
+                                     Text="1,000"
+                                     Background="#FFE5D3"
+                                     BorderThickness="0"
+                                     CornerRadius="8"
+                                     VerticalContentAlignment="Center"
+                                     HorizontalContentAlignment="Center"
+                                     FontSize="18"
+                                     FontWeight="Medium"/>
+                            
+                            <TextBlock Text="원 ~" 
+                                       VerticalAlignment="Center" 
+                                       FontSize="20" 
+                                       FontWeight="Medium"
+                                       Foreground="{DynamicResource ForegroundBrush}"/>
+                            
+                            <!-- 최대 가격 입력 -->
+                            <TextBox Width="280" 
+                                     Height="55" 
+                                     Text="100,000"
+                                     Background="#FFE5D3"
+                                     BorderThickness="0"
+                                     CornerRadius="8"
+                                     VerticalContentAlignment="Center"
+                                     HorizontalContentAlignment="Center"
+                                     FontSize="18"
+                                     FontWeight="Medium"/>
+                            
+                            <TextBlock Text="원" 
+                                       VerticalAlignment="Center" 
+                                       FontSize="20" 
+                                       FontWeight="Medium"
+                                       Foreground="{DynamicResource ForegroundBrush}"/>
+                        </StackPanel>
                         
                         <!-- 설정 버튼 -->
-                        <Button Content="설정" 
+                        <Button Grid.Column="1"
+                                Content="설정" 
                                 Background="#F47B20" 
                                 Foreground="White" 
                                 Padding="40,15" 
@@ -71,23 +81,25 @@
                                 FontWeight="Medium"
                                 BorderThickness="0"
                                 Height="55"/>
-                    </StackPanel>
+                    </Grid>
                 </StackPanel>
                 
                 <!-- 수동으로 소싱하기 섹션 -->
-                <StackPanel Spacing="25" HorizontalAlignment="Center">
+                <StackPanel Spacing="25">
                     <TextBlock Text="수동으로 소싱하기" 
                                FontSize="28" 
-                               FontWeight="Medium" 
+                               FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
-                               HorizontalAlignment="Center"/>
+                               HorizontalAlignment="Left"/>
                     
-                    <StackPanel Orientation="Horizontal" 
-                                Spacing="20" 
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
                         <!-- URL 입력 필드 -->
-                        <TextBox Width="800" 
+                        <TextBox Grid.Column="0"
                                  Height="55" 
                                  Watermark="URL을 입력해주세요."
                                  Background="#FFE5D3"
@@ -95,10 +107,12 @@
                                  CornerRadius="8"
                                  VerticalContentAlignment="Center"
                                  FontSize="18"
-                                 Padding="20,0"/>
+                                 Padding="20,0"
+                                 Margin="0,0,20,0"/>
                         
                         <!-- 페이징 버튼 -->
-                        <Button Content="페이징" 
+                        <Button Grid.Column="1"
+                                Content="페이징" 
                                 Background="#F47B20" 
                                 Foreground="White" 
                                 Padding="40,15" 
@@ -107,7 +121,7 @@
                                 FontWeight="Medium"
                                 BorderThickness="0"
                                 Height="55"/>
-                    </StackPanel>
+                    </Grid>
                     
                     <!-- 추가하기+ 링크 -->
                     <TextBlock Text="추가하기 +" 
@@ -120,18 +134,22 @@
                 </StackPanel>
                 
                 <!-- 소싱제로 자동찾기 섹션 -->
-                <StackPanel Orientation="Horizontal" 
-                            Spacing="25" 
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
-                    <TextBlock Text="소싱제로 자동찾기" 
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0"
+                               Text="소싱제로 자동찾기" 
                                FontSize="28" 
-                               FontWeight="Medium" 
+                               FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
                                VerticalAlignment="Center"/>
                     
                     <!-- 페이징 버튼 -->
-                    <Button Content="페이징" 
+                    <Button Grid.Column="1"
+                            Content="페이징" 
                             Background="#F47B20" 
                             Foreground="White" 
                             Padding="40,15" 
@@ -140,21 +158,25 @@
                             FontWeight="Medium"
                             BorderThickness="0"
                             Height="55"/>
-                </StackPanel>
+                </Grid>
                 
                 <!-- 메인상품 자동찾기 섹션 -->
-                <StackPanel Orientation="Horizontal" 
-                            Spacing="25" 
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
-                    <TextBlock Text="메인상품 자동찾기" 
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0"
+                               Text="메인상품 자동찾기" 
                                FontSize="28" 
-                               FontWeight="Medium" 
+                               FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
                                VerticalAlignment="Center"/>
                     
                     <!-- 페이징 버튼 -->
-                    <Button Content="페이징" 
+                    <Button Grid.Column="1"
+                            Content="페이징" 
                             Background="#F47B20" 
                             Foreground="White" 
                             Padding="40,15" 
@@ -163,12 +185,12 @@
                             FontWeight="Medium"
                             BorderThickness="0"
                             Height="55"/>
-                </StackPanel>
+                </Grid>
                 
                 <!-- 엑셀로 수출하기 섹션 -->
                 <StackPanel Orientation="Horizontal" 
                             Spacing="15" 
-                            HorizontalAlignment="Center"
+                            HorizontalAlignment="Left"
                             VerticalAlignment="Center">
                     <!-- 엑셀 아이콘 -->
                     <Image Source="avares://Gumaedaehang/images/excel_logo.png" 
@@ -177,7 +199,7 @@
                     
                     <TextBlock Text="엑셀로 수출하기" 
                                FontSize="28" 
-                               FontWeight="Medium" 
+                               FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -190,58 +212,68 @@
             <StackPanel Spacing="60" 
                         VerticalAlignment="Center" 
                         HorizontalAlignment="Center"
-                        MaxWidth="1200">
+                        MaxWidth="1200"
+                        Width="1200">
                 
                 <!-- 필터 섹션 (동일) -->
-                <StackPanel Spacing="25" HorizontalAlignment="Center">
+                <StackPanel Spacing="25">
                     <TextBlock Text="필터" 
                                FontSize="28" 
-                               FontWeight="Medium" 
+                               FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
-                               HorizontalAlignment="Center"/>
+                               HorizontalAlignment="Left"/>
                     
-                    <StackPanel Orientation="Horizontal" 
-                                Spacing="20" 
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center">
-                        <!-- 최소 가격 입력 -->
-                        <TextBox Width="280" 
-                                 Height="55" 
-                                 Text="1,000"
-                                 Background="#FFE5D3"
-                                 BorderThickness="0"
-                                 CornerRadius="8"
-                                 VerticalContentAlignment="Center"
-                                 HorizontalContentAlignment="Center"
-                                 FontSize="18"
-                                 FontWeight="Medium"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
                         
-                        <TextBlock Text="원 ~" 
-                                   VerticalAlignment="Center" 
-                                   FontSize="20" 
-                                   FontWeight="Medium"
-                                   Foreground="{DynamicResource ForegroundBrush}"/>
-                        
-                        <!-- 최대 가격 입력 -->
-                        <TextBox Width="280" 
-                                 Height="55" 
-                                 Text="100,000"
-                                 Background="#FFE5D3"
-                                 BorderThickness="0"
-                                 CornerRadius="8"
-                                 VerticalContentAlignment="Center"
-                                 HorizontalContentAlignment="Center"
-                                 FontSize="18"
-                                 FontWeight="Medium"/>
-                        
-                        <TextBlock Text="원" 
-                                   VerticalAlignment="Center" 
-                                   FontSize="20" 
-                                   FontWeight="Medium"
-                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                        <!-- 가격 입력 영역 -->
+                        <StackPanel Grid.Column="0" 
+                                    Orientation="Horizontal" 
+                                    Spacing="20" 
+                                    VerticalAlignment="Center">
+                            <!-- 최소 가격 입력 -->
+                            <TextBox Width="280" 
+                                     Height="55" 
+                                     Text="1,000"
+                                     Background="#FFE5D3"
+                                     BorderThickness="0"
+                                     CornerRadius="8"
+                                     VerticalContentAlignment="Center"
+                                     HorizontalContentAlignment="Center"
+                                     FontSize="18"
+                                     FontWeight="Medium"/>
+                            
+                            <TextBlock Text="원 ~" 
+                                       VerticalAlignment="Center" 
+                                       FontSize="20" 
+                                       FontWeight="Medium"
+                                       Foreground="{DynamicResource ForegroundBrush}"/>
+                            
+                            <!-- 최대 가격 입력 -->
+                            <TextBox Width="280" 
+                                     Height="55" 
+                                     Text="100,000"
+                                     Background="#FFE5D3"
+                                     BorderThickness="0"
+                                     CornerRadius="8"
+                                     VerticalContentAlignment="Center"
+                                     HorizontalContentAlignment="Center"
+                                     FontSize="18"
+                                     FontWeight="Medium"/>
+                            
+                            <TextBlock Text="원" 
+                                       VerticalAlignment="Center" 
+                                       FontSize="20" 
+                                       FontWeight="Medium"
+                                       Foreground="{DynamicResource ForegroundBrush}"/>
+                        </StackPanel>
                         
                         <!-- 설정 버튼 -->
-                        <Button Content="설정" 
+                        <Button Grid.Column="1"
+                                Content="설정" 
                                 Background="#F47B20" 
                                 Foreground="White" 
                                 Padding="40,15" 
@@ -250,23 +282,25 @@
                                 FontWeight="Medium"
                                 BorderThickness="0"
                                 Height="55"/>
-                    </StackPanel>
+                    </Grid>
                 </StackPanel>
                 
                 <!-- 수동으로 소싱하기 섹션 (동일) -->
-                <StackPanel Spacing="25" HorizontalAlignment="Center">
+                <StackPanel Spacing="25">
                     <TextBlock Text="수동으로 소싱하기" 
                                FontSize="28" 
-                               FontWeight="Medium" 
+                               FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
-                               HorizontalAlignment="Center"/>
+                               HorizontalAlignment="Left"/>
                     
-                    <StackPanel Orientation="Horizontal" 
-                                Spacing="20" 
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
                         <!-- URL 입력 필드 -->
-                        <TextBox Width="800" 
+                        <TextBox Grid.Column="0"
                                  Height="55" 
                                  Watermark="URL을 입력해주세요."
                                  Background="#FFE5D3"
@@ -274,10 +308,12 @@
                                  CornerRadius="8"
                                  VerticalContentAlignment="Center"
                                  FontSize="18"
-                                 Padding="20,0"/>
+                                 Padding="20,0"
+                                 Margin="0,0,20,0"/>
                         
                         <!-- 페이징 버튼 -->
-                        <Button Content="페이징" 
+                        <Button Grid.Column="1"
+                                Content="페이징" 
                                 Background="#F47B20" 
                                 Foreground="White" 
                                 Padding="40,15" 
@@ -286,7 +322,7 @@
                                 FontWeight="Medium"
                                 BorderThickness="0"
                                 Height="55"/>
-                    </StackPanel>
+                    </Grid>
                     
                     <!-- 추가하기+ 링크 -->
                     <TextBlock Text="추가하기 +" 
@@ -298,18 +334,22 @@
                 </StackPanel>
                 
                 <!-- 소싱제로 자동찾기 섹션 (동일) -->
-                <StackPanel Orientation="Horizontal" 
-                            Spacing="25" 
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
-                    <TextBlock Text="소싱제로 자동찾기" 
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0"
+                               Text="소싱제로 자동찾기" 
                                FontSize="28" 
-                               FontWeight="Medium" 
+                               FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
                                VerticalAlignment="Center"/>
                     
                     <!-- 페이징 버튼 -->
-                    <Button Content="페이징" 
+                    <Button Grid.Column="1"
+                            Content="페이징" 
                             Background="#F47B20" 
                             Foreground="White" 
                             Padding="40,15" 
@@ -318,21 +358,25 @@
                             FontWeight="Medium"
                             BorderThickness="0"
                             Height="55"/>
-                </StackPanel>
+                </Grid>
                 
                 <!-- 메인상품 자동찾기 섹션 (동일) -->
-                <StackPanel Orientation="Horizontal" 
-                            Spacing="25" 
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
-                    <TextBlock Text="메인상품 자동찾기" 
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0"
+                               Text="메인상품 자동찾기" 
                                FontSize="28" 
-                               FontWeight="Medium" 
+                               FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
                                VerticalAlignment="Center"/>
                     
                     <!-- 페이징 버튼 -->
-                    <Button Content="페이징" 
+                    <Button Grid.Column="1"
+                            Content="페이징" 
                             Background="#F47B20" 
                             Foreground="White" 
                             Padding="40,15" 
@@ -341,12 +385,12 @@
                             FontWeight="Medium"
                             BorderThickness="0"
                             Height="55"/>
-                </StackPanel>
+                </Grid>
                 
                 <!-- 엑셀로 수출하기 섹션 (동일) -->
                 <StackPanel Orientation="Horizontal" 
                             Spacing="15" 
-                            HorizontalAlignment="Center"
+                            HorizontalAlignment="Left"
                             VerticalAlignment="Center">
                     <!-- 엑셀 아이콘 -->
                     <Image Source="avares://Gumaedaehang/images/excel_logo.png" 
@@ -355,7 +399,7 @@
                     
                     <TextBlock Text="엑셀로 수출하기" 
                                FontSize="28" 
-                               FontWeight="Medium" 
+                               FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
