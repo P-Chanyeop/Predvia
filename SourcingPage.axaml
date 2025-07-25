@@ -222,240 +222,269 @@
         <!-- 데이터가 있을 때 보여줄 화면 (39.png 기반) -->
         <Grid x:Name="DataAvailableView" IsVisible="False">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Spacing="30" Margin="50,40,50,40">
+                <StackPanel Spacing="20" Margin="30,20,30,30">
                     
-                    <!-- 전체선택 체크박스 -->
-                    <CheckBox Content="전체선택" 
-                              FontSize="16" 
-                              Foreground="#333333"
-                              x:Name="SelectAllCheckBox"/>
+                    <!-- 전체선택 및 삭제 영역 -->
+                    <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                        <CheckBox Content="전체선택" 
+                                  FontSize="14" 
+                                  Foreground="{DynamicResource ForegroundBrush}"/>
+                        <TextBlock Text="삭제" 
+                                   FontSize="14" 
+                                   Foreground="{DynamicResource ForegroundBrush}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    
+                    <!-- 카테고리 경로 -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Ellipse Width="6" Height="6" Fill="#F47B20"/>
+                        <TextBlock Text="카테고리 : 홈 > 가구 > 침대" 
+                                   FontSize="13" 
+                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                    </StackPanel>
                     
                     <!-- 상품 1 -->
-                    <Border Background="White" 
-                            CornerRadius="12" 
-                            Padding="30"
+                    <Border Background="{DynamicResource BackgroundSecondaryBrush}" 
+                            CornerRadius="8" 
+                            Padding="15"
                             BorderBrush="#E5E5E5"
                             BorderThickness="1">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="220"/>
+                                <ColumnDefinition Width="180"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="150"/>
                             </Grid.ColumnDefinitions>
                             
-                            <!-- 개별 체크박스 -->
-                            <CheckBox Grid.Column="0" 
-                                      VerticalAlignment="Top" 
-                                      Margin="0,0,20,0"
-                                      x:Name="Product1CheckBox"/>
-                            
-                            <!-- 상품 이미지와 하단 요소들 -->
-                            <StackPanel Grid.Column="1" Spacing="15">
-                                <!-- 상품 카테고리 (사진과 x좌표 동일) -->
-                                <TextBlock Text="전자제품 > 스마트기기" 
-                                           FontSize="12" 
-                                           Foreground="#888888"
-                                           HorizontalAlignment="Left"/>
-                                
-                                <!-- 상품 이미지 -->
-                                <Border Width="180" 
-                                        Height="180" 
-                                        Background="#F8F8F8" 
-                                        CornerRadius="12"
-                                        HorizontalAlignment="Left">
-                                    <Image Source="avares://Gumaedaehang/images/predvia_logo.png"
-                                           Stretch="Uniform"
-                                           Margin="30"/>
-                                </Border>
-                                
-                                <!-- 리뷰 (사진과 x좌표 동일) -->
-                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left">
-                                    <TextBlock Text="리뷰 : 프레디비아3213 : 제품이 너무 좋아요" 
-                                               FontSize="14" 
-                                               Foreground="#666666"/>
-                                    <StackPanel Orientation="Horizontal" Spacing="3">
-                                        <TextBlock Text="★★★★★" FontSize="14" Foreground="#F47B20"/>
-                                        <TextBlock Text="4.8" FontSize="13" Foreground="#666666" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </StackPanel>
-                                
-                                <!-- 타오바오 페어링 버튼 (사진과 x좌표 동일) -->
-                                <Button Content="타오바오 페어링" 
-                                        Background="#F47B20" 
-                                        Foreground="White" 
-                                        Padding="25,8" 
-                                        CornerRadius="8"
-                                        FontSize="14"
-                                        FontWeight="Medium"
-                                        BorderThickness="0"
-                                        HorizontalAlignment="Left"
-                                        x:Name="TaobaoPairingButton1"/>
-                                
-                                <!-- 타오바오 이미지들 (처음에는 숨김) -->
-                                <ScrollViewer HorizontalScrollBarVisibility="Auto" 
-                                              VerticalScrollBarVisibility="Disabled"
-                                              IsVisible="False"
-                                              x:Name="TaobaoImages1">
-                                    <StackPanel Orientation="Horizontal" Spacing="15">
-                                        <Border Width="70" Height="70" Background="#F8F8F8" CornerRadius="10">
-                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
-                                                   Stretch="Uniform" 
-                                                   Margin="10"/>
-                                        </Border>
-                                        <Border Width="70" Height="70" Background="#F8F8F8" CornerRadius="10">
-                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
-                                                   Stretch="Uniform" 
-                                                   Margin="10"/>
-                                        </Border>
-                                        <Border Width="70" Height="70" Background="#F8F8F8" CornerRadius="10">
-                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
-                                                   Stretch="Uniform" 
-                                                   Margin="10"/>
-                                        </Border>
-                                        <Border Width="70" Height="70" Background="#F8F8F8" CornerRadius="10">
-                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
-                                                   Stretch="Uniform" 
-                                                   Margin="10"/>
-                                        </Border>
-                                        <Border Width="70" Height="70" Background="#F8F8F8" CornerRadius="10">
-                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
-                                                   Stretch="Uniform" 
-                                                   Margin="10"/>
-                                        </Border>
-                                    </StackPanel>
-                                </ScrollViewer>
-                            </StackPanel>
+                            <!-- 상품 이미지 -->
+                            <Border Grid.Column="0" 
+                                    Width="150" 
+                                    Height="150" 
+                                    Background="#F0F0F0" 
+                                    CornerRadius="8">
+                                <Image Source="avares://Gumaedaehang/images/predvia_logo.png"
+                                       Stretch="Uniform"
+                                       Margin="20"/>
+                            </Border>
                             
                             <!-- 상품 정보 -->
-                            <StackPanel Grid.Column="2" Margin="30,0,20,0" VerticalAlignment="Top">
-                                <!-- 선택키워드 -->
-                                <StackPanel Margin="0,0,0,15">
-                                    <TextBlock Text="선택키워드 :" 
-                                               FontSize="14" 
+                            <StackPanel Grid.Column="1" Margin="20,0,10,0" VerticalAlignment="Top">
+                                <!-- 상품명 -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                                    <TextBlock Text="상품명 :" 
+                                               FontSize="13" 
                                                FontWeight="Medium"
-                                               Foreground="#666666"
-                                               Margin="0,0,0,8"/>
-                                    <WrapPanel x:Name="SelectedKeywords1">
-                                        <Border Background="#F47B20" CornerRadius="15" Padding="12,6" Margin="0,0,8,6">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="카페드345" FontSize="13" Foreground="White" FontWeight="Medium" VerticalAlignment="Center"/>
-                                                <Button Grid.Column="1" Content="×" 
-                                                        Background="Transparent" 
-                                                        Foreground="White" 
-                                                        BorderThickness="0"
-                                                        Padding="0"
-                                                        FontSize="16"
-                                                        Width="16" Height="16"
-                                                        VerticalAlignment="Center"
-                                                        Margin="5,0,0,0"
-                                                        x:Name="RemoveKeyword1_1"/>
-                                            </Grid>
-                                        </Border>
-                                        <Border Background="#F47B20" CornerRadius="15" Padding="12,6" Margin="0,0,8,6">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="카페드345" FontSize="13" Foreground="White" FontWeight="Medium" VerticalAlignment="Center"/>
-                                                <Button Grid.Column="1" Content="×" 
-                                                        Background="Transparent" 
-                                                        Foreground="White" 
-                                                        BorderThickness="0"
-                                                        Padding="0"
-                                                        FontSize="16"
-                                                        Width="16" Height="16"
-                                                        VerticalAlignment="Center"
-                                                        Margin="5,0,0,0"
-                                                        x:Name="RemoveKeyword1_2"/>
-                                            </Grid>
-                                        </Border>
-                                    </WrapPanel>
+                                               Foreground="{DynamicResource ForegroundBrush}"
+                                               VerticalAlignment="Center"/>
+                                    
+                                    <!-- 키워드 태그들 (박스 없이 직접 표시) -->
+                                    <WrapPanel x:Name="ProductNameKeywordPanel" 
+                                               Orientation="Horizontal"
+                                               MaxWidth="1000"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Left"/>
+                                    
+                                    <TextBlock x:Name="ByteCountTextBlock"
+                                               Text="0/50 byte" 
+                                               FontSize="11" 
+                                               Foreground="Gray"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right"/>
                                 </StackPanel>
                                 
                                 <!-- 원상품명 -->
-                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,15">
-                                    <TextBlock Text="원상품명 :" 
-                                               FontSize="14" 
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                                    <TextBlock Text="원상품명:" 
+                                               FontSize="13" 
                                                FontWeight="Medium"
-                                               Foreground="#666666"/>
+                                               Foreground="{DynamicResource ForegroundBrush}"/>
                                     <TextBlock Text="초코 바나나 시럽 사탕 아이스크림" 
-                                               FontSize="14" 
-                                               Foreground="#333333"/>
+                                               FontSize="13" 
+                                               Foreground="{DynamicResource ForegroundBrush}"/>
                                 </StackPanel>
                                 
-                                <!-- 키워드 목록 -->
-                                <StackPanel Margin="0,0,0,15">
-                                    <TextBlock Text="키워드 목록 :" 
-                                               FontSize="14" 
-                                               FontWeight="Medium"
-                                               Foreground="#666666"
-                                               Margin="0,0,0,8"/>
-                                    <WrapPanel x:Name="AvailableKeywords1">
-                                        <Button Background="#E0E0E0" 
-                                                CornerRadius="15" 
-                                                Padding="12,6" 
-                                                Margin="0,0,8,6"
-                                                BorderThickness="0"
-                                                x:Name="AddKeyword1_1">
-                                            <TextBlock Text="카페드553422" FontSize="13" Foreground="#666666" FontWeight="Medium"/>
-                                        </Button>
-                                        <Button Background="#E0E0E0" 
-                                                CornerRadius="15" 
-                                                Padding="12,6" 
-                                                Margin="0,0,8,6"
-                                                BorderThickness="0"
-                                                x:Name="AddKeyword1_2">
-                                            <TextBlock Text="카페드553422" FontSize="13" Foreground="#666666" FontWeight="Medium"/>
-                                        </Button>
-                                        <Button Background="#E0E0E0" 
-                                                CornerRadius="15" 
-                                                Padding="12,6" 
-                                                Margin="0,0,8,6"
-                                                BorderThickness="0"
-                                                x:Name="AddKeyword1_3">
-                                            <TextBlock Text="카페드1" FontSize="13" Foreground="#666666" FontWeight="Medium"/>
-                                        </Button>
-                                    </WrapPanel>
+                                <!-- 키워드 태그들 -->
+                                <WrapPanel x:Name="KeywordPanel1" Margin="0,0,0,12">
+                                    <Border x:Name="Keyword1_1" Background="#F47B20" CornerRadius="10" Padding="6,3" Margin="0,0,4,3" Cursor="Hand">
+                                        <TextBlock Text="카페드345" FontSize="11" Foreground="White"/>
+                                    </Border>
+                                    <Border x:Name="Keyword1_2" Background="#D0D0D0" CornerRadius="10" Padding="6,3" Margin="0,0,4,3" Cursor="Hand">
+                                        <TextBlock Text="카페드553422" FontSize="11" Foreground="Gray"/>
+                                    </Border>
+                                    <Border x:Name="Keyword1_3" Background="#F47B20" CornerRadius="10" Padding="6,3" Margin="0,0,4,3" Cursor="Hand">
+                                        <TextBlock Text="카페드1" FontSize="11" Foreground="White"/>
+                                    </Border>
+                                    <Border x:Name="Keyword1_4" Background="#F47B20" CornerRadius="10" Padding="6,3" Margin="0,0,4,3" Cursor="Hand">
+                                        <TextBlock Text="바나나" FontSize="11" Foreground="White"/>
+                                    </Border>
+                                    <Border x:Name="Keyword1_5" Background="#F47B20" CornerRadius="10" Padding="6,3" Margin="0,0,4,3" Cursor="Hand">
+                                        <TextBlock Text="시럽" FontSize="11" Foreground="White"/>
+                                    </Border>
+                                    <Border x:Name="Keyword1_6" Background="#F47B20" CornerRadius="10" Padding="6,3" Margin="0,0,4,3" Cursor="Hand">
+                                        <TextBlock Text="사탕" FontSize="11" Foreground="White"/>
+                                    </Border>
+                                    <Border x:Name="Keyword1_7" Background="#F47B20" CornerRadius="10" Padding="6,3" Margin="0,0,4,3" Cursor="Hand">
+                                        <TextBlock Text="아이스크림" FontSize="11" Foreground="White"/>
+                                    </Border>
+                                </WrapPanel>
+                                
+                                <!-- 키워드 추가 입력 섹션 -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                                    <TextBox x:Name="KeywordInputBox"
+                                             FontSize="13"
+                                             Width="150"
+                                             Height="25"
+                                             Padding="8,4"
+                                             Background="{DynamicResource BackgroundBrush}"
+                                             Foreground="{DynamicResource ForegroundBrush}"
+                                             BorderBrush="{DynamicResource BorderBrush}"
+                                             BorderThickness="1"
+                                             CornerRadius="4"
+                                             Watermark="키워드 입력"
+                                             AcceptsReturn="False"
+                                             AcceptsTab="False"
+                                             TextWrapping="NoWrap"/>
+                                    
+                                    <Button x:Name="AddKeywordButton"
+                                            Content="추가"
+                                            FontSize="13"
+                                            Width="50"
+                                            Height="25"
+                                            Background="#F47B20"
+                                            Foreground="White"
+                                            BorderThickness="0"
+                                            CornerRadius="4"
+                                            HorizontalContentAlignment="Center"
+                                            VerticalContentAlignment="Center"
+                                            Cursor="Hand"/>
                                 </StackPanel>
                             </StackPanel>
                             
                             <!-- 우측 버튼들 -->
-                            <StackPanel Grid.Column="3" VerticalAlignment="Top" Spacing="10">
-                                <Button Content="삭제" 
-                                        Background="#F0884B" 
+                            <StackPanel Grid.Column="2" VerticalAlignment="Top" Spacing="8">
+                                <Button Content="상세" 
+                                        Background="#F47B20" 
                                         Foreground="White" 
-                                        Width="166"
-                                        Height="49"
-                                        CornerRadius="16"
-                                        FontSize="14"
-                                        FontWeight="Medium"
-                                        BorderThickness="0"
-                                        HorizontalContentAlignment="Center"
-                                        VerticalContentAlignment="Center"
-                                        x:Name="DeleteProduct1"/>
-                                <Button Content="상품 보류" 
-                                        Background="#D4D4D4" 
+                                        Padding="25,6" 
+                                        CornerRadius="4"
+                                        FontSize="13"
+                                        HorizontalAlignment="Stretch"
+                                        BorderThickness="0"/>
+                                <Button Content="상품분류" 
+                                        Background="#E0E0E0" 
                                         Foreground="Black" 
-                                        Width="166"
-                                        Height="49"
-                                        CornerRadius="16"
-                                        FontSize="14"
-                                        FontWeight="Medium"
-                                        BorderThickness="0"
-                                        HorizontalContentAlignment="Center"
-                                        VerticalContentAlignment="Center"
-                                        x:Name="HoldProduct1"/>
+                                        Padding="25,6" 
+                                        CornerRadius="4"
+                                        FontSize="13"
+                                        HorizontalAlignment="Stretch"
+                                        BorderThickness="0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
                     
-                    <!-- 테스트 버튼 -->
+                    <!-- 리뷰 정보 섹션 -->
+                    <Border Background="{DynamicResource BackgroundBrush}" 
+                            BorderBrush="{DynamicResource BorderBrush}" 
+                            BorderThickness="1" 
+                            CornerRadius="8" 
+                            Padding="15" 
+                            Margin="0,10,0,0">
+                        <StackPanel>
+                            <TextBlock Text="리뷰 정보" 
+                                       FontSize="14" 
+                                       FontWeight="Medium" 
+                                       Foreground="{DynamicResource ForegroundBrush}" 
+                                       Margin="0,0,0,8"/>
+                            <ScrollViewer Height="60" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="5">
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <TextBlock Text="리뷰 : 프레디비아3213 : 제품이 너무 좋아요" 
+                                                   FontSize="12" 
+                                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                                        <TextBlock Text="★★★★★" FontSize="12" Foreground="#F47B20"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <TextBlock Text="리뷰 : 사용자1234 : 배송이 빠르고 품질이 우수합니다" 
+                                                   FontSize="12" 
+                                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                                        <TextBlock Text="★★★★☆" FontSize="12" Foreground="#F47B20"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <TextBlock Text="리뷰 : 구매자567 : 가격 대비 만족스러운 상품" 
+                                                   FontSize="12" 
+                                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                                        <TextBlock Text="★★★★★" FontSize="12" Foreground="#F47B20"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <TextBlock Text="리뷰 : 고객890 : 디자인이 예쁘고 실용적이에요" 
+                                                   FontSize="12" 
+                                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                                        <TextBlock Text="★★★★☆" FontSize="12" Foreground="#F47B20"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <TextBlock Text="리뷰 : 리뷰어111 : 재구매 의사 있습니다" 
+                                                   FontSize="12" 
+                                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                                        <TextBlock Text="★★★★★" FontSize="12" Foreground="#F47B20"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <TextBlock Text="리뷰 : 만족고객 : 추천하고 싶은 상품입니다" 
+                                                   FontSize="12" 
+                                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                                        <TextBlock Text="★★★★☆" FontSize="12" Foreground="#F47B20"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- 타오바오와 페이징 섹션 -->
+                    <StackPanel Spacing="12" Margin="0,10,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <TextBlock Text="타오바오와 페이징" 
+                                       FontSize="16" 
+                                       FontWeight="Medium" 
+                                       Foreground="{DynamicResource ForegroundBrush}"/>
+                            <Button Content="페이징" 
+                                    Background="#F47B20" 
+                                    Foreground="White" 
+                                    Padding="20,5" 
+                                    CornerRadius="4"
+                                    FontSize="13"
+                                    BorderThickness="0"/>
+                        </StackPanel>
+                        
+                        <!-- 하단 상품 이미지들 -->
+                        <StackPanel Orientation="Horizontal" Spacing="15" HorizontalAlignment="Left">
+                            <Border Width="80" Height="80" Background="#F0F0F0" CornerRadius="6">
+                                <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
+                                       Stretch="Uniform" 
+                                       Margin="8"/>
+                            </Border>
+                            <Border Width="80" Height="80" Background="#F0F0F0" CornerRadius="6">
+                                <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
+                                       Stretch="Uniform" 
+                                       Margin="8"/>
+                            </Border>
+                            <Border Width="80" Height="80" Background="#F0F0F0" CornerRadius="6">
+                                <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
+                                       Stretch="Uniform" 
+                                       Margin="8"/>
+                            </Border>
+                            <Border Width="80" Height="80" Background="#F0F0F0" CornerRadius="6">
+                                <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
+                                       Stretch="Uniform" 
+                                       Margin="8"/>
+                            </Border>
+                            <Border Width="80" Height="80" Background="#F0F0F0" CornerRadius="6">
+                                <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
+                                       Stretch="Uniform" 
+                                       Margin="8"/>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                    
+                    <!-- 테스트 버튼 (데이터 있는 화면에서도) -->
                     <Button Content="데이터 없는 화면 보기 (테스트)" 
                             Background="#F47B20" 
                             Foreground="White" 
