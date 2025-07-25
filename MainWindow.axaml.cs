@@ -4,6 +4,8 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Gumaedaehang.Services;
 using System;
 using System.Diagnostics;
@@ -29,7 +31,10 @@ namespace Gumaedaehang
         // 명언 관련 요소
         private TextBlock? _adviceText;
         private TextBlock? _adviceAuthor;
+        private ScrollViewer? _adviceScrollViewer;
+        private StackPanel? _adviceContainer;
         private readonly AdviceService _adviceService;
+        private DispatcherTimer? _slideTimer;
         
         public MainWindow()
         {
@@ -45,6 +50,8 @@ namespace Gumaedaehang
             var userWelcomeText = this.FindControl<TextBlock>("userWelcomeText");
             _adviceText = this.FindControl<TextBlock>("adviceText");
             _adviceAuthor = this.FindControl<TextBlock>("adviceAuthor");
+            _adviceScrollViewer = this.FindControl<ScrollViewer>("adviceScrollViewer");
+            _adviceContainer = this.FindControl<StackPanel>("adviceContainer");
             
             Debug.WriteLine("Finding tab buttons...");
             // 탭 버튼 참조
@@ -158,6 +165,11 @@ namespace Gumaedaehang
             // 초기 탭 스타일 설정 (소싱 탭이 기본 선택)
             UpdateTabStyles(_sourcingTab);
             
+            // 창 닫기 이벤트 구독 (타이머 정리)
+            this.Closing += (sender, e) => {
+                StopAdviceSlideAnimation();
+            };
+            
             // 디버그 메시지 출력
             Debug.WriteLine("MainWindow initialization completed");
         }
@@ -173,12 +185,19 @@ namespace Gumaedaehang
         {
             try
             {
+                Debug.WriteLine("LoadRandomAdvice started");
+                
                 if (_adviceText != null)
                 {
+                    // 기존 애니메이션 중지
+                    StopAdviceSlideAnimation();
+                    
                     _adviceText.Text = "명언을 불러오는 중...";
+                    Debug.WriteLine("Loading advice...");
                     
                     // API에서 명언 가져오기
                     var advice = await _adviceService.GetRandomAdviceAsync();
+                    Debug.WriteLine($"Advice loaded: {advice.Message} - {advice.Author}");
                     
                     // UI 스레드에서 업데이트
                     await Dispatcher.UIThread.InvokeAsync(() =>
@@ -188,13 +207,42 @@ namespace Gumaedaehang
                             _adviceText.Text = advice.Message;
                             _adviceAuthor.Text = advice.Author;
                             _adviceAuthor.IsVisible = !string.IsNullOrEmpty(advice.Author);
+                            
+                            Debug.WriteLine($"UI updated with advice: {advice.Message}");
+                            
+                            // 명언 길이 확인 (10글자 이상이면 슬라이드)
+                            var fullText = advice.Message + (string.IsNullOrEmpty(advice.Author) ? "" : $" - {advice.Author}");
+                            Debug.WriteLine($"Full text length: {fullText.Length}");
+                            
+                            if (fullText.Length > 10)
+                            {
+                                // 레이아웃 업데이트 후 슬라이드 애니메이션 시작
+                                Dispatcher.UIThread.Post(() =>
+                                {
+                                    StartAdviceSlideAnimation();
+                                }, DispatcherPriority.Loaded);
+                            }
+                            else
+                            {
+                                // 짧은 텍스트는 스크롤 위치 초기화
+                                if (_adviceScrollViewer != null)
+                                {
+                                    _adviceScrollViewer.Offset = new Vector(0, 0);
+                                }
+                            }
                         }
                     });
+                }
+                else
+                {
+                    Debug.WriteLine("_adviceText is null!");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"명언 로딩 오류: {ex.Message}");
+                Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                
                 if (_adviceText != null)
                 {
                     _adviceText.Text = "명언을 불러오는 중 오류가 발생했습니다.";
@@ -300,6 +348,102 @@ namespace Gumaedaehang
             {
                 activeTab.FontWeight = FontWeight.Bold;
                 activeTab.Foreground = new SolidColorBrush(Color.Parse("#F47B20"));
+            }
+        }
+        
+        // 명언 슬라이드 애니메이션 시작
+        private void StartAdviceSlideAnimation()
+        {
+            if (_adviceScrollViewer == null || _adviceContainer == null) return;
+            
+            // 레이아웃 업데이트 대기
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    // 컨테이너 크기 측정
+                    _adviceContainer.Measure(Size.Infinity);
+                    var containerWidth = _adviceContainer.DesiredSize.Width;
+                    var viewerWidth = 800; // Border Width 값
+                    
+                    Debug.WriteLine($"Container width: {containerWidth}, Viewer width: {viewerWidth}");
+                    
+                    // 텍스트가 뷰어보다 길 경우에만 슬라이드
+                    if (containerWidth > viewerWidth)
+                    {
+                        // 기존 타이머 정리
+                        _slideTimer?.Stop();
+                        
+                        // 새 타이머 생성
+                        _slideTimer = new DispatcherTimer
+                        {
+                            Interval = TimeSpan.FromMilliseconds(50) // 50ms마다 업데이트
+                        };
+                        
+                        double currentOffset = 0;
+                        double maxOffset = containerWidth - viewerWidth + 50; // 여유 공간 추가
+                        double speed = 1.0; // 픽셀/프레임
+                        int pauseCounter = 0;
+                        const int pauseFrames = 40; // 2초 정지 (50ms * 40 = 2000ms)
+                        bool isWaiting = false;
+                        
+                        _slideTimer.Tick += (sender, e) =>
+                        {
+                            // 대기 중이면 카운터 감소
+                            if (isWaiting)
+                            {
+                                pauseCounter--;
+                                if (pauseCounter <= 0)
+                                {
+                                    // 대기 완료, 처음부터 다시 시작
+                                    isWaiting = false;
+                                    currentOffset = 0;
+                                    _adviceScrollViewer.Offset = new Vector(currentOffset, 0);
+                                }
+                                return;
+                            }
+                            
+                            // 오른쪽으로 슬라이드
+                            currentOffset += speed;
+                            
+                            // 끝에 도달했으면 2초 대기 후 처음부터 다시 시작
+                            if (currentOffset >= maxOffset)
+                            {
+                                currentOffset = maxOffset;
+                                isWaiting = true;
+                                pauseCounter = pauseFrames;
+                            }
+                            
+                            _adviceScrollViewer.Offset = new Vector(currentOffset, 0);
+                        };
+                        
+                        _slideTimer.Start();
+                        Debug.WriteLine("Slide animation started (one-way with restart)");
+                    }
+                    else
+                    {
+                        // 텍스트가 짧으면 스크롤 위치 초기화
+                        _adviceScrollViewer.Offset = new Vector(0, 0);
+                        Debug.WriteLine("Text is short, no slide needed");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Slide animation error: {ex.Message}");
+                }
+            }, DispatcherPriority.Loaded);
+        }
+        
+        // 명언 슬라이드 애니메이션 중지
+        private void StopAdviceSlideAnimation()
+        {
+            _slideTimer?.Stop();
+            _slideTimer = null;
+            
+            // 스크롤 위치 초기화
+            if (_adviceScrollViewer != null)
+            {
+                _adviceScrollViewer.Offset = new Vector(0, 0);
             }
         }
     }

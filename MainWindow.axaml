@@ -98,30 +98,47 @@
 
         <!-- 오늘의 명언 영역 -->
         <StackPanel Grid.Row="1" 
-                  Orientation="Horizontal"
-                  HorizontalAlignment="Center" 
-                  VerticalAlignment="Center"
-                  Spacing="5">
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Center"
+                    Spacing="5">
             <TextBlock Text="오늘의 명언: " 
                        FontSize="18"
                        FontWeight="Bold"
                        Foreground="{DynamicResource ForegroundBrush}"/>
-            <TextBlock x:Name="adviceText" 
-                       Text="명언을 불러오는 중..." 
-                       FontSize="18"
-                       Foreground="{DynamicResource ForegroundBrush}"/>
-            <TextBlock Text=" - " 
-                       FontSize="18"
-                       Foreground="{DynamicResource ForegroundBrush}"
-                       IsVisible="{Binding ElementName=adviceAuthor, Path=IsVisible}"/>
-            <TextBlock x:Name="adviceAuthor" 
-                       Text="" 
-                       FontSize="18"
-                       FontWeight="Bold"
-                       Foreground="#F47B20"
-                       IsVisible="False"/>
+            
+            <!-- 슬라이딩 명언 컨테이너 -->
+            <Border Width="800" Height="30" ClipToBounds="True">
+                <ScrollViewer x:Name="adviceScrollViewer"
+                              HorizontalScrollBarVisibility="Hidden"
+                              VerticalScrollBarVisibility="Hidden">
+                    <StackPanel x:Name="adviceContainer" 
+                                Orientation="Horizontal" 
+                                Spacing="5"
+                                VerticalAlignment="Center">
+                        <TextBlock x:Name="adviceText" 
+                                   Text="명언을 불러오는 중..." 
+                                   FontSize="18"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ForegroundBrush}"
+                                   TextWrapping="NoWrap"/>
+                        <TextBlock Text=" - " 
+                                   FontSize="18"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ForegroundBrush}"
+                                   IsVisible="{Binding ElementName=adviceAuthor, Path=IsVisible}"/>
+                        <TextBlock x:Name="adviceAuthor" 
+                                   Text="" 
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ForegroundBrush}"
+                                   TextWrapping="NoWrap"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
         </StackPanel>
-                   
+        
         <!-- 구분선 -->
         <Rectangle Grid.Row="2" 
                    Fill="{DynamicResource BorderBrush}" 
