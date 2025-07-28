@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
@@ -24,7 +25,13 @@ namespace Gumaedaehang
         private WrapPanel? _productNameKeywordPanel;
         private WrapPanel? _keywordPanel1;
         private TextBlock? _byteCountTextBlock;
+        private CheckBox? _selectAllCheckBox;
+        private CheckBox? _product1CheckBox;
+        private Ellipse? _productNameStatusIndicator;
+        private Ellipse? _taobaoPairingStatusIndicator;
+        private Button? _taobaoPairingButton;
         private bool _hasData = false;
+        private bool _isTaobaoPaired = false;
         
         // 상품명 키워드 목록
         private List<string> _productNameKeywords = new List<string>();
@@ -50,6 +57,11 @@ namespace Gumaedaehang
             _addKeywordButton = this.FindControl<Button>("AddKeywordButton");
             _productNameKeywordPanel = this.FindControl<WrapPanel>("ProductNameKeywordPanel");
             _keywordPanel1 = this.FindControl<WrapPanel>("KeywordPanel1");
+            _selectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
+            _product1CheckBox = this.FindControl<CheckBox>("Product1CheckBox");
+            _productNameStatusIndicator = this.FindControl<Ellipse>("ProductNameStatusIndicator");
+            _taobaoPairingStatusIndicator = this.FindControl<Ellipse>("TaobaoPairingStatusIndicator");
+            _taobaoPairingButton = this.FindControl<Button>("TaobaoPairingButton");
             
             // 바이트 수 표시 TextBlock 찾기 (상품명 옆의 "0/50 byte" 텍스트)
             _byteCountTextBlock = this.FindControl<TextBlock>("ByteCountTextBlock");
@@ -70,6 +82,21 @@ namespace Gumaedaehang
             if (_keywordInputBox != null)
                 _keywordInputBox.KeyDown += KeywordInputBox_KeyDown;
                 
+            if (_selectAllCheckBox != null)
+            {
+                _selectAllCheckBox.Checked += SelectAllCheckBox_Changed;
+                _selectAllCheckBox.Unchecked += SelectAllCheckBox_Changed;
+            }
+                
+            if (_product1CheckBox != null)
+            {
+                _product1CheckBox.Checked += ProductCheckBox_Changed;
+                _product1CheckBox.Unchecked += ProductCheckBox_Changed;
+            }
+                
+            if (_taobaoPairingButton != null)
+                _taobaoPairingButton.Click += TaobaoPairingButton_Click;
+                
             // 키워드 클릭 이벤트 등록
             RegisterKeywordEvents();
             
@@ -82,11 +109,78 @@ namespace Gumaedaehang
             // 초기 상태 설정 (데이터 없음)
             UpdateViewVisibility();
             UpdateKeywordDisplay();
+            UpdateStatusIndicators();
         }
 
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+        
+        // 전체 선택 체크박스 변경 이벤트
+        private void SelectAllCheckBox_Changed(object? sender, RoutedEventArgs e)
+        {
+            if (_selectAllCheckBox != null && _product1CheckBox != null)
+            {
+                bool isChecked = _selectAllCheckBox.IsChecked ?? false;
+                _product1CheckBox.IsChecked = isChecked;
+            }
+        }
+        
+        // 개별 상품 체크박스 변경 이벤트
+        private void ProductCheckBox_Changed(object? sender, RoutedEventArgs e)
+        {
+            // 개별 체크박스 상태에 따라 전체 선택 체크박스 상태 업데이트
+            if (_selectAllCheckBox != null && _product1CheckBox != null)
+            {
+                bool allChecked = _product1CheckBox.IsChecked ?? false;
+                // 여러 상품이 있을 경우 모든 상품의 체크 상태를 확인해야 함
+                _selectAllCheckBox.IsChecked = allChecked;
+            }
+        }
+        
+        // 타오바오 페어링 버튼 클릭 이벤트
+        private void TaobaoPairingButton_Click(object? sender, RoutedEventArgs e)
+        {
+            _isTaobaoPaired = true;
+            UpdateStatusIndicators();
+            Debug.WriteLine("타오바오 페어링 완료");
+        }
+        
+        // 상태 표시등 업데이트
+        private void UpdateStatusIndicators()
+        {
+            // 상품명 바이트 수 표시등 업데이트
+            if (_productNameStatusIndicator != null)
+            {
+                var totalByteCount = 0;
+                foreach (var keyword in _productNameKeywords)
+                {
+                    totalByteCount += CalculateByteCount(keyword);
+                }
+                
+                if (totalByteCount <= 50)
+                {
+                    _productNameStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#53DA4C"));
+                }
+                else
+                {
+                    _productNameStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#FF7272"));
+                }
+            }
+            
+            // 타오바오 페어링 상태 표시등 업데이트
+            if (_taobaoPairingStatusIndicator != null)
+            {
+                if (_isTaobaoPaired)
+                {
+                    _taobaoPairingStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#53DA4C"));
+                }
+                else
+                {
+                    _taobaoPairingStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#FF7272"));
+                }
+            }
         }
         
         // 키워드 클릭 이벤트 등록
@@ -187,6 +281,8 @@ namespace Gumaedaehang
             
             // 바이트 수 업데이트
             UpdateByteCount();
+            // 상태 표시등 업데이트
+            UpdateStatusIndicators();
         }
         
         // 바이트 수 계산 및 업데이트
@@ -375,7 +471,9 @@ namespace Gumaedaehang
         public void ResetData()
         {
             _hasData = false;
+            _isTaobaoPaired = false;
             UpdateViewVisibility();
+            UpdateStatusIndicators();
         }
     }
 }
