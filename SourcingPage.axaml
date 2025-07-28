@@ -153,9 +153,9 @@
                                  Padding="20,0"
                                  Margin="0,0,20,0"/>
                         
-                        <!-- 페이징 버튼 -->
+                        <!-- 페어링 버튼 -->
                         <Button Grid.Column="1"
-                                Content="페이징" 
+                                Content="페어링" 
                                 Background="#F47B20" 
                                 Foreground="White" 
                                 Padding="40,15" 
@@ -176,7 +176,7 @@
                                x:Name="AddMoreLink"/>
                 </StackPanel>
                 
-                <!-- 소싱제로 자동찾기 섹션 -->
+                <!-- 소싱재료 자동찾기 섹션 -->
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -184,15 +184,15 @@
                     </Grid.ColumnDefinitions>
                     
                     <TextBlock Grid.Column="0"
-                               Text="소싱제로 자동찾기" 
+                               Text="소싱재료 자동찾기" 
                                FontSize="28" 
                                FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
                                VerticalAlignment="Center"/>
                     
-                    <!-- 페이징 버튼 -->
+                    <!-- 페어링 버튼 -->
                     <Button Grid.Column="1"
-                            Content="페이징" 
+                            Content="페어링" 
                             Background="#F47B20" 
                             Foreground="White" 
                             Padding="40,15" 
@@ -217,9 +217,9 @@
                                Foreground="{DynamicResource ForegroundBrush}"
                                VerticalAlignment="Center"/>
                     
-                    <!-- 페이징 버튼 -->
+                    <!-- 페어링 버튼 -->
                     <Button Grid.Column="1"
-                            Content="페이징" 
+                            Content="페어링" 
                             Background="#F47B20" 
                             Foreground="White" 
                             Padding="40,15" 
@@ -230,7 +230,7 @@
                             Height="55"/>
                 </Grid>
                 
-                <!-- 엑셀로 수출하기 섹션 -->
+                <!-- 엑셀로 추출하기 섹션 -->
                 <StackPanel Orientation="Horizontal" 
                             Spacing="15" 
                             HorizontalAlignment="Left"
@@ -240,7 +240,7 @@
                            Width="40" 
                            Height="40"/>
                     
-                    <TextBlock Text="엑셀로 수출하기" 
+                    <TextBlock Text="엑셀로 추출하기" 
                                FontSize="28" 
                                FontWeight="Bold" 
                                Foreground="{DynamicResource ForegroundBrush}"
