@@ -24,7 +24,8 @@ namespace Gumaedaehang
         // 콘텐츠 영역들
         private Grid? _homeContent;
         private ContentControl? _sourcingContent;
-        private Grid? _marketCheckContent;
+        private ContentControl? _marketCheckContent;
+        private ContentControl? _marketRegistrationContent;
         private Grid? _mainProductContent;
         private Grid? _settingsContent;
         
@@ -75,8 +76,11 @@ namespace Gumaedaehang
             _sourcingContent = this.FindControl<ContentControl>("SourcingContent");
             Debug.WriteLine($"SourcingContent found: {_sourcingContent != null}");
             
-            _marketCheckContent = this.FindControl<Grid>("MarketCheckContent");
+            _marketCheckContent = this.FindControl<ContentControl>("MarketCheckContent");
             Debug.WriteLine($"MarketCheckContent found: {_marketCheckContent != null}");
+            
+            _marketRegistrationContent = this.FindControl<ContentControl>("MarketRegistrationContent");
+            Debug.WriteLine($"MarketRegistrationContent found: {_marketRegistrationContent != null}");
             
             _mainProductContent = this.FindControl<Grid>("MainProductContent");
             Debug.WriteLine($"MainProductContent found: {_mainProductContent != null}");
@@ -294,6 +298,7 @@ namespace Gumaedaehang
             if (_homeContent != null) _homeContent.IsVisible = contentToShow == _homeContent;
             if (_sourcingContent != null) _sourcingContent.IsVisible = contentToShow == _sourcingContent;
             if (_marketCheckContent != null) _marketCheckContent.IsVisible = contentToShow == _marketCheckContent;
+            if (_marketRegistrationContent != null) _marketRegistrationContent.IsVisible = contentToShow == _marketRegistrationContent;
             if (_mainProductContent != null) _mainProductContent.IsVisible = contentToShow == _mainProductContent;
             if (_settingsContent != null) _settingsContent.IsVisible = contentToShow == _settingsContent;
             
@@ -308,6 +313,16 @@ namespace Gumaedaehang
                     sourcingPage.SetHasData(false);
                 }
             }
+        }
+        
+        // 마켓등록 페이지로 이동하는 공개 메서드
+        public void NavigateToMarketRegistration()
+        {
+            Debug.WriteLine("NavigateToMarketRegistration called");
+            ShowContent(_marketRegistrationContent);
+            
+            // 마켓점검 탭을 활성화 상태로 유지 (마켓등록은 마켓점검의 하위 페이지)
+            UpdateTabStyles(_marketCheckTab);
         }
         
         // 탭 스타일 업데이트 메서드

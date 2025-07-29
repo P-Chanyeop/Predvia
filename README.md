@@ -36,6 +36,7 @@ Avalonia UI를 기반으로 하여 Windows, macOS, Linux에서 동일한 사용�
   - 화면 중앙의 주황색 "마켓등록하기" 버튼 (240×70px)
   - 적당한 둥근 모서리 (CornerRadius="12")
   - 20px 폰트 크기로 가독성 최적화
+  - 호버/클릭 효과로 사용자 피드백 제공
 
 - **11.png 구현**: 완전한 상품 등록 관리 시스템
   - 2×2 그리드 상품 카드 레이아웃
@@ -45,6 +46,7 @@ Avalonia UI를 기반으로 하여 Windows, macOS, Linux에서 동일한 사용�
   - 막대 그래프: 회색 배경 + 주황색 전경 겹침 효과
   - 범례: 주문처리형, 밸런스형, 크무비형
   - 주황색 피드백 텍스트 (#E67E22)
+  - **완전한 페이지 네비게이션**: 마켓점검 → 마켓등록 세부과정 이동
 
 #### 🎯 메인상품찾기 (Main Product Finder)
 - 베타 버전으로 개발 중
@@ -89,6 +91,10 @@ Gumaedaehang/
 ├── MainWindow.axaml.cs       # 메인 윈도우 로직
 ├── SourcingPage.axaml        # 소싱 페이지 UI
 ├── SourcingPage.axaml.cs     # 소싱 페이지 로직
+├── MarketCheckPage.axaml     # 마켓점검 페이지 UI
+├── MarketCheckPage.axaml.cs  # 마켓점검 페이지 로직
+├── MarketRegistrationPage.axaml    # 마켓등록 페이지 UI
+├── MarketRegistrationPage.axaml.cs # 마켓등록 페이지 로직
 ├── ApiKeyAuthWindow.axaml    # 인증 윈도우 UI
 ├── ApiKeyAuthWindow.axaml.cs # 인증 윈도우 로직
 ├── LoginWindow.axaml         # 로그인 윈도우 UI
@@ -162,12 +168,15 @@ dotnet run
 - [x] 마켓등록 페이지 (11.png 구현)
 - [x] 탭 네비게이션 시스템
 - [x] 반응형 UI 레이아웃
+- [x] 마켓점검 → 마켓등록 페이지 네비게이션 구현
+- [x] 완전한 상품 등록 관리 시스템 UI 구현
 
 ### 🚧 진행 중인 작업
 - [ ] 메인상품찾기 기능 구현
 - [ ] 설정 페이지 상세 기능
 - [ ] API 서버 연동 완성
 - [ ] 데이터 영속성 구현
+- [ ] 마켓등록 페이지 상호작용 기능 추가
 
 ### 📋 향후 계획
 - [ ] 다국어 지원 (한국어, 영어, 중국어)
