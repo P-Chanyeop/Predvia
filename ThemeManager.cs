@@ -50,15 +50,10 @@ namespace Gumaedaehang
             var app = Application.Current;
             if (app != null)
             {
-                // Avalonia 0.10.18 버전에서는 다음과 같이 테마를 변경합니다
-                foreach (var style in app.Styles)
-                {
-                    if (style is FluentTheme fluentTheme)
-                    {
-                        fluentTheme.Mode = CurrentTheme == ThemeType.Light ? FluentThemeMode.Light : FluentThemeMode.Dark;
-                        break;
-                    }
-                }
+                // Avalonia 11에서는 RequestedThemeVariant를 사용합니다
+                app.RequestedThemeVariant = CurrentTheme == ThemeType.Light 
+                    ? Avalonia.Styling.ThemeVariant.Light 
+                    : Avalonia.Styling.ThemeVariant.Dark;
             }
         }
         

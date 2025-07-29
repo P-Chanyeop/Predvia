@@ -5,11 +5,14 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Input;
+using Avalonia.Platform;
+using Avalonia.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System;
 using System.Text;
+using System.IO;
 
 namespace Gumaedaehang
 {
@@ -20,53 +23,131 @@ namespace Gumaedaehang
         private TextBlock? _addMoreLink;
         private Button? _testDataButton;
         private Button? _testDataButton2;
-        private TextBox? _keywordInputBox;
-        private Button? _addKeywordButton;
-        private WrapPanel? _productNameKeywordPanel;
-        private WrapPanel? _keywordPanel1;
-        private TextBlock? _byteCountTextBlock;
         private CheckBox? _selectAllCheckBox;
-        private CheckBox? _product1CheckBox;
-        private Ellipse? _productNameStatusIndicator;
-        private Ellipse? _taobaoPairingStatusIndicator;
-        private Button? _taobaoPairingButton;
         private bool _hasData = false;
-        private bool _isTaobaoPaired = false;
         
-        // 상품명 키워드 목록
-        private List<string> _productNameKeywords = new List<string>();
+        // 한글 입력 처리를 위한 타이머
+        private DispatcherTimer? _inputTimer;
+        private int _currentProductId = 0;
         
-        // 키워드 데이터
-        private List<string> _selectedKeywords1 = new List<string>();
-        private List<string> _availableKeywords1 = new List<string> 
-        { 
-            "카페드345", "카페드553422", "카페드1", "바나나", "시럽", "사탕", "아이스크림" 
-        };
+        // 상품별 UI 요소들을 관리하는 딕셔너리
+        private Dictionary<int, ProductUIElements> _productElements = new Dictionary<int, ProductUIElements>();
         
         public SourcingPage()
         {
-            InitializeComponent();
+            try
+            {
+                InitializeComponent();
+                
+                // 한글 입력 처리용 타이머 초기화
+                _inputTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(300) // 300ms 지연
+                };
+                _inputTimer.Tick += InputTimer_Tick;
+                
+                // UI 요소 참조 가져오기
+                _noDataView = this.FindControl<Grid>("NoDataView");
+                _dataAvailableView = this.FindControl<Grid>("DataAvailableView");
+                _addMoreLink = this.FindControl<TextBlock>("AddMoreLink");
+                _testDataButton = this.FindControl<Button>("TestDataButton");
+                _testDataButton2 = this.FindControl<Button>("TestDataButton2");
+                _selectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
+                
+                // 상품들의 UI 요소들 초기화
+                InitializeProductElements();
+                
+                // 이벤트 핸들러 등록
+                RegisterEventHandlers();
+                
+                // 초기 상태 설정
+                UpdateViewVisibility();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SourcingPage 초기화 중 오류: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"스택 트레이스: {ex.StackTrace}");
+                throw; // 예외를 다시 던져서 상위에서 처리하도록 함
+            }
+        }
+
+        private void InitializeComponent()
+        {
+            AvaloniaXamlLoader.Load(this);
+        }
+        
+        // 상품들의 UI 요소들을 초기화
+        private void InitializeProductElements()
+        {
+            var product1 = new ProductUIElements
+            {
+                ProductId = 1,
+                CheckBox = this.FindControl<CheckBox>("Product1CheckBox"),
+                CategoryStatusIndicator = this.FindControl<Ellipse>("Product1CategoryStatusIndicator"),
+                NameStatusIndicator = this.FindControl<Ellipse>("Product1NameStatusIndicator"),
+                NameKeywordPanel = this.FindControl<WrapPanel>("Product1NameKeywordPanel"),
+                ByteCountTextBlock = this.FindControl<TextBlock>("Product1ByteCountTextBlock"),
+                KeywordPanel = this.FindControl<WrapPanel>("Product1KeywordPanel"),
+                KeywordInputBox = this.FindControl<TextBox>("Product1KeywordInputBox"),
+                AddKeywordButton = this.FindControl<Button>("Product1AddKeywordButton"),
+                DeleteButton = this.FindControl<Button>("Product1DeleteButton"),
+                HoldButton = this.FindControl<Button>("Product1HoldButton"),
+                TaobaoPairingStatusIndicator = this.FindControl<Ellipse>("Product1TaobaoPairingStatusIndicator"),
+                TaobaoPairingButton = this.FindControl<Button>("Product1TaobaoPairingButton"),
+                ProductNameKeywords = new List<string> { "카페드345", "바나나" },
+                SelectedKeywords = new List<string> { "카페드345", "바나나" },
+                IsTaobaoPaired = false
+            };
             
-            // UI 요소 참조 가져오기
-            _noDataView = this.FindControl<Grid>("NoDataView");
-            _dataAvailableView = this.FindControl<Grid>("DataAvailableView");
-            _addMoreLink = this.FindControl<TextBlock>("AddMoreLink");
-            _testDataButton = this.FindControl<Button>("TestDataButton");
-            _testDataButton2 = this.FindControl<Button>("TestDataButton2");
-            _keywordInputBox = this.FindControl<TextBox>("KeywordInputBox");
-            _addKeywordButton = this.FindControl<Button>("AddKeywordButton");
-            _productNameKeywordPanel = this.FindControl<WrapPanel>("ProductNameKeywordPanel");
-            _keywordPanel1 = this.FindControl<WrapPanel>("KeywordPanel1");
-            _selectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
-            _product1CheckBox = this.FindControl<CheckBox>("Product1CheckBox");
-            _productNameStatusIndicator = this.FindControl<Ellipse>("ProductNameStatusIndicator");
-            _taobaoPairingStatusIndicator = this.FindControl<Ellipse>("TaobaoPairingStatusIndicator");
-            _taobaoPairingButton = this.FindControl<Button>("TaobaoPairingButton");
+            var product2 = new ProductUIElements
+            {
+                ProductId = 2,
+                CheckBox = this.FindControl<CheckBox>("Product2CheckBox"),
+                CategoryStatusIndicator = this.FindControl<Ellipse>("Product2CategoryStatusIndicator"),
+                NameStatusIndicator = this.FindControl<Ellipse>("Product2NameStatusIndicator"),
+                NameKeywordPanel = this.FindControl<WrapPanel>("Product2NameKeywordPanel"),
+                ByteCountTextBlock = this.FindControl<TextBlock>("Product2ByteCountTextBlock"),
+                KeywordPanel = this.FindControl<WrapPanel>("Product2KeywordPanel"),
+                KeywordInputBox = this.FindControl<TextBox>("Product2KeywordInputBox"),
+                AddKeywordButton = this.FindControl<Button>("Product2AddKeywordButton"),
+                DeleteButton = this.FindControl<Button>("Product2DeleteButton"),
+                HoldButton = this.FindControl<Button>("Product2HoldButton"),
+                TaobaoPairingStatusIndicator = this.FindControl<Ellipse>("Product2TaobaoPairingStatusIndicator"),
+                TaobaoPairingButton = this.FindControl<Button>("Product2TaobaoPairingButton"),
+                ProductNameKeywords = new List<string> { "스테인리스", "주방용품세트", "고급형" },
+                SelectedKeywords = new List<string> { "스테인리스", "주방용품세트" },
+                IsTaobaoPaired = false
+            };
             
-            // 바이트 수 표시 TextBlock 찾기 (상품명 옆의 "0/50 byte" 텍스트)
-            _byteCountTextBlock = this.FindControl<TextBlock>("ByteCountTextBlock");
+            var product3 = new ProductUIElements
+            {
+                ProductId = 3,
+                CheckBox = this.FindControl<CheckBox>("Product3CheckBox"),
+                CategoryStatusIndicator = this.FindControl<Ellipse>("Product3CategoryStatusIndicator"),
+                NameStatusIndicator = this.FindControl<Ellipse>("Product3NameStatusIndicator"),
+                NameKeywordPanel = this.FindControl<WrapPanel>("Product3NameKeywordPanel"),
+                ByteCountTextBlock = this.FindControl<TextBlock>("Product3ByteCountTextBlock"),
+                KeywordPanel = this.FindControl<WrapPanel>("Product3KeywordPanel"),
+                KeywordInputBox = this.FindControl<TextBox>("Product3KeywordInputBox"),
+                AddKeywordButton = this.FindControl<Button>("Product3AddKeywordButton"),
+                DeleteButton = this.FindControl<Button>("Product3DeleteButton"),
+                HoldButton = this.FindControl<Button>("Product3HoldButton"),
+                TaobaoPairingStatusIndicator = this.FindControl<Ellipse>("Product3TaobaoPairingStatusIndicator"),
+                TaobaoPairingButton = this.FindControl<Button>("Product3TaobaoPairingButton"),
+                ProductNameKeywords = new List<string> { "티셔츠", "면소재" },
+                SelectedKeywords = new List<string> { "티셔츠", "면소재" },
+                IsTaobaoPaired = false
+            };
             
-            // 이벤트 핸들러 등록
+            _productElements[1] = product1;
+            _productElements[2] = product2;
+            _productElements[3] = product3;
+        }
+        
+        // 이벤트 핸들러 등록
+        private void RegisterEventHandlers()
+        {
+            // 공통 이벤트 핸들러
             if (_addMoreLink != null)
                 _addMoreLink.PointerPressed += AddMoreLink_Click;
                 
@@ -76,237 +157,394 @@ namespace Gumaedaehang
             if (_testDataButton2 != null)
                 _testDataButton2.Click += TestDataButton_Click;
                 
-            if (_addKeywordButton != null)
-                _addKeywordButton.Click += AddKeywordButton_Click;
-                
-            if (_keywordInputBox != null)
-                _keywordInputBox.KeyDown += KeywordInputBox_KeyDown;
-                
             if (_selectAllCheckBox != null)
             {
-                _selectAllCheckBox.Checked += SelectAllCheckBox_Changed;
-                _selectAllCheckBox.Unchecked += SelectAllCheckBox_Changed;
+                _selectAllCheckBox.IsCheckedChanged += SelectAllCheckBox_Changed;
             }
-                
-            if (_product1CheckBox != null)
-            {
-                _product1CheckBox.Checked += ProductCheckBox_Changed;
-                _product1CheckBox.Unchecked += ProductCheckBox_Changed;
-            }
-                
-            if (_taobaoPairingButton != null)
-                _taobaoPairingButton.Click += TaobaoPairingButton_Click;
-                
-            // 키워드 클릭 이벤트 등록
-            RegisterKeywordEvents();
             
-            // 초기 키워드 설정
-            _productNameKeywords.AddRange(new[] { "카페드345", "카페드553422" });
-            _selectedKeywords1.AddRange(new[] { "카페드345", "카페드553422" });
-            UpdateProductNameKeywordDisplay();
-            UpdateKeywordDisplay();
-                
-            // 초기 상태 설정 (데이터 없음)
-            UpdateViewVisibility();
-            UpdateKeywordDisplay();
-            UpdateStatusIndicators();
+            // 상품별 이벤트 핸들러 등록
+            foreach (var product in _productElements.Values)
+            {
+                RegisterProductEventHandlers(product);
+            }
         }
-
-        private void InitializeComponent()
+        
+        // 개별 상품의 이벤트 핸들러 등록
+        private void RegisterProductEventHandlers(ProductUIElements product)
         {
-            AvaloniaXamlLoader.Load(this);
+            if (product.CheckBox != null)
+            {
+                product.CheckBox.IsCheckedChanged += (s, e) => ProductCheckBox_Changed(product.ProductId);
+            }
+            
+            if (product.AddKeywordButton != null)
+                product.AddKeywordButton.Click += (s, e) => AddKeywordButton_Click(product.ProductId);
+                
+            if (product.KeywordInputBox != null)
+            {
+                product.KeywordInputBox.KeyDown += (s, e) => KeywordInputBox_KeyDown(product.ProductId, e);
+                
+                // 한글 입력 처리를 위한 PropertyChanged 이벤트
+                product.KeywordInputBox.PropertyChanged += (s, e) =>
+                {
+                    if (e.Property == TextBox.TextProperty)
+                    {
+                        _currentProductId = product.ProductId;
+                        _inputTimer?.Stop();
+                        _inputTimer?.Start();
+                    }
+                };
+            }
+                
+            if (product.DeleteButton != null)
+                product.DeleteButton.Click += (s, e) => DeleteButton_Click(product.ProductId);
+                
+            if (product.HoldButton != null)
+                product.HoldButton.Click += (s, e) => HoldButton_Click(product.ProductId);
+                
+            if (product.TaobaoPairingButton != null)
+                product.TaobaoPairingButton.Click += (s, e) => TaobaoPairingButton_Click(product.ProductId);
+            
+            // 키워드 클릭 이벤트 등록
+            RegisterKeywordEvents(product);
+            
+            // 초기 상태 업데이트
+            UpdateProductNameKeywordDisplay(product.ProductId);
+            UpdateProductKeywordDisplay(product.ProductId);
+            UpdateProductStatusIndicators(product.ProductId);
+        }
+        
+        // 키워드 클릭 이벤트 등록
+        private void RegisterKeywordEvents(ProductUIElements product)
+        {
+            var keywordBorders = new[] { 
+                $"Product{product.ProductId}_Keyword1", 
+                $"Product{product.ProductId}_Keyword2", 
+                $"Product{product.ProductId}_Keyword3" 
+            };
+            
+            foreach (var keywordName in keywordBorders)
+            {
+                var keyword = this.FindControl<Border>(keywordName);
+                if (keyword != null)
+                {
+                    keyword.PointerPressed += (sender, e) => KeywordBorder_Click(product.ProductId, sender, e);
+                }
+            }
         }
         
         // 전체 선택 체크박스 변경 이벤트
         private void SelectAllCheckBox_Changed(object? sender, RoutedEventArgs e)
         {
-            if (_selectAllCheckBox != null && _product1CheckBox != null)
+            if (_selectAllCheckBox != null)
             {
                 bool isChecked = _selectAllCheckBox.IsChecked ?? false;
-                _product1CheckBox.IsChecked = isChecked;
+                
+                foreach (var product in _productElements.Values)
+                {
+                    if (product.CheckBox != null)
+                    {
+                        product.CheckBox.IsChecked = isChecked;
+                    }
+                }
             }
         }
         
         // 개별 상품 체크박스 변경 이벤트
-        private void ProductCheckBox_Changed(object? sender, RoutedEventArgs e)
+        private void ProductCheckBox_Changed(int productId)
         {
-            // 개별 체크박스 상태에 따라 전체 선택 체크박스 상태 업데이트
-            if (_selectAllCheckBox != null && _product1CheckBox != null)
-            {
-                bool allChecked = _product1CheckBox.IsChecked ?? false;
-                // 여러 상품이 있을 경우 모든 상품의 체크 상태를 확인해야 함
-                _selectAllCheckBox.IsChecked = allChecked;
-            }
+            UpdateSelectAllCheckBoxState();
+            Debug.WriteLine($"상품 {productId} 체크박스 상태 변경됨");
         }
         
-        // 타오바오 페어링 버튼 클릭 이벤트
-        private void TaobaoPairingButton_Click(object? sender, RoutedEventArgs e)
+        // 전체 선택 체크박스 상태 업데이트
+        private void UpdateSelectAllCheckBoxState()
         {
-            _isTaobaoPaired = true;
-            UpdateStatusIndicators();
-            Debug.WriteLine("타오바오 페어링 완료");
-        }
-        
-        // 상태 표시등 업데이트
-        private void UpdateStatusIndicators()
-        {
-            // 상품명 바이트 수 표시등 업데이트
-            if (_productNameStatusIndicator != null)
+            if (_selectAllCheckBox == null || _productElements.Count == 0)
+                return;
+            
+            int checkedCount = 0;
+            int totalCount = _productElements.Count;
+            
+            foreach (var product in _productElements.Values)
             {
-                var totalByteCount = 0;
-                foreach (var keyword in _productNameKeywords)
+                if (product.CheckBox?.IsChecked == true)
                 {
-                    totalByteCount += CalculateByteCount(keyword);
-                }
-                
-                if (totalByteCount <= 50)
-                {
-                    _productNameStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#53DA4C"));
-                }
-                else
-                {
-                    _productNameStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#FF7272"));
+                    checkedCount++;
                 }
             }
             
-            // 타오바오 페어링 상태 표시등 업데이트
-            if (_taobaoPairingStatusIndicator != null)
+            if (checkedCount == 0)
             {
-                if (_isTaobaoPaired)
-                {
-                    _taobaoPairingStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#53DA4C"));
-                }
-                else
-                {
-                    _taobaoPairingStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#FF7272"));
-                }
+                _selectAllCheckBox.IsChecked = false;
             }
-        }
-        
-        // 키워드 클릭 이벤트 등록
-        private void RegisterKeywordEvents()
-        {
-            for (int i = 1; i <= 11; i++)
+            else if (checkedCount == totalCount)
             {
-                var keyword = this.FindControl<Border>($"Keyword1_{i}");
-                if (keyword != null)
-                {
-                    keyword.PointerPressed += (sender, e) => KeywordBorder_Click(sender, e);
-                }
+                _selectAllCheckBox.IsChecked = true;
             }
-        }
-        
-        // 키워드 클릭 이벤트 핸들러
-        private void KeywordBorder_Click(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-        {
-            if (sender is Border border && border.Child is TextBlock textBlock)
+            else
             {
-                var keywordText = textBlock.Text;
-                if (keywordText != null)
-                {
-                    if (_selectedKeywords1.Contains(keywordText))
-                    {
-                        // 이미 선택된 키워드면 제거 (상품명에서도 제거)
-                        _selectedKeywords1.Remove(keywordText);
-                        _productNameKeywords.Remove(keywordText);
-                        UpdateProductNameKeywordDisplay();
-                    }
-                    else
-                    {
-                        // 선택되지 않은 키워드면 추가 (상품명에도 추가)
-                        _selectedKeywords1.Add(keywordText);
-                        if (!_productNameKeywords.Contains(keywordText))
-                        {
-                            _productNameKeywords.Add(keywordText);
-                            UpdateProductNameKeywordDisplay();
-                        }
-                    }
-                    
-                    UpdateKeywordDisplay();
-                }
+                _selectAllCheckBox.IsChecked = null; // 부분 선택
             }
         }
         
         // 키워드 추가 버튼 클릭 이벤트
-        private void AddKeywordButton_Click(object? sender, RoutedEventArgs e)
+        private void AddKeywordButton_Click(int productId)
         {
-            AddKeywordFromInput();
+            if (_productElements.TryGetValue(productId, out var product))
+            {
+                AddKeywordFromInput(productId);
+                Debug.WriteLine($"상품 {productId} 키워드 추가 버튼 클릭됨");
+            }
         }
         
-        // 키워드 입력창 키 이벤트 (엔터키 처리)
-        private void KeywordInputBox_KeyDown(object? sender, KeyEventArgs e)
+        // 한글 입력 처리용 타이머 이벤트
+        private void InputTimer_Tick(object? sender, EventArgs e)
+        {
+            _inputTimer?.Stop();
+            
+            if (_productElements.TryGetValue(_currentProductId, out var product) && 
+                product.KeywordInputBox != null)
+            {
+                var text = product.KeywordInputBox.Text;
+                if (!string.IsNullOrEmpty(text))
+                {
+                    // 한글 조합 문자를 완성된 문자로 정규화
+                    var normalizedText = text.Normalize(System.Text.NormalizationForm.FormC);
+                    if (text != normalizedText)
+                    {
+                        var caretIndex = product.KeywordInputBox.CaretIndex;
+                        product.KeywordInputBox.Text = normalizedText;
+                        
+                        // 커서 위치 복원
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            product.KeywordInputBox.CaretIndex = Math.Min(caretIndex, normalizedText.Length);
+                        });
+                    }
+                }
+            }
+        }
+        
+        // 키워드 입력창 키 이벤트
+        private void KeywordInputBox_KeyDown(int productId, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
-                AddKeywordFromInput();
+                AddKeywordFromInput(productId);
                 e.Handled = true;
             }
         }
         
         // 입력창에서 키워드 추가
-        private void AddKeywordFromInput()
+        private void AddKeywordFromInput(int productId)
         {
-            if (_keywordInputBox != null && !string.IsNullOrWhiteSpace(_keywordInputBox.Text))
+            if (_productElements.TryGetValue(productId, out var product) && 
+                product.KeywordInputBox != null && 
+                !string.IsNullOrWhiteSpace(product.KeywordInputBox.Text))
             {
-                var keyword = _keywordInputBox.Text.Trim();
-                if (!string.IsNullOrEmpty(keyword) && !_productNameKeywords.Contains(keyword))
+                // 한글 조합 문자를 완성된 문자로 정규화
+                var rawText = product.KeywordInputBox.Text.Trim();
+                var keyword = rawText.Normalize(System.Text.NormalizationForm.FormC);
+                
+                if (!string.IsNullOrEmpty(keyword) && !product.ProductNameKeywords.Contains(keyword))
                 {
-                    _productNameKeywords.Add(keyword);
-                    _selectedKeywords1.Add(keyword);
-                    UpdateProductNameKeywordDisplay();
-                    UpdateKeywordDisplay();
-                    _keywordInputBox.Text = ""; // 입력창 초기화
+                    product.ProductNameKeywords.Add(keyword);
+                    product.SelectedKeywords.Add(keyword);
+                    UpdateProductNameKeywordDisplay(productId);
+                    UpdateProductKeywordDisplay(productId);
+                    product.KeywordInputBox.Text = "";
                 }
             }
         }
         
-        // 상품명 입력 키 이벤트 처리 (기존 메서드 - 더 이상 사용하지 않음)
-        private void ProductNameInputBox_KeyDown(object? sender, KeyEventArgs e)
+        // 키워드 클릭 이벤트
+        private void KeywordBorder_Click(int productId, object? sender, PointerPressedEventArgs e)
         {
-            // 이 메서드는 더 이상 사용하지 않음 - 별도 입력창으로 대체됨
+            if (sender is Border border && border.Child is TextBlock textBlock && 
+                _productElements.TryGetValue(productId, out var product))
+            {
+                var keywordText = textBlock.Text;
+                if (keywordText != null)
+                {
+                    if (product.SelectedKeywords.Contains(keywordText))
+                    {
+                        product.SelectedKeywords.Remove(keywordText);
+                        product.ProductNameKeywords.Remove(keywordText);
+                        UpdateProductNameKeywordDisplay(productId);
+                    }
+                    else
+                    {
+                        product.SelectedKeywords.Add(keywordText);
+                        if (!product.ProductNameKeywords.Contains(keywordText))
+                        {
+                            product.ProductNameKeywords.Add(keywordText);
+                            UpdateProductNameKeywordDisplay(productId);
+                        }
+                    }
+                    
+                    UpdateProductKeywordDisplay(productId);
+                }
+            }
+        }
+        
+        // 삭제 버튼 클릭 이벤트
+        private void DeleteButton_Click(int productId)
+        {
+            Debug.WriteLine($"상품 {productId} 삭제 버튼 클릭됨");
+        }
+        
+        // 상품 보류 버튼 클릭 이벤트
+        private void HoldButton_Click(int productId)
+        {
+            Debug.WriteLine($"상품 {productId} 상품 보류 버튼 클릭됨");
+        }
+        
+        // 타오바오 페어링 버튼 클릭 이벤트
+        private void TaobaoPairingButton_Click(int productId)
+        {
+            if (_productElements.TryGetValue(productId, out var product))
+            {
+                product.IsTaobaoPaired = true;
+                UpdateProductStatusIndicators(productId);
+                Debug.WriteLine($"상품 {productId} 타오바오 페어링 완료");
+            }
         }
         
         // 상품명 키워드 표시 업데이트
-        private void UpdateProductNameKeywordDisplay()
+        private void UpdateProductNameKeywordDisplay(int productId)
         {
-            if (_productNameKeywordPanel == null) return;
-            
-            _productNameKeywordPanel.Children.Clear();
-            
-            foreach (var keyword in _productNameKeywords)
+            if (_productElements.TryGetValue(productId, out var product) && 
+                product.NameKeywordPanel != null)
             {
-                var keywordTag = CreateKeywordTag(keyword, true);
-                _productNameKeywordPanel.Children.Add(keywordTag);
+                product.NameKeywordPanel.Children.Clear();
+                
+                foreach (var keyword in product.ProductNameKeywords)
+                {
+                    var keywordTag = CreateKeywordTag(keyword, true, productId);
+                    product.NameKeywordPanel.Children.Add(keywordTag);
+                }
+                
+                UpdateProductByteCount(productId);
+                UpdateProductStatusIndicators(productId);
             }
+        }
+        
+        // 키워드 표시 업데이트
+        private void UpdateProductKeywordDisplay(int productId)
+        {
+            // 키워드 패널의 색상 업데이트 로직
+            var keywordBorders = new[] { 
+                $"Product{productId}_Keyword1", 
+                $"Product{productId}_Keyword2", 
+                $"Product{productId}_Keyword3" 
+            };
             
-            // 바이트 수 업데이트
-            UpdateByteCount();
-            // 상태 표시등 업데이트
-            UpdateStatusIndicators();
+            if (_productElements.TryGetValue(productId, out var product))
+            {
+                foreach (var keywordName in keywordBorders)
+                {
+                    var keyword = this.FindControl<Border>(keywordName);
+                    if (keyword != null && keyword.Child is TextBlock textBlock && textBlock.Text != null)
+                    {
+                        if (product.SelectedKeywords.Contains(textBlock.Text))
+                        {
+                            keyword.Background = new SolidColorBrush(Color.Parse("#D0D0D0"));
+                            textBlock.Foreground = new SolidColorBrush(Colors.Gray);
+                        }
+                        else
+                        {
+                            keyword.Background = new SolidColorBrush(Color.Parse("#F47B20"));
+                            textBlock.Foreground = new SolidColorBrush(Colors.White);
+                        }
+                    }
+                }
+            }
         }
         
         // 바이트 수 계산 및 업데이트
-        private void UpdateByteCount()
+        private void UpdateProductByteCount(int productId)
         {
-            if (_byteCountTextBlock == null) return;
-            
-            // 키워드 텍스트만 계산 (공백 제외, X 버튼 제외)
-            var totalByteCount = 0;
-            foreach (var keyword in _productNameKeywords)
+            if (_productElements.TryGetValue(productId, out var product) && 
+                product.ByteCountTextBlock != null)
             {
-                totalByteCount += CalculateByteCount(keyword);
+                var totalByteCount = 0;
+                foreach (var keyword in product.ProductNameKeywords)
+                {
+                    totalByteCount += CalculateByteCount(keyword);
+                }
+                
+                product.ByteCountTextBlock.Text = $"{totalByteCount}/50 byte";
+                
+                if (totalByteCount > 50)
+                {
+                    product.ByteCountTextBlock.Foreground = Brushes.Red;
+                }
+                else
+                {
+                    product.ByteCountTextBlock.Foreground = Brushes.Gray;
+                }
             }
-            
-            _byteCountTextBlock.Text = $"{totalByteCount}/50 byte";
-            
-            // 50바이트 초과 시 빨간색으로 표시
-            if (totalByteCount > 50)
+        }
+        
+        // 상태 표시등 업데이트
+        private void UpdateProductStatusIndicators(int productId)
+        {
+            if (_productElements.TryGetValue(productId, out var product))
             {
-                _byteCountTextBlock.Foreground = Brushes.Red;
-            }
-            else
-            {
-                _byteCountTextBlock.Foreground = Brushes.Gray;
+                bool isNameStatusGreen = false;
+                bool isTaobaoPairingStatusGreen = false;
+                
+                // 상품명 바이트 수 표시등 업데이트
+                if (product.NameStatusIndicator != null)
+                {
+                    var totalByteCount = 0;
+                    foreach (var keyword in product.ProductNameKeywords)
+                    {
+                        totalByteCount += CalculateByteCount(keyword);
+                    }
+                    
+                    if (totalByteCount <= 50)
+                    {
+                        product.NameStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#53DA4C"));
+                        isNameStatusGreen = true;
+                    }
+                    else
+                    {
+                        product.NameStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#FF7272"));
+                        isNameStatusGreen = false;
+                    }
+                }
+                
+                // 타오바오 페어링 상태 표시등 업데이트
+                if (product.TaobaoPairingStatusIndicator != null)
+                {
+                    if (product.IsTaobaoPaired)
+                    {
+                        product.TaobaoPairingStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#53DA4C"));
+                        isTaobaoPairingStatusGreen = true;
+                    }
+                    else
+                    {
+                        product.TaobaoPairingStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#FF7272"));
+                        isTaobaoPairingStatusGreen = false;
+                    }
+                }
+                
+                // 카테고리 상태 표시등 업데이트 (상품명과 타오바오 페어링 상태에 따라)
+                if (product.CategoryStatusIndicator != null)
+                {
+                    if (isNameStatusGreen && isTaobaoPairingStatusGreen)
+                    {
+                        // 둘 다 초록불이면 카테고리도 초록불
+                        product.CategoryStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#53DA4C"));
+                    }
+                    else
+                    {
+                        // 둘 중 하나라도 빨간불이면 카테고리도 빨간불
+                        product.CategoryStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#FF7272"));
+                    }
+                }
             }
         }
         
@@ -316,47 +554,37 @@ namespace Gumaedaehang
             int byteCount = 0;
             foreach (char c in text)
             {
-                // 한글 범위 체크 (가-힣, ㄱ-ㅎ, ㅏ-ㅣ)
-                if ((c >= 0xAC00 && c <= 0xD7AF) || // 완성형 한글
-                    (c >= 0x3131 && c <= 0x318E) || // 자음, 모음
-                    (c >= 0x1100 && c <= 0x11FF))   // 조합용 자모
+                if ((c >= 0xAC00 && c <= 0xD7AF) || 
+                    (c >= 0x3131 && c <= 0x318E) || 
+                    (c >= 0x1100 && c <= 0x11FF))
                 {
-                    byteCount += 2; // 한글은 2바이트
+                    byteCount += 2;
                 }
                 else
                 {
-                    byteCount += 1; // 영어 및 기타 문자는 1바이트
+                    byteCount += 1;
                 }
             }
             return byteCount;
         }
         
-        // 키워드 태그 생성 (삭제 가능한 태그)
-        private Border CreateKeywordTag(string keyword, bool isDeletable = false)
+        // 키워드 태그 생성 (상품명용 - 배경 없이 텍스트만)
+        private StackPanel CreateKeywordTag(string keyword, bool isDeletable = false, int productId = 0)
         {
-            var border = new Border
-            {
-                Background = new SolidColorBrush(Color.Parse("#F47B20")),
-                CornerRadius = new CornerRadius(12),
-                Padding = new Thickness(8, 4),
-                Margin = new Thickness(2, 2),
-                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left
-            };
-            
             var stackPanel = new StackPanel
             {
                 Orientation = Avalonia.Layout.Orientation.Horizontal,
                 Spacing = 4,
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                Margin = new Thickness(0, 0, 8, 0)
             };
             
             var textBlock = new TextBlock
             {
                 Text = keyword,
-                FontSize = 11,
-                Foreground = Brushes.White,
+                FontSize = 14,
+                Foreground = new SolidColorBrush(Color.Parse("#333333")),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                 TextAlignment = Avalonia.Media.TextAlignment.Center
@@ -368,89 +596,89 @@ namespace Gumaedaehang
             {
                 var deleteButton = new Button
                 {
-                    Content = "×",
-                    FontSize = 14,
-                    FontWeight = FontWeight.Bold,
-                    Foreground = Brushes.White,
-                    Background = Brushes.Transparent,
-                    BorderThickness = new Thickness(0),
-                    Padding = new Thickness(0),
-                    Margin = new Thickness(0),
                     Width = 16,
                     Height = 16,
                     MinWidth = 16,
                     MinHeight = 16,
+                    Background = Brushes.Transparent,
+                    BorderThickness = new Thickness(0),
+                    Padding = new Thickness(0),
+                    Margin = new Thickness(0, 0, 0, 0),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
                     HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                     HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                     VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
                 
-                deleteButton.Click += (s, e) => RemoveProductNameKeyword(keyword);
+                // delete_keyword.png 이미지 로드
+                try
+                {
+                    var deleteImage = new Image
+                    {
+                        Width = 12,
+                        Height = 12,
+                        Stretch = Avalonia.Media.Stretch.Uniform
+                    };
+                    
+                    // Avalonia 11에서는 AssetLoader.Open을 직접 사용
+                    try
+                    {
+                        var uri = new Uri("avares://Gumaedaehang/images/delete_keyword.png");
+                        using var stream = AssetLoader.Open(uri);
+                        deleteImage.Source = new Avalonia.Media.Imaging.Bitmap(stream);
+                        deleteButton.Content = deleteImage;
+                    }
+                    catch
+                    {
+                        // 이미지 로드 실패 시 텍스트로 대체
+                        deleteButton.Content = "×";
+                        deleteButton.FontSize = 12;
+                        deleteButton.FontWeight = FontWeight.Bold;
+                        deleteButton.Foreground = new SolidColorBrush(Color.Parse("#666666"));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"delete_keyword.png 이미지 로드 실패: {ex.Message}");
+                    // 이미지 로드 실패 시 텍스트로 대체
+                    deleteButton.Content = "×";
+                    deleteButton.FontSize = 12;
+                    deleteButton.FontWeight = FontWeight.Bold;
+                    deleteButton.Foreground = new SolidColorBrush(Color.Parse("#666666"));
+                }
+                
+                deleteButton.Click += (s, e) => RemoveProductNameKeyword(productId, keyword);
                 stackPanel.Children.Add(deleteButton);
             }
             
-            border.Child = stackPanel;
-            return border;
+            return stackPanel;
         }
         
         // 상품명 키워드 삭제
-        private void RemoveProductNameKeyword(string keyword)
+        private void RemoveProductNameKeyword(int productId, string keyword)
         {
-            _productNameKeywords.Remove(keyword);
-            _selectedKeywords1.Remove(keyword); // 키워드 목록에서도 선택 해제
-            UpdateProductNameKeywordDisplay(); // 이미 UpdateByteCount() 포함됨
-            UpdateKeywordDisplay(); // 키워드 목록 색상도 업데이트
-        }
-        
-        // 상품명 텍스트박스 변경 이벤트 (기존 메서드 수정)
-        private void ProductNameTextBox_TextChanged(object? sender, RoutedEventArgs? e)
-        {
-            // 이 메서드는 더 이상 사용하지 않음 - 키워드 태그 시스템으로 대체됨
-        }
-        
-        // 키워드 표시 업데이트
-        private void UpdateKeywordDisplay()
-        {
-            for (int i = 1; i <= 11; i++)
+            if (_productElements.TryGetValue(productId, out var product))
             {
-                var keyword = this.FindControl<Border>($"Keyword1_{i}");
-                if (keyword != null && keyword.Child is TextBlock textBlock && textBlock.Text != null)
-                {
-                    if (_selectedKeywords1.Contains(textBlock.Text))
-                    {
-                        // 선택된 키워드는 회색으로
-                        keyword.Background = new SolidColorBrush(Color.Parse("#D0D0D0"));
-                        textBlock.Foreground = new SolidColorBrush(Colors.Gray);
-                    }
-                    else
-                    {
-                        // 선택되지 않은 키워드는 주황색으로
-                        keyword.Background = new SolidColorBrush(Color.Parse("#F47B20"));
-                        textBlock.Foreground = new SolidColorBrush(Colors.White);
-                    }
-                }
+                product.ProductNameKeywords.Remove(keyword);
+                product.SelectedKeywords.Remove(keyword);
+                UpdateProductNameKeywordDisplay(productId);
+                UpdateProductKeywordDisplay(productId);
             }
         }
         
-        // 추가하기+ 링크 클릭 이벤트 핸들러
-        private void AddMoreLink_Click(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+        // 기타 이벤트 핸들러들
+        private void AddMoreLink_Click(object? sender, PointerPressedEventArgs e)
         {
-            // 실제 추가 로직 구현
             Debug.WriteLine("추가하기+ 링크 클릭됨");
         }
         
-        // 테스트 버튼 클릭 이벤트 핸들러
         private void TestDataButton_Click(object? sender, RoutedEventArgs e)
         {
-            // 데이터 상태 토글
             _hasData = !_hasData;
             UpdateViewVisibility();
-            
             Debug.WriteLine($"데이터 상태 변경: {(_hasData ? "데이터 있음" : "데이터 없음")}");
         }
         
-        // 데이터 유무에 따라 화면 업데이트
         private void UpdateViewVisibility()
         {
             if (_noDataView != null && _dataAvailableView != null)
@@ -460,20 +688,53 @@ namespace Gumaedaehang
             }
         }
         
-        // 외부에서 데이터 상태를 설정할 수 있는 메서드
         public void SetHasData(bool hasData)
         {
             _hasData = hasData;
             UpdateViewVisibility();
         }
         
-        // 데이터 초기화 메서드 (테스트용)
         public void ResetData()
         {
             _hasData = false;
-            _isTaobaoPaired = false;
+            
+            foreach (var product in _productElements.Values)
+            {
+                product.IsTaobaoPaired = false;
+                if (product.CheckBox != null)
+                    product.CheckBox.IsChecked = false;
+            }
+            
+            if (_selectAllCheckBox != null)
+                _selectAllCheckBox.IsChecked = false;
+                
             UpdateViewVisibility();
-            UpdateStatusIndicators();
+            
+            foreach (var productId in _productElements.Keys)
+            {
+                UpdateProductStatusIndicators(productId);
+            }
         }
+    }
+    
+    // 상품별 UI 요소들을 관리하는 클래스
+    public class ProductUIElements
+    {
+        public int ProductId { get; set; }
+        public CheckBox? CheckBox { get; set; }
+        public Ellipse? CategoryStatusIndicator { get; set; }
+        public Ellipse? NameStatusIndicator { get; set; }
+        public WrapPanel? NameKeywordPanel { get; set; }
+        public TextBlock? ByteCountTextBlock { get; set; }
+        public WrapPanel? KeywordPanel { get; set; }
+        public TextBox? KeywordInputBox { get; set; }
+        public Button? AddKeywordButton { get; set; }
+        public Button? DeleteButton { get; set; }
+        public Button? HoldButton { get; set; }
+        public Ellipse? TaobaoPairingStatusIndicator { get; set; }
+        public Button? TaobaoPairingButton { get; set; }
+        public List<string> ProductNameKeywords { get; set; } = new List<string>();
+        public List<string> SelectedKeywords { get; set; } = new List<string>();
+        public bool IsTaobaoPaired { get; set; } = false;
     }
 }

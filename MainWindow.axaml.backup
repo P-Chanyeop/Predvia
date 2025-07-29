@@ -1,0 +1,497 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Gumaedaehang"
+        mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+        Width="1920" Height="1080"
+        x:Class="Gumaedaehang.MainWindow"
+        Title="PREDVIA"
+        Background="{DynamicResource BackgroundBrush}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="80"/>
+            <RowDefinition Height="60"/>
+            <RowDefinition Height="1"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 상단 헤더 영역 -->
+        <Grid Grid.Row="0" Margin="30,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="450"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="450"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 왼쪽 다크모드 버튼과 정보 -->
+            <StackPanel Grid.Column="0" 
+                      Orientation="Horizontal" 
+                      VerticalAlignment="Center"
+                      Spacing="20">
+                <Button Background="Transparent" 
+                        BorderThickness="0"
+                        VerticalAlignment="Center"
+                        x:Name="themeToggleButton">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Ellipse Width="24" Height="24" Fill="{DynamicResource DarkModeIconBrush}"/>
+                        <TextBlock x:Name="themeToggleText"
+                                   Text="다크모드" 
+                                   VerticalAlignment="Center" 
+                                   FontSize="16" 
+                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                    </StackPanel>
+                </Button>
+                
+                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                    <TextBlock Text="진여 일수:" 
+                               FontSize="16" 
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="7 일" 
+                               FontSize="16" 
+                               Foreground="#F47B20"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                
+                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                    <TextBlock Text="1일 액셀 추출개수:" 
+                               FontSize="16" 
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="20/100" 
+                               FontSize="16" 
+                               Foreground="#F47B20"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 중앙 로고 -->
+            <Grid Grid.Column="1">
+                <Image Source="/images/predvia_logo.png"
+                       Height="50"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsHitTestVisible="False"/>
+            </Grid>
+
+            <!-- 오른쪽 사용자 정보 -->
+            <Button Grid.Column="2" 
+                    Background="Transparent" 
+                    BorderThickness="0"
+                    VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Path Data="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"
+                          Fill="{DynamicResource ForegroundBrush}"
+                          Width="20"
+                          Height="20"/>
+                    <TextBlock x:Name="userWelcomeText" 
+                               VerticalAlignment="Center" 
+                               FontSize="16" 
+                               Foreground="{DynamicResource ForegroundBrush}"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- 오늘의 명언 영역 -->
+        <StackPanel Grid.Row="1" 
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Center"
+                    Spacing="5">
+            <TextBlock Text="오늘의 명언: " 
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource ForegroundBrush}"/>
+            
+            <!-- 슬라이딩 명언 컨테이너 -->
+            <Border Width="800" Height="30" ClipToBounds="True">
+                <ScrollViewer x:Name="adviceScrollViewer"
+                              HorizontalScrollBarVisibility="Hidden"
+                              VerticalScrollBarVisibility="Hidden">
+                    <StackPanel x:Name="adviceContainer" 
+                                Orientation="Horizontal" 
+                                Spacing="5"
+                                VerticalAlignment="Center">
+                        <TextBlock x:Name="adviceText" 
+                                   Text="명언을 불러오는 중..." 
+                                   FontSize="18"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ForegroundBrush}"
+                                   TextWrapping="NoWrap"/>
+                        <TextBlock Text=" - " 
+                                   FontSize="18"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ForegroundBrush}"
+                                   IsVisible="{Binding ElementName=adviceAuthor, Path=IsVisible}"/>
+                        <TextBlock x:Name="adviceAuthor" 
+                                   Text="" 
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ForegroundBrush}"
+                                   TextWrapping="NoWrap"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </StackPanel>
+        
+        <!-- 구분선 -->
+        <Rectangle Grid.Row="2" 
+                   Fill="{DynamicResource BorderBrush}" 
+                   Height="1"/>
+        
+        <!-- 탭 메뉴 및 메인 콘텐츠 영역 -->
+        <Grid Grid.Row="3">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="60"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <!-- 탭 메뉴 -->
+            <StackPanel Grid.Row="0" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Center" 
+                        VerticalAlignment="Center"
+                        Spacing="150">
+                <Button x:Name="SourcingTab" 
+                        Content="소싱" 
+                        FontSize="20" 
+                        FontWeight="Bold" 
+                        Foreground="#F47B20"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,5"
+                        Cursor="Hand"/>
+                <Button x:Name="MarketCheckTab" 
+                        Content="마켓점검" 
+                        FontSize="20" 
+                        Foreground="{DynamicResource ForegroundBrush}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,5"
+                        Cursor="Hand"/>
+                <Button x:Name="MainProductTab" 
+                        Content="메인상품찾기(beta)" 
+                        FontSize="20" 
+                        Foreground="{DynamicResource ForegroundBrush}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,5"
+                        Cursor="Hand"/>
+                <Button x:Name="SettingsTab" 
+                        Content="설정" 
+                        FontSize="20" 
+                        Foreground="{DynamicResource ForegroundBrush}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,5"
+                        Cursor="Hand"/>
+            </StackPanel>
+            
+            <!-- 메인 콘텐츠 영역 -->
+            <Grid Grid.Row="1">
+                <!-- 홈 화면 -->
+                <Grid x:Name="HomeContent">
+                    <Border Width="1000" 
+                            Height="600" 
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center">
+                        <Grid>
+                            <!-- 배경 삼각형 로고 (반투명) -->
+                            <Image Source="/images/predvia_triangle_bg.png"
+                                   Stretch="Uniform"
+                                   Width="1122"
+                                   Height="1121"
+                                   Opacity="1"
+                                   IsHitTestVisible="False"
+                                   VerticalAlignment="Top"
+                                   Margin="0,-300,0,0"
+                                   HorizontalAlignment="Center"/>
+                            
+                            <!-- 중앙 텍스트 콘텐츠 -->
+                            <StackPanel VerticalAlignment="Center" 
+                                        HorizontalAlignment="Center" 
+                                        Spacing="20">
+                                <TextBlock Text="PREDVIA" 
+                                           FontSize="64" 
+                                           FontWeight="Bold" 
+                                           Foreground="#F47B20" 
+                                           HorizontalAlignment="Center"/>
+                                
+                                <TextBlock Text="프로그램은" 
+                                           FontSize="32" 
+                                           Foreground="{DynamicResource ForegroundBrush}" 
+                                           HorizontalAlignment="Center"/>
+                                
+                                <TextBlock Text="&quot;구매대행, 반자동 그 이상&quot;" 
+                                           FontSize="38" 
+                                           FontWeight="Bold" 
+                                           Foreground="{DynamicResource ForegroundBrush}" 
+                                           HorizontalAlignment="Center"/>
+                                
+                                <!-- 여러 스타일의 텍스트를 위한 TextBlock -->
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
+                                    <TextBlock Text="최고의 디테일로 완성된 " 
+                                             FontSize="28" 
+                                             Foreground="{DynamicResource ForegroundBrush}"/>
+                                    <TextBlock Text="스마트 솔루션 프로그램" 
+                                             FontSize="28" 
+                                             FontWeight="Bold" 
+                                             Foreground="#F47B20"/>
+                                    <TextBlock Text="입니다." 
+                                             FontSize="28" 
+                                             Foreground="{DynamicResource ForegroundBrush}"/>
+                                </StackPanel>
+                                
+                                <TextBlock Text="최고매출로 함께 나아가세요!" 
+                                           FontSize="32" 
+                                           Foreground="{DynamicResource ForegroundBrush}" 
+                                           HorizontalAlignment="Center" 
+                                           Margin="0,25,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+                
+                <!-- 소싱 화면 -->
+                <ContentControl x:Name="SourcingContent" IsVisible="False">
+                    <local:SourcingPage/>
+                </ContentControl>
+                
+                <!-- 마켓점검 화면 (추후 구현) -->
+                <Grid x:Name="MarketCheckContent" IsVisible="False">
+                    <Button x:Name="MarketRegistrationButton" Content="마켓등록하기" 
+                            FontSize="20" 
+                            FontWeight="SemiBold"
+                            Width="240" 
+                            Height="70"
+                            Background="#E67E22" 
+                            Foreground="White"
+                            BorderThickness="0" 
+                            CornerRadius="12"
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center"
+                            HorizontalContentAlignment="Center" 
+                            VerticalContentAlignment="Center"/>
+                </Grid>
+                
+                
+                <!-- 마켓등록 화면 (11.png와 동일) -->
+                <Grid x:Name="MarketRegistrationContent" IsVisible="False">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="30" 
+                                    VerticalAlignment="Top" 
+                                    HorizontalAlignment="Center"
+                                    MaxWidth="1200"
+                                    Width="1200"
+                                    Margin="40,30,40,40">
+                            
+                            <!-- 상품 등록 폼 섹션 -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <!-- 상품 1 -->
+                                <Border Grid.Row="0" Grid.Column="0" Background="White" 
+                                        BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" 
+                                        Padding="20" Margin="0,0,15,15">
+                                    <StackPanel Spacing="15">
+                                        <StackPanel Orientation="Horizontal" Spacing="15">
+                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
+                                                   Width="100" Height="100" Stretch="Uniform"/>
+                                            <StackPanel Spacing="10">
+                                                <TextBlock Text="상품명: 초코 바나나 시럽 아마토 핸드폰" FontSize="14" FontWeight="Medium"/>
+                                                <Border BorderBrush="#E67E22" BorderThickness="1" CornerRadius="4" Padding="8">
+                                                    <TextBox Text="옵션" FontSize="12" Background="Transparent" BorderThickness="0"/>
+                                                </Border>
+                                                <TextBlock Text="가격 : 100,000" FontSize="14" FontWeight="Medium"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <TextBlock Text="네이버쇼핑 바로가기" FontSize="11" 
+                                                       Foreground="Black" TextDecorations="Underline" Cursor="Hand"/>
+                                                    Background="#E67E22" Foreground="White" 
+                                                    Padding="8,4" CornerRadius="4" BorderThickness="0"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- 상품 2 -->
+                                <Border Grid.Row="0" Grid.Column="1" Background="White" 
+                                        BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" 
+                                        Padding="20" Margin="15,0,0,15">
+                                    <StackPanel Spacing="15">
+                                        <StackPanel Orientation="Horizontal" Spacing="15">
+                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
+                                                   Width="100" Height="100" Stretch="Uniform"/>
+                                            <StackPanel Spacing="10">
+                                                <TextBlock Text="상품명: 초코 바나나 시럽 아마토 핸드폰" FontSize="14" FontWeight="Medium"/>
+                                                <Border BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Padding="8">
+                                                    <TextBox Text="옵션" FontSize="12" Background="Transparent" BorderThickness="0"/>
+                                                </Border>
+                                                <TextBlock Text="가격 : 100,000" FontSize="14" FontWeight="Medium"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <TextBlock Text="피드백: " FontSize="12"/>
+                                            <TextBlock Text="브랜드명이 포함되어있습니다." FontSize="12" Foreground="#E67E22"/>
+                                            <TextBlock Text="네이버쇼핑 바로가기" FontSize="11" 
+                                                       Foreground="Black" TextDecorations="Underline" Cursor="Hand"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- 상품 3 -->
+                                <Border Grid.Row="1" Grid.Column="0" Background="White" 
+                                        BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" 
+                                        Padding="20" Margin="0,15,15,0">
+                                    <StackPanel Spacing="15">
+                                        <StackPanel Orientation="Horizontal" Spacing="15">
+                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
+                                                   Width="100" Height="100" Stretch="Uniform"/>
+                                            <StackPanel Spacing="10">
+                                                <TextBlock Text="상품명: 초코 바나나 시럽 아마토 핸드폰" FontSize="14" FontWeight="Medium"/>
+                                                <Border BorderBrush="#E67E22" BorderThickness="1" CornerRadius="4" Padding="8">
+                                                    <TextBox Text="옵션" FontSize="12" Background="Transparent" BorderThickness="0"/>
+                                                </Border>
+                                                <TextBlock Text="가격 : 100,000" FontSize="14" FontWeight="Medium"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <TextBlock Text="피드백: " FontSize="12"/>
+                                            <TextBlock Text="중국어가 있습니다." FontSize="12" Foreground="#E67E22"/>
+                                            <TextBlock Text="네이버쇼핑 바로가기" FontSize="11" 
+                                                       Foreground="Black" TextDecorations="Underline" Cursor="Hand"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- 상품 4 -->
+                                <Border Grid.Row="1" Grid.Column="1" Background="White" 
+                                        BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" 
+                                        Padding="20" Margin="15,15,0,0">
+                                    <StackPanel Spacing="15">
+                                        <StackPanel Orientation="Horizontal" Spacing="15">
+                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
+                                                   Width="100" Height="100" Stretch="Uniform"/>
+                                            <StackPanel Spacing="10">
+                                                <TextBlock Text="상품명: 초코 바나나 시럽 아마토 핸드폰" FontSize="14" FontWeight="Medium"/>
+                                                <Border BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Padding="8">
+                                                    <TextBox Text="옵션" FontSize="12" Background="Transparent" BorderThickness="0"/>
+                                                </Border>
+                                                <TextBlock Text="가격 : 100,000" FontSize="14" FontWeight="Medium"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <TextBlock Text="피드백: " FontSize="12"/>
+                                            <TextBlock Text="중국어가 있습니다." FontSize="12" Foreground="#E67E22"/>
+                                            <TextBlock Text="네이버쇼핑 바로가기" FontSize="11" 
+                                                       Foreground="Black" TextDecorations="Underline" Cursor="Hand"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                            
+                            <!-- 하단 차트 섹션 -->
+                            <Border Background="#FFF5E6" CornerRadius="12" Padding="30">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="300"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- 왼쪽: 차트 -->
+                                    <StackPanel Grid.Column="0" Spacing="20">
+                                        <Canvas Height="350" Background="Transparent">
+                                            <!-- Y축 -->
+                                            <Line StartPoint="60,320" EndPoint="60,40" Stroke="#E67E22" StrokeThickness="2"/>
+                                            <Polygon Points="55,40 60,30 65,40" Fill="#E67E22"/>
+                                            
+                                            <!-- X축 -->
+                                            <Line StartPoint="60,320" EndPoint="500,320" Stroke="#E0E0E0" StrokeThickness="1"/>
+                                            
+                                            <!-- 막대 그래프 - 겹쳐진 스타일 -->
+                                            <!-- 1,000 -->
+                                            <Rectangle Canvas.Left="100" Canvas.Top="280" Width="50" Height="40" Fill="#D0D0D0"/>
+                                            <Rectangle Canvas.Left="100" Canvas.Top="300" Width="50" Height="20" Fill="#E67E22"/>
+                                            <TextBlock Canvas.Left="115" Canvas.Top="330" Text="1,000" FontSize="11" HorizontalAlignment="Center"/>
+                                            
+                                            <!-- 10,000 -->
+                                            <Rectangle Canvas.Left="180" Canvas.Top="200" Width="50" Height="120" Fill="#D0D0D0"/>
+                                            <Rectangle Canvas.Left="180" Canvas.Top="260" Width="50" Height="60" Fill="#E67E22"/>
+                                            <TextBlock Canvas.Left="195" Canvas.Top="330" Text="10,000" FontSize="11" HorizontalAlignment="Center"/>
+                                            
+                                            <!-- 50,000 -->
+                                            <Rectangle Canvas.Left="260" Canvas.Top="120" Width="50" Height="200" Fill="#D0D0D0"/>
+                                            <Rectangle Canvas.Left="260" Canvas.Top="220" Width="50" Height="100" Fill="#E67E22"/>
+                                            <TextBlock Canvas.Left="275" Canvas.Top="330" Text="50,000" FontSize="11" HorizontalAlignment="Center"/>
+                                            
+                                            <!-- 100,000 -->
+                                            <Rectangle Canvas.Left="340" Canvas.Top="80" Width="50" Height="240" Fill="#D0D0D0"/>
+                                            <Rectangle Canvas.Left="340" Canvas.Top="180" Width="50" Height="140" Fill="#E67E22"/>
+                                            <TextBlock Canvas.Left="355" Canvas.Top="330" Text="100,000" FontSize="11" HorizontalAlignment="Center"/>
+                                        </Canvas>
+                                    </StackPanel>
+                                    
+                                    <!-- 오른쪽: 범례와 설명 -->
+                                    <StackPanel Grid.Column="1" Spacing="20" Margin="30,0,0,0" VerticalAlignment="Top">
+                                        <!-- 범례 -->
+                                        <StackPanel Spacing="12">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <Rectangle Width="15" Height="15" Fill="#E67E22"/>
+                                                <TextBlock Text="주문처리형" FontSize="14" Foreground="#333"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <Rectangle Width="15" Height="15" Fill="#D0D0D0"/>
+                                                <TextBlock Text="밸런스형" FontSize="14" Foreground="#333"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <Rectangle Width="15" Height="15" Fill="#F0C0A0"/>
+                                                <TextBlock Text="크무비형" FontSize="14" Foreground="#333"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        
+                                        <!-- 피드백 텍스트 -->
+                                        <StackPanel Spacing="10">
+                                            <TextBlock Text="피드백 입니다. 주문처리형 밸런스형 크무비형 초코 바나나 시럽 아파트 핸드폰 중국어가 있습니다. 브랜드명이 포함되어 있습니다." 
+                                                       FontSize="14" 
+                                                       Foreground="#E67E22"
+                                                       TextWrapping="Wrap" 
+                                                       MaxWidth="250"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+                <!-- 메인상품찾기 화면 (추후 구현) -->
+                <Grid x:Name="MainProductContent" IsVisible="False">
+                    <TextBlock Text="메인상품찾기 페이지 - 준비 중입니다." 
+                               HorizontalAlignment="Center" 
+                               VerticalAlignment="Center" 
+                               FontSize="24"/>
+                </Grid>
+                
+                <!-- 설정 화면 (추후 구현) -->
+                <Grid x:Name="SettingsContent" IsVisible="False">
+                    <TextBlock Text="설정 페이지 - 준비 중입니다." 
+                               HorizontalAlignment="Center" 
+                               VerticalAlignment="Center" 
+                               FontSize="24"/>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

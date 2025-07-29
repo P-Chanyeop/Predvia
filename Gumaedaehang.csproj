@@ -11,8 +11,19 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="0.10.18" />
-    <PackageReference Include="Avalonia.Desktop" Version="0.10.18" />
-    <PackageReference Include="Avalonia.Diagnostics" Version="0.10.18" />
+    <PackageReference Include="Avalonia" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.10" />
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.10" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <AvaloniaXaml Remove="SourcingPage_old.axaml" />
+    <AvaloniaXaml Remove="SourcingPage_old_backup.axaml" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Compile Remove="SourcingPage_old_backup.axaml.cs" />
   </ItemGroup>
 </Project>
