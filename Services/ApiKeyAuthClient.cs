@@ -20,36 +20,45 @@ namespace Gumaedaehang.Services
             _httpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        // API 키 인증 메서드
+        // API 키 인증 메서드 (테스트 모드 우선)
         public async Task<ApiKeyAuthResponse> AuthenticateWithApiKeyAsync(string apiKey)
         {
             try
             {
-                var authData = new
-                {
-                    apiKey = apiKey
-                };
-
-                var content = new StringContent(JsonSerializer.Serialize(authData), Encoding.UTF8, "application/json");
-                var response = await _httpClient.PostAsync("/api/auth/verify-key", content);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseContent = await response.Content.ReadAsStringAsync();
-                    var authResponse = JsonSerializer.Deserialize<ApiKeyAuthResponse>(responseContent);
-                    return authResponse;
-                }
-                else
-                {
-                    // API 오류 처리
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    throw new ApiException($"API 키 인증 실패: {response.StatusCode}", errorContent);
-                }
+                // 먼저 테스트 모드로 시도
+                return await AuthenticateWithApiKeyTestModeAsync(apiKey);
             }
-            catch (Exception ex) when (!(ex is ApiException))
+            catch (ApiException)
             {
-                // 네트워크 오류 등 처리
-                throw new ApiException("API 연결 오류", ex.Message);
+                // 테스트 모드 실패 시 실제 API 호출
+                try
+                {
+                    var authData = new
+                    {
+                        apiKey = apiKey
+                    };
+
+                    var content = new StringContent(JsonSerializer.Serialize(authData), Encoding.UTF8, "application/json");
+                    var response = await _httpClient.PostAsync("/api/auth/verify-key", content);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        var authResponse = JsonSerializer.Deserialize<ApiKeyAuthResponse>(responseContent);
+                        return authResponse;
+                    }
+                    else
+                    {
+                        // API 오류 처리
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        throw new ApiException($"API 키 인증 실패: {response.StatusCode}", errorContent);
+                    }
+                }
+                catch (Exception ex) when (!(ex is ApiException))
+                {
+                    // 네트워크 오류 등 처리
+                    throw new ApiException("API 연결 오류", ex.Message);
+                }
             }
         }
 
