@@ -262,13 +262,15 @@
                     <local:SourcingPage/>
                 </ContentControl>
                 
-                <!-- 마켓점검 화면 (추후 구현) -->
-                <Grid x:Name="MarketCheckContent" IsVisible="False">
-                    <TextBlock Text="마켓점검 페이지 - 준비 중입니다." 
-                               HorizontalAlignment="Center" 
-                               VerticalAlignment="Center" 
-                               FontSize="24"/>
-                </Grid>
+                <!-- 마켓점검 화면 -->
+                <ContentControl x:Name="MarketCheckContent" IsVisible="False">
+                    <local:MarketCheckPage/>
+                </ContentControl>
+                
+                <!-- 마켓등록 화면 -->
+                <ContentControl x:Name="MarketRegistrationContent" IsVisible="False">
+                    <local:MarketRegistrationPage/>
+                </ContentControl>
                 
                 <!-- 메인상품찾기 화면 (추후 구현) -->
                 <Grid x:Name="MainProductContent" IsVisible="False">
