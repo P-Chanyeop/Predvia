@@ -199,9 +199,9 @@ dotnet run
 
 ## 📞 연락처
 
-**Predvia Team**
-- 이메일: contact@predvia.com
-- 웹사이트: https://predvia.com
+**Softcat Team**
+- 이메일: oracle7579@gmail.com
+- 웹사이트: https://softcat.co.kr
 
 ## 🙏 감사의 말
 
@@ -211,4 +211,4 @@ dotnet run
 
 ---
 
-**Made with ❤️ by Predvia Team**
+**Made with ❤️ by Softcat Team**
