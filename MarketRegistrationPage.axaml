@@ -1,12 +1,75 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Gumaedaehang.MarketRegistrationPage">
+
+  <UserControl.Styles>
+    <!-- 라이트 모드 스타일 (기본) -->
+    <Style Selector="UserControl">
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <!-- 다크 모드 스타일 -->
+    <Style Selector="UserControl.dark-theme">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <!-- 메인 그리드 스타일 -->
+    <Style Selector="Grid.main-grid">
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Grid.main-grid">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <!-- 상품 카드 스타일 -->
+    <Style Selector="Border.product-card">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Border.product-card">
+      <Setter Property="Background" Value="#3D3D3D"/>
+      <Setter Property="BorderBrush" Value="#FF6B35"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    
+    <!-- 텍스트 스타일 -->
+    <Style Selector="TextBlock.product-text">
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme TextBlock.product-text">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+    
+    <!-- 차트 배경 스타일 -->
+    <Style Selector="Border.chart-background">
+      <Setter Property="Background" Value="#FFF8F0"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Border.chart-background">
+      <Setter Property="Background" Value="#3D3D3D"/>
+    </Style>
+    
+    <!-- 사이드바 스타일 -->
+    <Style Selector="Border.sidebar-panel">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="#E0E0E0"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Border.sidebar-panel">
+      <Setter Property="Background" Value="#3D3D3D"/>
+      <Setter Property="BorderBrush" Value="#FF6B35"/>
+    </Style>
+  </UserControl.Styles>
   
   <!-- 메인 컨테이너 Grid -->
-  <Grid>
+  <Grid x:Name="MainGrid">
     <!-- 메인 콘텐츠 -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-      <Grid Background="White" Margin="20">
+      <Grid x:Name="MainGrid" Classes="main-grid" Background="White" Margin="20">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="20"/>
@@ -80,7 +143,7 @@
         <!-- 차트 및 범례 영역 -->
         <Grid Grid.Row="4">
           <!-- 차트 영역 (범례 포함) -->
-          <Border Background="#FFF8F0" CornerRadius="8" Padding="30" Height="755">
+          <Border x:Name="ChartBackground" Classes="chart-background" Background="#FFF8F0" CornerRadius="8" Padding="30" Height="755">
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
@@ -301,95 +364,175 @@
     
     <!-- 사이드바 토글 버튼 -->
     <Button x:Name="SidebarToggleButton"
-            Width="50" 
-            Height="120"
+            Width="20" 
+            Height="100"
             Background="#FF6B35"
             BorderThickness="0"
-            CornerRadius="8,0,0,8"
+            CornerRadius="12,0,0,12"
             HorizontalAlignment="Right"
             VerticalAlignment="Center"
             Margin="0,0,0,0"
             Click="ToggleSidebar"
             ZIndex="10">
-      <StackPanel Orientation="Vertical" Spacing="5">
-        <!-- 햄버거 메뉴 아이콘 -->
-        <Rectangle Fill="White" Width="20" Height="2" RadiusX="1" RadiusY="1"/>
-        <Rectangle Fill="White" Width="20" Height="2" RadiusX="1" RadiusY="1"/>
-        <Rectangle Fill="White" Width="20" Height="2" RadiusX="1" RadiusY="1"/>
-      </StackPanel>
+      <!-- 왼쪽 화살표 아이콘 (좌측 끝으로 이동) -->
+      <Path Data="M 7,42 L 3,45 L 7,48" 
+            Stroke="White"
+            StrokeThickness="2"
+            Fill="Transparent"/>
     </Button>
     
     <!-- 사이드바 패널 -->
-    <Border x:Name="SidebarPanel"
-            Width="150"
-            Height="200"
-            Background="White"
-            BorderBrush="#FF6B35"
-            BorderThickness="2"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Center"
-            IsVisible="False"
-            ZIndex="20"
-            CornerRadius="8"
-            BoxShadow="0 4 15 0 #30000000"
-            Margin="0,0,10,0">
+    <Grid x:Name="SidebarContainer"
+          HorizontalAlignment="Right"
+          VerticalAlignment="Center"
+          IsVisible="False"
+          ZIndex="20"
+          Margin="0,0,20,0">
       
-      <StackPanel Orientation="Vertical" Margin="15" Spacing="12">
-        <!-- 사이드바 헤더 -->
-        <Grid>
-          <TextBlock Text="메뉴" 
-                     FontSize="14" 
-                     FontWeight="Bold" 
-                     Foreground="#FF6B35"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center"/>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      
+      <!-- 사이드바 닫기 버튼 (왼쪽 바깥) -->
+      <Button x:Name="SidebarCloseButton"
+              Grid.Column="0"
+              Width="20"
+              Height="100"
+              Background="#FF6B35"
+              BorderThickness="0"
+              CornerRadius="12,0,0,12"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Center"
+              Click="CloseSidebar"
+              Margin="0,0,2,0">
+        <!-- 오른쪽 화살표 아이콘 (좌측 끝, 더 위쪽) -->
+        <Path Data="M 3,42 L 7,45 L 3,48" 
+              Stroke="White"
+              StrokeThickness="2"
+              Fill="Transparent"/>
+        <Button.Styles>
+          <Style Selector="Button:pointerover">
+            <Setter Property="Background" Value="#E55A2B"/>
+          </Style>
+        </Button.Styles>
+      </Button>
+      
+      <!-- 메인 사이드바 -->
+      <Border x:Name="SidebarPanel"
+              Classes="sidebar-panel"
+              Grid.Column="1"
+              Width="350"
+              Height="220"
+              Background="White"
+              BorderBrush="#E0E0E0"
+              BorderThickness="1"
+              CornerRadius="8"
+              BoxShadow="0 2 10 0 #20000000">
+        
+        <Grid Margin="20">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          
+          <!-- 마켓 불러오기 영역 (상단) -->
+          <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="10"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- 마켓 불러오기 텍스트 -->
+            <TextBlock Grid.Column="0"
+                       Text="마켓 불러오기"
+                       FontSize="16"
+                       FontWeight="Medium"
+                       Foreground="#333333"
+                       VerticalAlignment="Center"/>
+            
+            <!-- 불러오기 버튼 -->
+            <Button Grid.Column="2"
+                    Content="불러오기"
+                    Background="#FF6B35"
+                    Foreground="White"
+                    BorderThickness="0"
+                    CornerRadius="4"
+                    Height="35"
+                    Width="80"
+                    FontSize="12"
+                    FontWeight="Medium"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    Click="LoadHistory">
+              <Button.Styles>
+                <Style Selector="Button:pointerover">
+                  <Setter Property="Background" Value="#E55A2B"/>
+                </Style>
+              </Button.Styles>
+            </Button>
+          </Grid>
+          
+          <!-- PDF로 추출하기 영역 (하단) -->
+          <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="10"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="10"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- PDF 아이콘 -->
+            <Canvas Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
+              <!-- PDF 문서 아이콘 -->
+              <Path Data="M3,2 L13,2 L17,6 L17,18 L3,18 Z M13,2 L13,6 L17,6" 
+                    Fill="#FF6B35" 
+                    Stroke="#FF6B35" 
+                    StrokeThickness="1"/>
+              <!-- PDF 텍스트 -->
+              <TextBlock Text="PDF" 
+                         FontSize="6" 
+                         FontWeight="Bold" 
+                         Foreground="White"
+                         Canvas.Left="5"
+                         Canvas.Top="8"/>
+            </Canvas>
+            
+            <!-- PDF로 추출하기 텍스트 -->
+            <TextBlock Grid.Column="2"
+                       Text="PDF로 추출하기"
+                       FontSize="16"
+                       FontWeight="Medium"
+                       Foreground="#333333"
+                       VerticalAlignment="Center"/>
+            
+            <!-- 추출하기 버튼 -->
+            <Button Grid.Column="4"
+                    Content="추출하기"
+                    Background="#FF6B35"
+                    Foreground="White"
+                    BorderThickness="0"
+                    CornerRadius="4"
+                    Height="35"
+                    Width="80"
+                    FontSize="12"
+                    FontWeight="Medium"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    Click="ExportToPdf">
+              <Button.Styles>
+                <Style Selector="Button:pointerover">
+                  <Setter Property="Background" Value="#E55A2B"/>
+                </Style>
+              </Button.Styles>
+            </Button>
+          </Grid>
         </Grid>
-        
-        <!-- 구분선 -->
-        <Rectangle Fill="#FF6B35" Height="1" Opacity="0.3"/>
-        
-        <!-- 메뉴 버튼들 -->
-        <Button x:Name="LoadHistoryButton"
-                Content="내역 불러오기"
-                Background="Transparent"
-                Foreground="#FF6B35"
-                BorderThickness="1"
-                BorderBrush="#FF6B35"
-                CornerRadius="4"
-                Height="35"
-                FontSize="12"
-                FontWeight="Medium"
-                HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center"
-                Click="LoadHistory">
-          <Button.Styles>
-            <Style Selector="Button:pointerover">
-              <Setter Property="Background" Value="#FFF8F0"/>
-            </Style>
-          </Button.Styles>
-        </Button>
-        
-        <Button x:Name="ExportToPdfButton"
-                Content="PDF로 추출하기"
-                Background="Transparent"
-                Foreground="#FF6B35"
-                BorderThickness="1"
-                BorderBrush="#FF6B35"
-                CornerRadius="4"
-                Height="35"
-                FontSize="12"
-                FontWeight="Medium"
-                HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center"
-                Click="ExportToPdf">
-          <Button.Styles>
-            <Style Selector="Button:pointerover">
-              <Setter Property="Background" Value="#FFF8F0"/>
-            </Style>
-          </Button.Styles>
-        </Button>
-      </StackPanel>
-    </Border>
+      </Border>
+    </Grid>
     
     <!-- 사이드바 배경 오버레이 (클릭시 사이드바 닫기) -->
     <Rectangle x:Name="SidebarOverlay"
