@@ -3,6 +3,8 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Interactivity;
 using Avalonia.Input;
+using Avalonia.Styling;
+using Avalonia;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,6 +21,55 @@ namespace Gumaedaehang
             InitializeComponent();
             InitializeProducts();
             UpdateProductCards(allProducts.Take(4).ToList()); // 초기 4개 상품 표시
+            
+            // 테마 변경 감지
+            try
+            {
+                if (Application.Current != null)
+                {
+                    Application.Current.ActualThemeVariantChanged += OnThemeChanged;
+                    UpdateTheme();
+                }
+            }
+            catch
+            {
+                // 테마 감지 실패시 기본 라이트 모드로 설정
+            }
+        }
+        
+        private void OnThemeChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                UpdateTheme();
+                // 상품 카드 다시 생성하여 테마 적용
+                var currentProducts = allProducts.Take(4).ToList();
+                UpdateProductCards(currentProducts);
+            }
+            catch
+            {
+                // 테마 업데이트 실패시 무시
+            }
+        }
+        
+        private void UpdateTheme()
+        {
+            try
+            {
+                if (Application.Current?.ActualThemeVariant == ThemeVariant.Dark)
+                {
+                    this.Classes.Add("dark-theme");
+                }
+                else
+                {
+                    this.Classes.Remove("dark-theme");
+                }
+            }
+            catch
+            {
+                // 테마 설정 실패시 기본값 유지
+                this.Classes.Remove("dark-theme");
+            }
         }
         
         private void InitializeProducts()
@@ -116,12 +167,38 @@ namespace Gumaedaehang
         
         private Border CreateProductCard(ProductInfo product)
         {
-            // 상품 카드 Border 생성 (테두리 제거)
+            // 현재 테마 확인 (안전하게)
+            bool isDarkMode = false;
+            try
+            {
+                isDarkMode = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+            }
+            catch
+            {
+                // 테마 확인 실패시 라이트 모드로 기본 설정
+                isDarkMode = false;
+            }
+            
+            // 상품 카드 Border 생성
             var cardBorder = new Border
             {
-                Background = Brushes.White,
+                Classes = { "product-card" },
                 Padding = new Avalonia.Thickness(16)
             };
+            
+            // 다크모드에 따른 스타일 적용
+            if (isDarkMode)
+            {
+                cardBorder.Background = new SolidColorBrush(Color.Parse("#3D3D3D"));
+                cardBorder.BorderBrush = new SolidColorBrush(Color.Parse("#FF6B35"));
+                cardBorder.BorderThickness = new Avalonia.Thickness(1);
+            }
+            else
+            {
+                cardBorder.Background = Brushes.White;
+                cardBorder.BorderBrush = Brushes.Transparent;
+                cardBorder.BorderThickness = new Avalonia.Thickness(0);
+            }
             
             // 메인 Grid
             var mainGrid = new Grid();
@@ -185,7 +262,9 @@ namespace Gumaedaehang
                 Text = $"상품명: {product.Name}",
                 FontSize = 13,
                 FontWeight = FontWeight.Medium,
-                TextWrapping = TextWrapping.Wrap
+                TextWrapping = TextWrapping.Wrap,
+                Classes = { "product-text" },
+                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#333333"))
             };
             infoStackPanel.Children.Add(nameTextBlock);
             
@@ -195,7 +274,8 @@ namespace Gumaedaehang
                 BorderBrush = new SolidColorBrush(Color.Parse("#FF6B35")),
                 BorderThickness = new Avalonia.Thickness(1),
                 CornerRadius = new Avalonia.CornerRadius(4),
-                Height = 60
+                Height = 60,
+                Background = isDarkMode ? new SolidColorBrush(Color.Parse("#2D2D2D")) : Brushes.Transparent
             };
             var scrollViewer = new ScrollViewer
             {
@@ -210,7 +290,8 @@ namespace Gumaedaehang
                 FontSize = 12,
                 AcceptsReturn = true,
                 TextWrapping = TextWrapping.Wrap,
-                Padding = new Avalonia.Thickness(8)
+                Padding = new Avalonia.Thickness(8),
+                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#333333"))
             };
             scrollViewer.Content = optionTextBox;
             optionBorder.Child = scrollViewer;
@@ -221,7 +302,9 @@ namespace Gumaedaehang
             {
                 Text = $"가격 : {product.Price}",
                 FontSize = 13,
-                FontWeight = FontWeight.SemiBold
+                FontWeight = FontWeight.SemiBold,
+                Classes = { "product-text" },
+                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#333333"))
             };
             infoStackPanel.Children.Add(priceTextBlock);
             
@@ -247,7 +330,7 @@ namespace Gumaedaehang
             {
                 Text = "피드백:",
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Color.Parse("#666"))
+                Foreground = isDarkMode ? new SolidColorBrush(Color.Parse("#CCCCCC")) : new SolidColorBrush(Color.Parse("#666"))
             };
             var feedbackText = new TextBlock
             {
@@ -265,7 +348,7 @@ namespace Gumaedaehang
             {
                 Text = "네이버쇼핑 바로가기",
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Color.Parse("#373737")),
+                Foreground = isDarkMode ? new SolidColorBrush(Color.Parse("#CCCCCC")) : new SolidColorBrush(Color.Parse("#373737")),
                 TextDecorations = TextDecorations.Underline,
                 Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
@@ -283,7 +366,7 @@ namespace Gumaedaehang
         // 사이드바 관련 메서드들
         private void ToggleSidebar(object sender, RoutedEventArgs e)
         {
-            if (SidebarPanel.IsVisible)
+            if (SidebarContainer.IsVisible)
             {
                 CloseSidebarInstant();
             }
@@ -306,14 +389,14 @@ namespace Gumaedaehang
         private void OpenSidebarInstant()
         {
             // 사이드바와 오버레이 표시
-            SidebarPanel.IsVisible = true;
+            SidebarContainer.IsVisible = true;
             SidebarOverlay.IsVisible = true;
         }
         
         private void CloseSidebarInstant()
         {
             // 사이드바와 오버레이 숨기기
-            SidebarPanel.IsVisible = false;
+            SidebarContainer.IsVisible = false;
             SidebarOverlay.IsVisible = false;
         }
         
