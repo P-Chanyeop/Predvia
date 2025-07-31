@@ -1,6 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
+using Avalonia.Interactivity;
+using Avalonia.Input;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -275,6 +278,68 @@ namespace Gumaedaehang
             cardBorder.Child = mainGrid;
             
             return cardBorder;
+        }
+        
+        // 사이드바 관련 메서드들
+        private void ToggleSidebar(object sender, RoutedEventArgs e)
+        {
+            if (SidebarPanel.IsVisible)
+            {
+                CloseSidebarInstant();
+            }
+            else
+            {
+                OpenSidebarInstant();
+            }
+        }
+        
+        private void CloseSidebar(object sender, RoutedEventArgs e)
+        {
+            CloseSidebarInstant();
+        }
+        
+        private void CloseSidebar(object sender, PointerPressedEventArgs e)
+        {
+            CloseSidebarInstant();
+        }
+        
+        private void OpenSidebarInstant()
+        {
+            // 사이드바와 오버레이 표시
+            SidebarPanel.IsVisible = true;
+            SidebarOverlay.IsVisible = true;
+        }
+        
+        private void CloseSidebarInstant()
+        {
+            // 사이드바와 오버레이 숨기기
+            SidebarPanel.IsVisible = false;
+            SidebarOverlay.IsVisible = false;
+        }
+        
+        // 사이드바 메뉴 버튼 이벤트 핸들러들
+        private void LoadHistory(object sender, RoutedEventArgs e)
+        {
+            // 내역 불러오기 기능 구현
+            // 여기에 실제 내역 불러오기 로직을 추가하세요
+            
+            // 임시로 메시지 표시 (실제 구현시 제거)
+            System.Diagnostics.Debug.WriteLine("내역 불러오기 기능이 실행되었습니다.");
+            
+            // 사이드바 닫기
+            CloseSidebarInstant();
+        }
+        
+        private void ExportToPdf(object sender, RoutedEventArgs e)
+        {
+            // PDF 추출 기능 구현
+            // 여기에 실제 PDF 생성 로직을 추가하세요
+            
+            // 임시로 메시지 표시 (실제 구현시 제거)
+            System.Diagnostics.Debug.WriteLine("PDF로 추출하기 기능이 실행되었습니다.");
+            
+            // 사이드바 닫기
+            CloseSidebarInstant();
         }
     }
     

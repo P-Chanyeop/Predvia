@@ -2,298 +2,402 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Gumaedaehang.MarketRegistrationPage">
   
-  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <Grid Background="White" Margin="20">
-      <Grid.RowDefinitions>
-        <RowDefinition Height="Auto"/>
-        <RowDefinition Height="20"/>
-        <RowDefinition Height="Auto"/>
-        <RowDefinition Height="30"/>
-        <RowDefinition Height="Auto"/>
-      </Grid.RowDefinitions>
-      
-      <!-- 검색 영역 -->
-      <Grid Grid.Row="0">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*"/>
-          <ColumnDefinition Width="10"/>
-          <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+  <!-- 메인 컨테이너 Grid -->
+  <Grid>
+    <!-- 메인 콘텐츠 -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <Grid Background="White" Margin="20">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="20"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="30"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
         
-        <Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Height="40">
-          <TextBox x:Name="SearchTextBox"
-                   Text="초코 바나나 시럽 아마토 핸드폰" 
-                   Background="Transparent" 
-                   BorderThickness="0"
-                   VerticalAlignment="Center"
-                   Padding="12,0"
-                   FontSize="14"
-                   TextChanged="OnSearchTextChanged"/>
-        </Border>
-        
-        <Button Grid.Column="2" 
-                Content="검색" 
-                Background="#FF6B35" 
-                Foreground="White" 
-                BorderThickness="0" 
-                CornerRadius="4" 
-                Height="40"
-                FontSize="14"
-                FontWeight="SemiBold"
-                HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center"/>
-      </Grid>
-      
-      <!-- 상품 카드 그리드 영역 -->
-      <Grid Grid.Row="2">
-        <!-- 동적으로 생성될 상품 카드들을 위한 컨테이너 -->
-        <Grid x:Name="ProductCardsContainer">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="20"/>
-            <RowDefinition Height="Auto"/>
-          </Grid.RowDefinitions>
+        <!-- 검색 영역 -->
+        <Grid Grid.Row="0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="10"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
           
-          <!-- 첫 번째 행 -->
-          <Grid x:Name="FirstRowGrid" Grid.Row="0">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="20"/>
-              <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-          </Grid>
+          <Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Height="40">
+            <TextBox x:Name="SearchTextBox"
+                     Text="초코 바나나 시럽 아마토 핸드폰" 
+                     Background="Transparent" 
+                     BorderThickness="0"
+                     VerticalAlignment="Center"
+                     Padding="12,0"
+                     FontSize="14"
+                     TextChanged="OnSearchTextChanged"/>
+          </Border>
           
-          <!-- 두 번째 행 -->
-          <Grid x:Name="SecondRowGrid" Grid.Row="2">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="20"/>
-              <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-          </Grid>
+          <Button Grid.Column="2" 
+                  Content="검색" 
+                  Background="#FF6B35" 
+                  Foreground="White" 
+                  BorderThickness="0" 
+                  CornerRadius="4" 
+                  Height="40"
+                  FontSize="14"
+                  FontWeight="SemiBold"
+                  HorizontalContentAlignment="Center"
+                  VerticalContentAlignment="Center"/>
         </Grid>
-      </Grid>
-      
-      <!-- 차트 및 범례 영역 -->
-      <Grid Grid.Row="4">
-        <!-- 차트 영역 (범례 포함) -->
-        <Border Background="#FFF8F0" CornerRadius="8" Padding="30" Height="755">
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="2*"/>
-              <ColumnDefinition Width="30"/>
-              <ColumnDefinition Width="1*"/>
-            </Grid.ColumnDefinitions>
+        
+        <!-- 상품 카드 그리드 영역 -->
+        <Grid Grid.Row="2">
+          <!-- 동적으로 생성될 상품 카드들을 위한 컨테이너 -->
+          <Grid x:Name="ProductCardsContainer">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="20"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
             
-            <Grid Grid.Column="0">
-              <Grid.RowDefinitions>
-                <RowDefinition Height="30"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="40"/>
-              </Grid.RowDefinitions>
-              
-              <!-- Y축 화살표 -->
-              <Canvas Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Left" Width="40">
-                <Path Data="M 20,20 L 20,650 M 15,25 L 20,20 L 25,25" 
-                      Stroke="#FF6B35" StrokeThickness="2" Fill="#FF6B35"/>
-              </Canvas>
-              
-              <!-- 차트 바들 -->
-              <Grid Grid.Row="1" Margin="50,20,20,20">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                
-                <!-- 1,000 바 그룹 -->
-                <Grid Grid.Column="0" VerticalAlignment="Bottom" HorizontalAlignment="Center">
-                  <!-- 회색 막대 (뒤) -->
-                  <Rectangle Fill="#C0C0C0" Height="200" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
-                  <!-- 주황색 막대 (앞, 살짝 겹침) -->
-                  <Rectangle Fill="#FF6B35" Height="150" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
-                </Grid>
-                
-                <!-- 10,000 바 그룹 -->
-                <Grid Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Center">
-                  <!-- 회색 막대 (뒤) -->
-                  <Rectangle Fill="#C0C0C0" Height="120" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
-                  <!-- 주황색 막대 (앞, 살짝 겹침) -->
-                  <Rectangle Fill="#FF6B35" Height="300" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
-                </Grid>
-                
-                <!-- 50,000 바 그룹 -->
-                <Grid Grid.Column="2" VerticalAlignment="Bottom" HorizontalAlignment="Center">
-                  <!-- 회색 막대 (뒤) -->
-                  <Rectangle Fill="#C0C0C0" Height="450" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
-                  <!-- 주황색 막대 (앞, 살짝 겹침) -->
-                  <Rectangle Fill="#FF6B35" Height="100" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
-                </Grid>
-                
-                <!-- 100,000 바 그룹 -->
-                <Grid Grid.Column="3" VerticalAlignment="Bottom" HorizontalAlignment="Center">
-                  <!-- 회색 막대 (뒤) -->
-                  <Rectangle Fill="#C0C0C0" Height="220" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
-                  <!-- 주황색 막대 (앞, 살짝 겹침) -->
-                  <Rectangle Fill="#FF6B35" Height="400" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
-                </Grid>
-              </Grid>
-              
-              <!-- X축 가로 주황색 줄 -->
-              <Rectangle Grid.Row="2" Fill="#FF6B35" Height="2" Margin="50,0,20,25" VerticalAlignment="Top"/>
-              
-              <!-- X축 라벨 -->
-              <Grid Grid.Row="2" Margin="50,8,20,0">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                
-                <TextBlock Grid.Column="0" Text="1,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
-                <TextBlock Grid.Column="1" Text="10,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
-                <TextBlock Grid.Column="2" Text="50,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
-                <TextBlock Grid.Column="3" Text="100,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
-              </Grid>
+            <!-- 첫 번째 행 -->
+            <Grid x:Name="FirstRowGrid" Grid.Row="0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
             </Grid>
             
-            <!-- 범례 및 설명 -->
-            <StackPanel Grid.Column="2" Spacing="30" VerticalAlignment="Top">
-              <!-- 범례 -->
-              <StackPanel Spacing="12">
-                <CheckBox Content="주문처리형" 
-                         IsChecked="True" 
-                         FontSize="13" 
-                         FontWeight="Medium"
-                         Margin="0,0,0,4">
-                  <CheckBox.Styles>
-                    <Style Selector="CheckBox">
-                      <Setter Property="Template">
-                        <ControlTemplate>
-                          <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Border Name="CheckBoxBorder"
-                                    Width="16" 
-                                    Height="16"
-                                    Background="#FFBF9A"
-                                    BorderBrush="#FFBF9A"
-                                    BorderThickness="1"
-                                    CornerRadius="2">
-                              <Path Name="CheckMark"
-                                    Data="M 2,6 L 6,10 L 14,2"
-                                    Stroke="White"
-                                    StrokeThickness="2"
-                                    IsVisible="False"/>
-                            </Border>
-                            <ContentPresenter Content="{TemplateBinding Content}"
-                                            VerticalAlignment="Center"/>
-                          </StackPanel>
-                        </ControlTemplate>
-                      </Setter>
-                    </Style>
-                    <Style Selector="CheckBox:checked /template/ Border#CheckBoxBorder">
-                      <Setter Property="Background" Value="#DF6C29"/>
-                      <Setter Property="BorderBrush" Value="#DF6C29"/>
-                    </Style>
-                    <Style Selector="CheckBox:checked /template/ Path#CheckMark">
-                      <Setter Property="IsVisible" Value="True"/>
-                    </Style>
-                  </CheckBox.Styles>
-                </CheckBox>
-                
-                <CheckBox Content="밸런스형" 
-                         IsChecked="True" 
-                         FontSize="13" 
-                         FontWeight="Medium"
-                         Margin="0,0,0,4">
-                  <CheckBox.Styles>
-                    <Style Selector="CheckBox">
-                      <Setter Property="Template">
-                        <ControlTemplate>
-                          <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Border Name="CheckBoxBorder"
-                                    Width="16" 
-                                    Height="16"
-                                    Background="#FFBF9A"
-                                    BorderBrush="#FFBF9A"
-                                    BorderThickness="1"
-                                    CornerRadius="2">
-                              <Path Name="CheckMark"
-                                    Data="M 2,6 L 6,10 L 14,2"
-                                    Stroke="White"
-                                    StrokeThickness="2"
-                                    IsVisible="False"/>
-                            </Border>
-                            <ContentPresenter Content="{TemplateBinding Content}"
-                                            VerticalAlignment="Center"/>
-                          </StackPanel>
-                        </ControlTemplate>
-                      </Setter>
-                    </Style>
-                    <Style Selector="CheckBox:checked /template/ Border#CheckBoxBorder">
-                      <Setter Property="Background" Value="#DF6C29"/>
-                      <Setter Property="BorderBrush" Value="#DF6C29"/>
-                    </Style>
-                    <Style Selector="CheckBox:checked /template/ Path#CheckMark">
-                      <Setter Property="IsVisible" Value="True"/>
-                    </Style>
-                  </CheckBox.Styles>
-                </CheckBox>
-                
-                <CheckBox Content="크무비형" 
-                         IsChecked="True" 
-                         FontSize="13" 
-                         FontWeight="Medium"
-                         Margin="0,0,0,4">
-                  <CheckBox.Styles>
-                    <Style Selector="CheckBox">
-                      <Setter Property="Template">
-                        <ControlTemplate>
-                          <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Border Name="CheckBoxBorder"
-                                    Width="16" 
-                                    Height="16"
-                                    Background="#FFBF9A"
-                                    BorderBrush="#FFBF9A"
-                                    BorderThickness="1"
-                                    CornerRadius="2">
-                              <Path Name="CheckMark"
-                                    Data="M 2,6 L 6,10 L 14,2"
-                                    Stroke="White"
-                                    StrokeThickness="2"
-                                    IsVisible="False"/>
-                            </Border>
-                            <ContentPresenter Content="{TemplateBinding Content}"
-                                            VerticalAlignment="Center"/>
-                          </StackPanel>
-                        </ControlTemplate>
-                      </Setter>
-                    </Style>
-                    <Style Selector="CheckBox:checked /template/ Border#CheckBoxBorder">
-                      <Setter Property="Background" Value="#DF6C29"/>
-                      <Setter Property="BorderBrush" Value="#DF6C29"/>
-                    </Style>
-                    <Style Selector="CheckBox:checked /template/ Path#CheckMark">
-                      <Setter Property="IsVisible" Value="True"/>
-                    </Style>
-                  </CheckBox.Styles>
-                </CheckBox>
-              </StackPanel>
-              
-              <!-- 설명 텍스트 -->
-              <TextBlock Text="피드백 입니다. 주문처리형 밸런스형 크무비형 초코 바나나 시럽 아마토 핸드폰 일반업체 중국어가 있습니다. 브랜드명이 포함되어 있습니다." 
-                         FontSize="24" 
-                         FontWeight="Bold"
-                         FontFamily="Pretendard"
-                         TextWrapping="Wrap" 
-                         LineHeight="32"
-                         Foreground="#DF6C29"/>
-            </StackPanel>
+            <!-- 두 번째 행 -->
+            <Grid x:Name="SecondRowGrid" Grid.Row="2">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+            </Grid>
           </Grid>
-        </Border>
+        </Grid>
+        
+        <!-- 차트 및 범례 영역 -->
+        <Grid Grid.Row="4">
+          <!-- 차트 영역 (범례 포함) -->
+          <Border Background="#FFF8F0" CornerRadius="8" Padding="30" Height="755">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="30"/>
+                <ColumnDefinition Width="1*"/>
+              </Grid.ColumnDefinitions>
+              
+              <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="30"/>
+                  <RowDefinition Height="*"/>
+                  <RowDefinition Height="40"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Y축 화살표 -->
+                <Canvas Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Left" Width="40">
+                  <Path Data="M 20,20 L 20,650 M 15,25 L 20,20 L 25,25" 
+                        Stroke="#FF6B35" StrokeThickness="2" Fill="#FF6B35"/>
+                </Canvas>
+                
+                <!-- 차트 바들 -->
+                <Grid Grid.Row="1" Margin="50,20,20,20">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  
+                  <!-- 1,000 바 그룹 -->
+                  <Grid Grid.Column="0" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                    <!-- 회색 막대 (뒤) -->
+                    <Rectangle Fill="#C0C0C0" Height="200" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
+                    <!-- 주황색 막대 (앞, 살짝 겹침) -->
+                    <Rectangle Fill="#FF6B35" Height="150" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
+                  </Grid>
+                  
+                  <!-- 10,000 바 그룹 -->
+                  <Grid Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                    <!-- 회색 막대 (뒤) -->
+                    <Rectangle Fill="#C0C0C0" Height="120" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
+                    <!-- 주황색 막대 (앞, 살짝 겹침) -->
+                    <Rectangle Fill="#FF6B35" Height="300" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
+                  </Grid>
+                  
+                  <!-- 50,000 바 그룹 -->
+                  <Grid Grid.Column="2" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                    <!-- 회색 막대 (뒤) -->
+                    <Rectangle Fill="#C0C0C0" Height="450" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
+                    <!-- 주황색 막대 (앞, 살짝 겹침) -->
+                    <Rectangle Fill="#FF6B35" Height="100" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
+                  </Grid>
+                  
+                  <!-- 100,000 바 그룹 -->
+                  <Grid Grid.Column="3" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                    <!-- 회색 막대 (뒤) -->
+                    <Rectangle Fill="#C0C0C0" Height="220" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
+                    <!-- 주황색 막대 (앞, 살짝 겹침) -->
+                    <Rectangle Fill="#FF6B35" Height="400" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
+                  </Grid>
+                </Grid>
+                
+                <!-- X축 가로 주황색 줄 -->
+                <Rectangle Grid.Row="2" Fill="#FF6B35" Height="2" Margin="50,0,20,25" VerticalAlignment="Top"/>
+                
+                <!-- X축 라벨 -->
+                <Grid Grid.Row="2" Margin="50,8,20,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  
+                  <TextBlock Grid.Column="0" Text="1,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
+                  <TextBlock Grid.Column="1" Text="10,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
+                  <TextBlock Grid.Column="2" Text="50,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
+                  <TextBlock Grid.Column="3" Text="100,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
+                </Grid>
+              </Grid>
+              
+              <!-- 범례 및 설명 -->
+              <StackPanel Grid.Column="2" Spacing="30" VerticalAlignment="Top">
+                <!-- 범례 -->
+                <StackPanel Spacing="12">
+                  <CheckBox Content="주문처리형" 
+                           IsChecked="True" 
+                           FontSize="13" 
+                           FontWeight="Medium"
+                           Margin="0,0,0,4">
+                    <CheckBox.Styles>
+                      <Style Selector="CheckBox">
+                        <Setter Property="Template">
+                          <ControlTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <Border Name="CheckBoxBorder"
+                                      Width="16" 
+                                      Height="16"
+                                      Background="#FFBF9A"
+                                      BorderBrush="#FFBF9A"
+                                      BorderThickness="1"
+                                      CornerRadius="2">
+                                <Path Name="CheckMark"
+                                      Data="M 2,6 L 6,10 L 14,2"
+                                      Stroke="White"
+                                      StrokeThickness="2"
+                                      IsVisible="False"/>
+                              </Border>
+                              <ContentPresenter Content="{TemplateBinding Content}"
+                                              VerticalAlignment="Center"/>
+                            </StackPanel>
+                          </ControlTemplate>
+                        </Setter>
+                      </Style>
+                      <Style Selector="CheckBox:checked /template/ Border#CheckBoxBorder">
+                        <Setter Property="Background" Value="#DF6C29"/>
+                        <Setter Property="BorderBrush" Value="#DF6C29"/>
+                      </Style>
+                      <Style Selector="CheckBox:checked /template/ Path#CheckMark">
+                        <Setter Property="IsVisible" Value="True"/>
+                      </Style>
+                    </CheckBox.Styles>
+                  </CheckBox>
+                  
+                  <CheckBox Content="밸런스형" 
+                           IsChecked="True" 
+                           FontSize="13" 
+                           FontWeight="Medium"
+                           Margin="0,0,0,4">
+                    <CheckBox.Styles>
+                      <Style Selector="CheckBox">
+                        <Setter Property="Template">
+                          <ControlTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <Border Name="CheckBoxBorder"
+                                      Width="16" 
+                                      Height="16"
+                                      Background="#FFBF9A"
+                                      BorderBrush="#FFBF9A"
+                                      BorderThickness="1"
+                                      CornerRadius="2">
+                                <Path Name="CheckMark"
+                                      Data="M 2,6 L 6,10 L 14,2"
+                                      Stroke="White"
+                                      StrokeThickness="2"
+                                      IsVisible="False"/>
+                              </Border>
+                              <ContentPresenter Content="{TemplateBinding Content}"
+                                              VerticalAlignment="Center"/>
+                            </StackPanel>
+                          </ControlTemplate>
+                        </Setter>
+                      </Style>
+                      <Style Selector="CheckBox:checked /template/ Border#CheckBoxBorder">
+                        <Setter Property="Background" Value="#DF6C29"/>
+                        <Setter Property="BorderBrush" Value="#DF6C29"/>
+                      </Style>
+                      <Style Selector="CheckBox:checked /template/ Path#CheckMark">
+                        <Setter Property="IsVisible" Value="True"/>
+                      </Style>
+                    </CheckBox.Styles>
+                  </CheckBox>
+                  
+                  <CheckBox Content="크무비형" 
+                           IsChecked="True" 
+                           FontSize="13" 
+                           FontWeight="Medium"
+                           Margin="0,0,0,4">
+                    <CheckBox.Styles>
+                      <Style Selector="CheckBox">
+                        <Setter Property="Template">
+                          <ControlTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <Border Name="CheckBoxBorder"
+                                      Width="16" 
+                                      Height="16"
+                                      Background="#FFBF9A"
+                                      BorderBrush="#FFBF9A"
+                                      BorderThickness="1"
+                                      CornerRadius="2">
+                                <Path Name="CheckMark"
+                                      Data="M 2,6 L 6,10 L 14,2"
+                                      Stroke="White"
+                                      StrokeThickness="2"
+                                      IsVisible="False"/>
+                              </Border>
+                              <ContentPresenter Content="{TemplateBinding Content}"
+                                              VerticalAlignment="Center"/>
+                            </StackPanel>
+                          </ControlTemplate>
+                        </Setter>
+                      </Style>
+                      <Style Selector="CheckBox:checked /template/ Border#CheckBoxBorder">
+                        <Setter Property="Background" Value="#DF6C29"/>
+                        <Setter Property="BorderBrush" Value="#DF6C29"/>
+                      </Style>
+                      <Style Selector="CheckBox:checked /template/ Path#CheckMark">
+                        <Setter Property="IsVisible" Value="True"/>
+                      </Style>
+                    </CheckBox.Styles>
+                  </CheckBox>
+                </StackPanel>
+                
+                <!-- 설명 텍스트 -->
+                <TextBlock Text="피드백 입니다. 주문처리형 밸런스형 크무비형 초코 바나나 시럽 아마토 핸드폰 일반업체 중국어가 있습니다. 브랜드명이 포함되어 있습니다." 
+                           FontSize="24" 
+                           FontWeight="Bold"
+                           FontFamily="Pretendard"
+                           TextWrapping="Wrap" 
+                           LineHeight="32"
+                           Foreground="#DF6C29"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Grid>
       </Grid>
-    </Grid>
-  </ScrollViewer>
+    </ScrollViewer>
+    
+    <!-- 사이드바 토글 버튼 -->
+    <Button x:Name="SidebarToggleButton"
+            Width="50" 
+            Height="120"
+            Background="#FF6B35"
+            BorderThickness="0"
+            CornerRadius="8,0,0,8"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            Margin="0,0,0,0"
+            Click="ToggleSidebar"
+            ZIndex="10">
+      <StackPanel Orientation="Vertical" Spacing="5">
+        <!-- 햄버거 메뉴 아이콘 -->
+        <Rectangle Fill="White" Width="20" Height="2" RadiusX="1" RadiusY="1"/>
+        <Rectangle Fill="White" Width="20" Height="2" RadiusX="1" RadiusY="1"/>
+        <Rectangle Fill="White" Width="20" Height="2" RadiusX="1" RadiusY="1"/>
+      </StackPanel>
+    </Button>
+    
+    <!-- 사이드바 패널 -->
+    <Border x:Name="SidebarPanel"
+            Width="150"
+            Height="200"
+            Background="White"
+            BorderBrush="#FF6B35"
+            BorderThickness="2"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            IsVisible="False"
+            ZIndex="20"
+            CornerRadius="8"
+            BoxShadow="0 4 15 0 #30000000"
+            Margin="0,0,10,0">
+      
+      <StackPanel Orientation="Vertical" Margin="15" Spacing="12">
+        <!-- 사이드바 헤더 -->
+        <Grid>
+          <TextBlock Text="메뉴" 
+                     FontSize="14" 
+                     FontWeight="Bold" 
+                     Foreground="#FF6B35"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"/>
+        </Grid>
+        
+        <!-- 구분선 -->
+        <Rectangle Fill="#FF6B35" Height="1" Opacity="0.3"/>
+        
+        <!-- 메뉴 버튼들 -->
+        <Button x:Name="LoadHistoryButton"
+                Content="내역 불러오기"
+                Background="Transparent"
+                Foreground="#FF6B35"
+                BorderThickness="1"
+                BorderBrush="#FF6B35"
+                CornerRadius="4"
+                Height="35"
+                FontSize="12"
+                FontWeight="Medium"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                Click="LoadHistory">
+          <Button.Styles>
+            <Style Selector="Button:pointerover">
+              <Setter Property="Background" Value="#FFF8F0"/>
+            </Style>
+          </Button.Styles>
+        </Button>
+        
+        <Button x:Name="ExportToPdfButton"
+                Content="PDF로 추출하기"
+                Background="Transparent"
+                Foreground="#FF6B35"
+                BorderThickness="1"
+                BorderBrush="#FF6B35"
+                CornerRadius="4"
+                Height="35"
+                FontSize="12"
+                FontWeight="Medium"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                Click="ExportToPdf">
+          <Button.Styles>
+            <Style Selector="Button:pointerover">
+              <Setter Property="Background" Value="#FFF8F0"/>
+            </Style>
+          </Button.Styles>
+        </Button>
+      </StackPanel>
+    </Border>
+    
+    <!-- 사이드바 배경 오버레이 (클릭시 사이드바 닫기) -->
+    <Rectangle x:Name="SidebarOverlay"
+               Fill="Black"
+               Opacity="0.3"
+               IsVisible="False"
+               ZIndex="15"
+               PointerPressed="CloseSidebar"/>
+  </Grid>
   
 </UserControl>
