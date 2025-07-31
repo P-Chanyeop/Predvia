@@ -97,21 +97,32 @@
         </Grid>
 
         <!-- 오늘의 명언 영역 -->
-        <StackPanel Grid.Row="1" 
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Center" 
-                    VerticalAlignment="Center"
-                    Spacing="5">
-            <TextBlock Text="오늘의 명언: " 
+        <Grid Grid.Row="1" 
+              HorizontalAlignment="Center" 
+              VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="800"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBlock Grid.Column="0"
+                       Text="오늘의 명언: " 
                        FontSize="18"
                        FontWeight="Bold"
+                       VerticalAlignment="Center"
                        Foreground="{DynamicResource ForegroundBrush}"/>
             
             <!-- 슬라이딩 명언 컨테이너 -->
-            <Border Width="800" Height="30" ClipToBounds="True">
+            <Border Grid.Column="2" 
+                    Width="800" 
+                    Height="30" 
+                    ClipToBounds="True" 
+                    VerticalAlignment="Center">
                 <ScrollViewer x:Name="adviceScrollViewer"
                               HorizontalScrollBarVisibility="Hidden"
-                              VerticalScrollBarVisibility="Hidden">
+                              VerticalScrollBarVisibility="Hidden"
+                              VerticalAlignment="Center">
                     <StackPanel x:Name="adviceContainer" 
                                 Orientation="Horizontal" 
                                 Spacing="5"
@@ -137,7 +148,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </Border>
-        </StackPanel>
+        </Grid>
         
         <!-- 구분선 -->
         <Rectangle Grid.Row="2" 
