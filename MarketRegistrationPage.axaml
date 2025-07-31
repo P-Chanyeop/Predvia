@@ -66,7 +66,7 @@
   </UserControl.Styles>
   
   <!-- 메인 컨테이너 Grid -->
-  <Grid x:Name="MainGrid">
+  <Grid x:Name="RootGrid">
     <!-- 메인 콘텐츠 -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <Grid x:Name="MainGrid" Classes="main-grid" Background="White" Margin="20">

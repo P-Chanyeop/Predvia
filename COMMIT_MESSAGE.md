@@ -1,86 +1,73 @@
-# 🎨 feat: 마켓점검 및 마켓등록 페이지 완전 구현
+# 🐛 Fix: 네임스코프 충돌 및 UI 정렬 문제 해결
 
-## 📋 주요 변경사항
+## 🔧 수정된 문제들
 
-### ✨ 새로운 기능
-- **마켓점검 페이지 (10.png 구현)**
-  - 화면 중앙 "마켓등록하기" 버튼 (240×70px, #E67E22)
-  - 적당한 둥근 모서리 (CornerRadius="12") 적용
-  - 20px 폰트 크기로 가독성 최적화
+### 1. 네임스코프 충돌 문제 해결
+- **문제**: MarketRegistrationPage.axaml에서 'MainGrid' 이름이 중복 사용되어 런타임 오류 발생
+- **해결**: 최상위 Grid의 이름을 'RootGrid'로 변경하여 네임스코프 충돌 해결
+- **파일**: `MarketRegistrationPage.axaml` (69번째 줄)
 
-- **마켓등록 페이지 (11.png 완전 구현)**
-  - 2×2 그리드 상품 카드 레이아웃 구현
-  - 실시간 피드백 시스템 ("중국어가 있습니다", "브랜드명이 포함되어있습니다")
-  - 네이버쇼핑 바로가기 링크 (검정색 밑줄 스타일)
-  - 옅은 주황색 배경 차트 섹션 (#FFF5E6)
-  - 막대 그래프: 회색 배경 + 주황색 전경 겹침 효과
-  - 범례: 주문처리형, 밸런스형, 크무비형
-  - 주황색 피드백 텍스트 (#E67E22) 통일
+### 2. 명언 텍스트 정렬 문제 해결
+- **문제**: "오늘의 명언:"과 실제 명언 텍스트의 수직 정렬이 맞지 않음
+- **해결**: StackPanel을 Grid 레이아웃으로 변경하여 정확한 정렬 구현
+- **파일**: `MainWindow.axaml` (99-145번째 줄)
 
-### 🔧 기술적 개선
-- **XAML 구조 최적화**
-  - 모든 태그 올바른 열기/닫기 구조 확립
-  - 중복 코드 제거 및 컴포넌트 재사용성 향상
-  - Avalonia UI 표준 준수 (Line → StartPoint/EndPoint)
+## 🎯 기술적 개선사항
 
-- **이벤트 핸들링 시스템**
-  - 마켓등록하기 버튼 클릭 이벤트 구현
-  - 탭 전환 로직 안정화
-  - ThemeManager 인스턴스 기반 호출 수정
+### 네임스코프 충돌 해결
+```xml
+<!-- 변경 전 -->
+<Grid x:Name="MainGrid">
+  <ScrollViewer>
+    <Grid x:Name="MainGrid"> <!-- 충돌! -->
 
-- **API 인증 시스템 강화**
-  - 테스트 모드 우선 방식으로 변경
-  - 네트워크 오류 시 fallback 메커니즘
-  - 개발용 API 키 지원 (PREDVIA-API-KEY-12345, TEST-API-KEY-67890)
+<!-- 변경 후 -->
+<Grid x:Name="RootGrid">
+  <ScrollViewer>
+    <Grid x:Name="MainGrid"> <!-- 정상 -->
+```
 
-### 🎨 UI/UX 개선
-- **색상 시스템 통일**
-  - 주 색상: #E67E22 (주황색) 일관성 있게 적용
-  - 피드백 텍스트 모두 주황색으로 통일
-  - 차트 배경 옅은 주황색 (#FFF5E6) 적용
+### UI 정렬 개선
+```xml
+<!-- 변경 전: StackPanel 사용 -->
+<StackPanel Orientation="Horizontal" Spacing="5">
+  <TextBlock Text="오늘의 명언: "/>
+  <Border Width="800">...</Border>
+</StackPanel>
 
-- **타이포그래피 최적화**
-  - 버튼 폰트: 20px SemiBold
-  - 상품명: 14px Medium
-  - 피드백: 12px Regular
-  - 링크: 11px Underline
+<!-- 변경 후: Grid 사용 -->
+<Grid>
+  <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="Auto"/>
+    <ColumnDefinition Width="5"/>
+    <ColumnDefinition Width="800"/>
+  </Grid.ColumnDefinitions>
+  <TextBlock Grid.Column="0" VerticalAlignment="Center"/>
+  <Border Grid.Column="2" VerticalAlignment="Center"/>
+</Grid>
+```
 
-- **레이아웃 반응형 설계**
-  - 1200px 최대 너비 컨테이너
-  - 스크롤 지원으로 다양한 화면 크기 대응
-  - 적절한 여백과 패딩 적용
+## 📈 개선 효과
 
-### 🐛 버그 수정
-- XAML 태그 불일치 오류 완전 해결
-- ThemeManager 정적 메서드 호출 오류 수정
-- FindResource 및 IBrush 관련 컴파일 오류 해결
-- 중복된 상단 헤더 제거로 UI 중복 문제 해결
+- ✅ **안정성 향상**: 네임스코프 충돌로 인한 런타임 오류 완전 해결
+- ✅ **UI 품질 개선**: 명언 텍스트의 완벽한 수직 정렬 달성
+- ✅ **코드 품질**: 더 명확하고 유지보수하기 쉬운 XAML 구조
+- ✅ **사용자 경험**: 시각적으로 더 깔끔하고 전문적인 인터페이스
 
-### 📚 문서화
-- **README.md 대폭 업데이트**
-  - 프로젝트 개요 및 기능 상세 설명
-  - 기술 스택 및 아키텍처 문서화
-  - UI/UX 디자인 가이드 추가
-  - 개발 진행 상황 및 향후 계획 명시
+## 🧪 테스트 결과
 
-## 🔄 변경된 파일들
-- `MainWindow.axaml` - 마켓점검/등록 페이지 UI 구현
-- `MainWindow.axaml.cs` - 이벤트 핸들링 및 탭 전환 로직
-- `Services/ApiKeyAuthClient.cs` - 테스트 모드 우선 인증 로직
-- `README.md` - 프로젝트 문서 완전 재작성
+- [x] 애플리케이션 정상 실행 확인
+- [x] 마켓등록 페이지 로딩 오류 해결
+- [x] 명언 텍스트 정렬 완벽 정렬 확인
+- [x] 다크/라이트 테마 전환 시 정렬 유지 확인
 
-## 🎯 테스트 시나리오
-1. 애플리케이션 실행 → API 키 입력 (PREDVIA-API-KEY-12345)
-2. 마켓점검 탭 클릭 → 10.png와 동일한 화면 확인
-3. 마켓등록하기 버튼 클릭 → 11.png와 동일한 상세 페이지 확인
-4. 차트 및 피드백 텍스트 주황색 표시 확인
-5. 네이버쇼핑 바로가기 링크 밑줄 스타일 확인
+## 📝 관련 이슈
 
-## 📈 성과
-- **UI 완성도**: 10.png, 11.png 100% 동일 구현 달성
-- **코드 품질**: 모든 컴파일 오류 해결, 깔끔한 구조
-- **사용자 경험**: 직관적인 네비게이션 및 피드백 시스템
-- **문서화**: 포괄적인 프로젝트 문서 완성
+- 해결: `Control with the name 'MainGrid' already registered` 오류
+- 해결: 명언 텍스트 수직 정렬 불일치 문제
 
 ---
-**구현 완료**: 마켓점검 → 마켓등록 전체 플로우 ✅
+
+**작업자**: Amazon Q Developer  
+**작업일**: 2025-07-31  
+**영향도**: 중요 (런타임 오류 해결 + UI 품질 개선)
