@@ -46,6 +46,23 @@ namespace Gumaedaehang
                 };
                 _inputTimer.Tick += InputTimer_Tick;
                 
+                // 테마 변경 감지
+                try
+                {
+                    if (Application.Current != null)
+                    {
+                        Application.Current.ActualThemeVariantChanged += OnThemeChanged;
+                        UpdateTheme();
+                    }
+                    
+                    // ThemeManager 이벤트도 구독
+                    ThemeManager.Instance.ThemeChanged += OnThemeManagerChanged;
+                }
+                catch
+                {
+                    // 테마 감지 실패시 기본 라이트 모드로 설정
+                }
+                
                 // UI 요소 참조 가져오기
                 _noDataView = this.FindControl<Grid>("NoDataView");
                 _dataAvailableView = this.FindControl<Grid>("DataAvailableView");
@@ -74,6 +91,52 @@ namespace Gumaedaehang
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+        
+        private void OnThemeChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                UpdateTheme();
+            }
+            catch
+            {
+                // 테마 변경 실패시 무시
+            }
+        }
+        
+        private void OnThemeManagerChanged(object? sender, ThemeManager.ThemeType themeType)
+        {
+            try
+            {
+                UpdateTheme();
+            }
+            catch
+            {
+                // 테마 변경 실패시 무시
+            }
+        }
+        
+        private void UpdateTheme()
+        {
+            try
+            {
+                if (ThemeManager.Instance.IsDarkTheme)
+                {
+                    this.Classes.Add("dark-theme");
+                    System.Diagnostics.Debug.WriteLine("SourcingPage: 다크모드 적용됨");
+                }
+                else
+                {
+                    this.Classes.Remove("dark-theme");
+                    System.Diagnostics.Debug.WriteLine("SourcingPage: 라이트모드 적용됨");
+                }
+            }
+            catch
+            {
+                // 테마 설정 실패시 기본값 유지
+                this.Classes.Remove("dark-theme");
+            }
         }
         
         // 상품들의 UI 요소들을 초기화

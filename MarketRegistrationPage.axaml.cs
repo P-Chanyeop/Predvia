@@ -14,13 +14,13 @@ namespace Gumaedaehang
     public partial class MarketRegistrationPage : UserControl
     {
         // 전체 상품 데이터
-        private List<ProductInfo> allProducts;
+        private List<ProductInfo> allProducts = new List<ProductInfo>();
         
         public MarketRegistrationPage()
         {
             InitializeComponent();
             InitializeProducts();
-            UpdateProductCards(allProducts.Take(4).ToList()); // 초기 4개 상품 표시
+            UpdateProductCards(allProducts?.Take(4).ToList() ?? new List<ProductInfo>()); // 초기 4개 상품 표시
             
             // 테마 변경 감지
             try
@@ -30,6 +30,9 @@ namespace Gumaedaehang
                     Application.Current.ActualThemeVariantChanged += OnThemeChanged;
                     UpdateTheme();
                 }
+                
+                // ThemeManager 이벤트도 구독
+                ThemeManager.Instance.ThemeChanged += OnThemeManagerChanged;
             }
             catch
             {
@@ -52,17 +55,64 @@ namespace Gumaedaehang
             }
         }
         
+        private void OnThemeManagerChanged(object? sender, ThemeManager.ThemeType themeType)
+        {
+            try
+            {
+                UpdateTheme();
+                // 상품 카드 다시 생성하여 테마 적용
+                var currentProducts = allProducts.Take(4).ToList();
+                UpdateProductCards(currentProducts);
+            }
+            catch
+            {
+                // 테마 업데이트 실패시 무시
+            }
+        }
+        
         private void UpdateTheme()
         {
             try
             {
-                if (Application.Current?.ActualThemeVariant == ThemeVariant.Dark)
+                if (ThemeManager.Instance.IsDarkTheme)
                 {
                     this.Classes.Add("dark-theme");
+                    
+                    // 루트 그리드와 메인 그리드에도 다크모드 클래스 추가
+                    var rootGrid = this.FindControl<Grid>("RootGrid");
+                    var mainGrid = this.FindControl<Grid>("MainGrid");
+                    
+                    if (rootGrid != null)
+                    {
+                        rootGrid.Background = new SolidColorBrush(Color.Parse("#2D2D2D"));
+                    }
+                    
+                    if (mainGrid != null)
+                    {
+                        mainGrid.Background = new SolidColorBrush(Color.Parse("#2D2D2D"));
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine("MarketRegistrationPage: 다크모드 적용됨");
                 }
                 else
                 {
                     this.Classes.Remove("dark-theme");
+                    
+                    // 루트 그리드와 메인 그리드를 라이트모드로 설정
+                    var rootGrid = this.FindControl<Grid>("RootGrid");
+                    var mainGrid = this.FindControl<Grid>("MainGrid");
+                    
+                    if (rootGrid != null)
+                    {
+                        rootGrid.Background = new SolidColorBrush(Colors.White);
+                    }
+                    
+                    if (mainGrid != null)
+                    {
+                        mainGrid.Background = new SolidColorBrush(Colors.White);
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine("MarketRegistrationPage: 라이트모드 적용됨");
                 }
             }
             catch
@@ -167,11 +217,11 @@ namespace Gumaedaehang
         
         private Border CreateProductCard(ProductInfo product)
         {
-            // 현재 테마 확인 (안전하게)
+            // 현재 테마 확인 (ThemeManager 사용)
             bool isDarkMode = false;
             try
             {
-                isDarkMode = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+                isDarkMode = ThemeManager.Instance.IsDarkTheme;
             }
             catch
             {
