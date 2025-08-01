@@ -461,5 +461,39 @@ namespace Gumaedaehang
                 _adviceScrollViewer.Offset = new Vector(0, 0);
             }
         }
+        
+        private void UpdateThemeResources()
+        {
+            try
+            {
+                if (Application.Current?.Resources != null)
+                {
+                    if (ThemeManager.Instance.IsDarkTheme)
+                    {
+                        // 다크모드 색상으로 업데이트
+                        Application.Current.Resources["BackgroundColor"] = Color.Parse("#2D2D2D");
+                        Application.Current.Resources["BackgroundSecondaryColor"] = Color.Parse("#3D3D3D");
+                        Application.Current.Resources["ForegroundColor"] = Colors.White;
+                        Application.Current.Resources["AccentColor"] = Color.Parse("#FF6B35");
+                        Application.Current.Resources["BorderColor"] = Color.Parse("#FF6B35");
+                        Application.Current.Resources["DarkModeIconColor"] = Color.Parse("#FF6B35");
+                    }
+                    else
+                    {
+                        // 라이트모드 색상으로 업데이트
+                        Application.Current.Resources["BackgroundColor"] = Colors.White;
+                        Application.Current.Resources["BackgroundSecondaryColor"] = Color.Parse("#FFF8F3");
+                        Application.Current.Resources["ForegroundColor"] = Color.Parse("#333333");
+                        Application.Current.Resources["AccentColor"] = Color.Parse("#F47B20");
+                        Application.Current.Resources["BorderColor"] = Color.Parse("#DDDDDD");
+                        Application.Current.Resources["DarkModeIconColor"] = Color.Parse("#FFE4D0");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"테마 리소스 업데이트 실패: {ex.Message}");
+            }
+        }
     }
 }

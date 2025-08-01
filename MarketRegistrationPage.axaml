@@ -63,13 +63,102 @@
       <Setter Property="Background" Value="#3D3D3D"/>
       <Setter Property="BorderBrush" Value="#FF6B35"/>
     </Style>
+    
+    <!-- 검색 입력창 스타일 -->
+    <Style Selector="Border.search-border">
+      <Setter Property="BorderBrush" Value="#E0E0E0"/>
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Border.search-border">
+      <Setter Property="BorderBrush" Value="#FF6B35"/>
+      <Setter Property="Background" Value="#3D3D3D"/>
+    </Style>
+    
+    <!-- 검색 텍스트박스 스타일 -->
+    <Style Selector="TextBox.search-textbox">
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme TextBox.search-textbox">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+    
+    <!-- 사이드바 텍스트 스타일 -->
+    <Style Selector="TextBlock.sidebar-text">
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme TextBlock.sidebar-text">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+    
+    <!-- X축 라벨 텍스트 스타일 -->
+    <Style Selector="TextBlock.chart-label">
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme TextBlock.chart-label">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+    
+    <!-- 설명 텍스트 스타일 -->
+    <Style Selector="TextBlock.description-text">
+      <Setter Property="Foreground" Value="#DF6C29"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme TextBlock.description-text">
+      <Setter Property="Foreground" Value="#FF6B35"/>
+    </Style>
+    
+    <!-- 모든 TextBlock에 대한 다크모드 스타일 (강제 적용) -->
+    <Style Selector="UserControl.dark-theme TextBlock">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+    
+    <!-- 모든 Grid에 대한 다크모드 스타일 -->
+    <Style Selector="UserControl.dark-theme Grid">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <!-- ScrollViewer 다크모드 스타일 -->
+    <Style Selector="UserControl.dark-theme ScrollViewer">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <!-- 루트 그리드 다크모드 스타일 -->
+    <Style Selector="Grid#RootGrid">
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Grid#RootGrid">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <!-- 메인 그리드 다크모드 스타일 -->
+    <Style Selector="Grid#MainGrid">
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Grid#MainGrid">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <!-- 체크박스 라벨 텍스트 스타일 -->
+    <Style Selector="CheckBox TextBlock">
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme CheckBox TextBlock">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
   </UserControl.Styles>
   
   <!-- 메인 컨테이너 Grid -->
   <Grid x:Name="RootGrid">
     <!-- 메인 콘텐츠 -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-      <Grid x:Name="MainGrid" Classes="main-grid" Background="White" Margin="20">
+      <Grid x:Name="MainGrid" Classes="main-grid" Margin="20">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="20"/>
@@ -86,8 +175,9 @@
             <ColumnDefinition Width="*"/>
           </Grid.ColumnDefinitions>
           
-          <Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Height="40">
+          <Border Grid.Column="0" Classes="search-border" BorderThickness="1" CornerRadius="4" Height="40">
             <TextBox x:Name="SearchTextBox"
+                     Classes="search-textbox"
                      Text="초코 바나나 시럽 아마토 핸드폰" 
                      Background="Transparent" 
                      BorderThickness="0"
@@ -143,7 +233,7 @@
         <!-- 차트 및 범례 영역 -->
         <Grid Grid.Row="4">
           <!-- 차트 영역 (범례 포함) -->
-          <Border x:Name="ChartBackground" Classes="chart-background" Background="#FFF8F0" CornerRadius="8" Padding="30" Height="755">
+          <Border x:Name="ChartBackground" Classes="chart-background" CornerRadius="8" Padding="30" Height="755">
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
@@ -218,10 +308,10 @@
                     <ColumnDefinition Width="*"/>
                   </Grid.ColumnDefinitions>
                   
-                  <TextBlock Grid.Column="0" Text="1,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
-                  <TextBlock Grid.Column="1" Text="10,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
-                  <TextBlock Grid.Column="2" Text="50,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
-                  <TextBlock Grid.Column="3" Text="100,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
+                  <TextBlock Grid.Column="0" Classes="chart-label" Text="1,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
+                  <TextBlock Grid.Column="1" Classes="chart-label" Text="10,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
+                  <TextBlock Grid.Column="2" Classes="chart-label" Text="50,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
+                  <TextBlock Grid.Column="3" Classes="chart-label" Text="100,000" HorizontalAlignment="Center" FontSize="12" FontWeight="Medium"/>
                 </Grid>
               </Grid>
               
@@ -348,13 +438,14 @@
                 </StackPanel>
                 
                 <!-- 설명 텍스트 -->
-                <TextBlock Text="피드백 입니다. 주문처리형 밸런스형 크무비형 초코 바나나 시럽 아마토 핸드폰 일반업체 중국어가 있습니다. 브랜드명이 포함되어 있습니다." 
+                <TextBlock Classes="description-text"
+                           Text="피드백 입니다. 주문처리형 밸런스형 크무비형 초코 바나나 시럽 아마토 핸드폰 일반업체 중국어가 있습니다. 브랜드명이 포함되어 있습니다." 
                            FontSize="24" 
                            FontWeight="Bold"
                            FontFamily="Pretendard"
                            TextWrapping="Wrap" 
                            LineHeight="32"
-                           Foreground="#DF6C29"/>
+                           />
               </StackPanel>
             </Grid>
           </Border>
@@ -424,9 +515,6 @@
               Grid.Column="1"
               Width="350"
               Height="220"
-              Background="White"
-              BorderBrush="#E0E0E0"
-              BorderThickness="1"
               CornerRadius="8"
               BoxShadow="0 2 10 0 #20000000">
         
@@ -447,10 +535,11 @@
             
             <!-- 마켓 불러오기 텍스트 -->
             <TextBlock Grid.Column="0"
+                       Classes="sidebar-text"
                        Text="마켓 불러오기"
                        FontSize="16"
                        FontWeight="Medium"
-                       Foreground="#333333"
+                       
                        VerticalAlignment="Center"/>
             
             <!-- 불러오기 버튼 -->
@@ -503,6 +592,7 @@
             
             <!-- PDF로 추출하기 텍스트 -->
             <TextBlock Grid.Column="2"
+                       Classes="sidebar-text"
                        Text="PDF로 추출하기"
                        FontSize="16"
                        FontWeight="Medium"

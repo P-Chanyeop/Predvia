@@ -1,36 +1,87 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Gumaedaehang.MarketCheckPage">
+
+  <UserControl.Styles>
+    <!-- 라이트 모드 스타일 (기본) -->
+    <Style Selector="UserControl">
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <!-- 다크 모드 스타일 (강제 적용) -->
+    <Style Selector="UserControl.dark-theme">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <!-- 메인 그리드 스타일 -->
+    <Style Selector="Grid.main-grid">
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Grid.main-grid">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <!-- 모든 Grid에 대한 다크모드 스타일 (강제 적용) -->
+    <Style Selector="UserControl.dark-theme Grid">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <!-- 중앙 그리드 다크모드 스타일 -->
+    <Style Selector="Grid.center-grid">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Grid.center-grid">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <!-- 버튼 스타일 -->
+    <Style Selector="Button.market-button">
+      <Setter Property="Background" Value="#E67E22"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="FontSize" Value="20"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Button.market-button">
+      <Setter Property="Background" Value="#FF6B35"/>
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+    
+    <!-- 버튼 호버 효과 -->
+    <Style Selector="Button.market-button:pointerover">
+      <Setter Property="Background" Value="#D35400"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Button.market-button:pointerover">
+      <Setter Property="Background" Value="#E55A2B"/>
+    </Style>
+    
+    <Style Selector="Button.market-button:pressed">
+      <Setter Property="Background" Value="#C0392B"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Button.market-button:pressed">
+      <Setter Property="Background" Value="#D35400"/>
+    </Style>
+  </UserControl.Styles>
   
-  <Grid Background="White">
+  <Grid Classes="main-grid" Name="MainGrid">
     <!-- 메인 콘텐츠 영역 -->
-    <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
+    <Grid Classes="center-grid" Name="CenterGrid" VerticalAlignment="Center" HorizontalAlignment="Center">
       <!-- 마켓등록하기 버튼 -->
       <Button Name="MarketRegistrationButton"
+              Classes="market-button"
               Width="240"
               Height="70"
-              Background="#E67E22"
-              Foreground="White"
-              FontSize="20"
-              FontWeight="SemiBold"
-              CornerRadius="12"
-              BorderThickness="0"
               Content="마켓등록하기"
               HorizontalContentAlignment="Center"
               VerticalContentAlignment="Center"
               Cursor="Hand"
-              Click="OnMarketRegistrationClick">
-        
-        <!-- 호버 효과 -->
-        <Button.Styles>
-          <Style Selector="Button:pointerover">
-            <Setter Property="Background" Value="#D35400"/>
-          </Style>
-          <Style Selector="Button:pressed">
-            <Setter Property="Background" Value="#C0392B"/>
-          </Style>
-        </Button.Styles>
-      </Button>
+              Click="OnMarketRegistrationClick"/>
     </Grid>
   </Grid>
   
