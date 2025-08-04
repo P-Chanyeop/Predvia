@@ -10,7 +10,7 @@
     
     <!-- 다크 모드 스타일 -->
     <Style Selector="UserControl.dark-theme">
-      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="Background" Value="#453F3C"/>
     </Style>
     
     <!-- 메인 그리드 스타일 -->
@@ -19,7 +19,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Grid.main-grid">
-      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="Background" Value="#453F3C"/>
     </Style>
     
     <!-- 상품 카드 스타일 -->
@@ -60,6 +60,11 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Border.chart-background">
+      <Setter Property="Background" Value="#453F3C"/>
+    </Style>
+
+    <!-- 더 구체적인 차트 배경 스타일 -->
+    <Style Selector="UserControl.dark-theme Border#ChartBackground">
       <Setter Property="Background" Value="#453F3C"/>
     </Style>
     
@@ -118,11 +123,6 @@
       <Setter Property="BorderThickness" Value="0"/>
     </Style>
     
-    <!-- TextBox 내부 텍스트 프레젠터 스타일 -->
-    <Style Selector="UserControl.dark-theme TextBox.search-textbox /template/ TextPresenter#PART_TextPresenter">
-      <Setter Property="Foreground" Value="#FFFFFF"/>
-    </Style>
-    
     <!-- 사이드바 텍스트 스타일 -->
     <Style Selector="TextBlock.sidebar-text">
       <Setter Property="Foreground" Value="#333333"/>
@@ -157,12 +157,12 @@
     
     <!-- 모든 Grid에 대한 다크모드 스타일 -->
     <Style Selector="UserControl.dark-theme Grid">
-      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="Background" Value="#453F3C"/>
     </Style>
     
     <!-- ScrollViewer 다크모드 스타일 -->
     <Style Selector="UserControl.dark-theme ScrollViewer">
-      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="Background" Value="#453F3C"/>
     </Style>
     
     <!-- 루트 그리드 다크모드 스타일 -->
@@ -171,7 +171,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Grid#RootGrid">
-      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="Background" Value="#453F3C"/>
     </Style>
     
     <!-- 메인 그리드 다크모드 스타일 -->
@@ -180,7 +180,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Grid#MainGrid">
-      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="Background" Value="#453F3C"/>
     </Style>
     
     <!-- 체크박스 라벨 텍스트 스타일 -->
@@ -217,7 +217,7 @@
           <Border Grid.Column="0" Classes="search-border" BorderThickness="1" CornerRadius="4" Height="40">
             <TextBox x:Name="SearchTextBox"
                      Classes="search-textbox"
-                     Text="초코 바나나 시럽 아마토 핸드폰" 
+                     Text="초코 바나나 시럽 아파트 핸드폰" 
                      Background="Transparent" 
                      BorderThickness="0"
                      VerticalAlignment="Center"
@@ -355,7 +355,7 @@
               </Grid>
               
               <!-- 범례 및 설명 -->
-              <StackPanel Grid.Column="2" Spacing="30" VerticalAlignment="Top">
+              <StackPanel Grid.Column="2" Spacing="30" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,0,0,0" Width="200">
                 <!-- 범례 -->
                 <StackPanel Spacing="12">
                   <CheckBox Content="주문처리형" 
@@ -475,17 +475,22 @@
                     </CheckBox.Styles>
                   </CheckBox>
                 </StackPanel>
-                
-                <!-- 설명 텍스트 -->
+
+                <!-- 피드백 텍스트를 범례 바로 밑에 3줄로 배치 -->
                 <TextBlock Classes="description-text"
-                           Text="피드백 입니다. 주문처리형 밸런스형 크무비형 초코 바나나 시럽 아마토 핸드폰 일반업체 중국어가 있습니다. 브랜드명이 포함되어 있습니다." 
                            FontSize="24" 
                            FontWeight="Bold"
                            FontFamily="Pretendard"
-                           TextWrapping="Wrap" 
                            LineHeight="32"
-                           />
+                           Width="400"
+                           HorizontalAlignment="Right"
+                           Margin="0,20,0,0">
+                  <Run Text="피드백 입니다. 주문처리형 밸런스형 크무비형 초코 바나"/><LineBreak/>
+                  <Run Text="나 시럽 아파트 핸드폰 썸네일에 중국어가 있습니다. 브랜"/><LineBreak/>
+                  <Run Text="드명이 포함되어 있습니다."/>
+                </TextBlock>
               </StackPanel>
+
             </Grid>
           </Border>
         </Grid>
