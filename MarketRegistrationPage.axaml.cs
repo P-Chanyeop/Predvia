@@ -100,6 +100,13 @@ namespace Gumaedaehang
                         searchTextBox.Background = Brushes.Transparent;
                     }
                     
+                    // 차트 배경 다크모드 스타일 직접 적용
+                    var chartBackground = this.FindControl<Border>("ChartBackground");
+                    if (chartBackground != null)
+                    {
+                        chartBackground.Background = new SolidColorBrush(Color.Parse("#453F3C"));
+                    }
+                    
                     System.Diagnostics.Debug.WriteLine("MarketRegistrationPage: 다크모드 적용됨");
                 }
                 else
@@ -126,6 +133,13 @@ namespace Gumaedaehang
                     {
                         searchTextBox.Foreground = new SolidColorBrush(Color.Parse("#333333"));
                         searchTextBox.Background = Brushes.Transparent;
+                    }
+                    
+                    // 차트 배경 라이트모드 스타일 직접 적용
+                    var chartBackground = this.FindControl<Border>("ChartBackground");
+                    if (chartBackground != null)
+                    {
+                        chartBackground.Background = new SolidColorBrush(Color.Parse("#FFF8F0"));
                     }
                     
                     System.Diagnostics.Debug.WriteLine("MarketRegistrationPage: 라이트모드 적용됨");
