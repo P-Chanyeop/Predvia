@@ -131,11 +131,53 @@ namespace Gumaedaehang
                     this.Classes.Remove("dark-theme");
                     System.Diagnostics.Debug.WriteLine("SourcingPage: 라이트모드 적용됨");
                 }
+                
+                // 기존 키워드들의 색상 업데이트
+                UpdateExistingKeywordColors();
             }
             catch
             {
                 // 테마 설정 실패시 기본값 유지
                 this.Classes.Remove("dark-theme");
+            }
+        }
+        
+        // 기존 키워드들의 색상을 현재 테마에 맞게 업데이트
+        private void UpdateExistingKeywordColors()
+        {
+            foreach (var productPair in _productElements)
+            {
+                var product = productPair.Value;
+                
+                // ByteCountTextBlock 색상 업데이트
+                if (product.ByteCountTextBlock != null)
+                {
+                    var text = product.ByteCountTextBlock.Text;
+                    if (text != null && text.Contains("/50 byte"))
+                    {
+                        var byteCount = int.Parse(text.Split('/')[0]);
+                        if (byteCount > 50)
+                        {
+                            product.ByteCountTextBlock.Foreground = Brushes.Red;
+                        }
+                        else
+                        {
+                            product.ByteCountTextBlock.Foreground = ThemeManager.Instance.IsDarkTheme ? Brushes.LightGray : Brushes.Gray;
+                        }
+                    }
+                }
+                
+                // 상품명 키워드 패널의 키워드들 색상 업데이트
+                if (product.NameKeywordPanel != null)
+                {
+                    foreach (var child in product.NameKeywordPanel.Children)
+                    {
+                        if (child is StackPanel stackPanel && stackPanel.Children.Count > 0 && stackPanel.Children[0] is TextBlock textBlock)
+                        {
+                            textBlock.Foreground = ThemeManager.Instance.IsDarkTheme ? Brushes.White : new SolidColorBrush(Color.Parse("#333333"));
+                        }
+                    }
+                }
             }
         }
         
@@ -512,8 +554,12 @@ namespace Gumaedaehang
                     {
                         if (product.SelectedKeywords.Contains(textBlock.Text))
                         {
-                            keyword.Background = new SolidColorBrush(Color.Parse("#D0D0D0"));
-                            textBlock.Foreground = new SolidColorBrush(Colors.Gray);
+                            keyword.Background = ThemeManager.Instance.IsDarkTheme ? 
+                                new SolidColorBrush(Color.Parse("#555555")) : 
+                                new SolidColorBrush(Color.Parse("#D0D0D0"));
+                            textBlock.Foreground = ThemeManager.Instance.IsDarkTheme ? 
+                                new SolidColorBrush(Colors.LightGray) : 
+                                new SolidColorBrush(Colors.Gray);
                         }
                         else
                         {
@@ -545,7 +591,7 @@ namespace Gumaedaehang
                 }
                 else
                 {
-                    product.ByteCountTextBlock.Foreground = Brushes.Gray;
+                    product.ByteCountTextBlock.Foreground = ThemeManager.Instance.IsDarkTheme ? Brushes.LightGray : Brushes.Gray;
                 }
             }
         }
@@ -647,7 +693,7 @@ namespace Gumaedaehang
             {
                 Text = keyword,
                 FontSize = 14,
-                Foreground = new SolidColorBrush(Color.Parse("#333333")),
+                Foreground = ThemeManager.Instance.IsDarkTheme ? Brushes.White : new SolidColorBrush(Color.Parse("#333333")),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                 TextAlignment = Avalonia.Media.TextAlignment.Center

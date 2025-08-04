@@ -474,9 +474,9 @@ namespace Gumaedaehang
                         Application.Current.Resources["BackgroundColor"] = Color.Parse("#2D2D2D");
                         Application.Current.Resources["BackgroundSecondaryColor"] = Color.Parse("#3D3D3D");
                         Application.Current.Resources["ForegroundColor"] = Colors.White;
-                        Application.Current.Resources["AccentColor"] = Color.Parse("#FF6B35");
-                        Application.Current.Resources["BorderColor"] = Color.Parse("#FF6B35");
-                        Application.Current.Resources["DarkModeIconColor"] = Color.Parse("#FF6B35");
+                        Application.Current.Resources["AccentColor"] = Color.Parse("#FF8A46");
+                        Application.Current.Resources["BorderColor"] = Color.Parse("#FF8A46");
+                        Application.Current.Resources["DarkModeIconColor"] = Color.Parse("#FF8A46");
                     }
                     else
                     {
