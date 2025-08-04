@@ -31,7 +31,7 @@
     
     <Style Selector="UserControl.dark-theme Border.product-card">
       <Setter Property="Background" Value="#3D3D3D"/>
-      <Setter Property="BorderBrush" Value="#FF6B35"/>
+      <Setter Property="BorderBrush" Value="#FF8A46"/>
       <Setter Property="BorderThickness" Value="1"/>
     </Style>
     
@@ -43,6 +43,16 @@
     <Style Selector="UserControl.dark-theme TextBlock.product-text">
       <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
+
+    <!-- 모든 TextBlock에 대한 다크모드 스타일 (강제 적용) -->
+    <Style Selector="UserControl.dark-theme TextBlock">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <!-- 상품 카드 내부 TextBlock 다크모드 스타일 -->
+    <Style Selector="UserControl.dark-theme Border.product-card TextBlock">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
     
     <!-- 차트 배경 스타일 -->
     <Style Selector="Border.chart-background">
@@ -50,7 +60,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Border.chart-background">
-      <Setter Property="Background" Value="#3D3D3D"/>
+      <Setter Property="Background" Value="#453F3C"/>
     </Style>
     
     <!-- 사이드바 스타일 -->
@@ -61,7 +71,7 @@
     
     <Style Selector="UserControl.dark-theme Border.sidebar-panel">
       <Setter Property="Background" Value="#3D3D3D"/>
-      <Setter Property="BorderBrush" Value="#FF6B35"/>
+      <Setter Property="BorderBrush" Value="#FF8A46"/>
     </Style>
     
     <!-- 검색 입력창 스타일 -->
@@ -71,16 +81,45 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Border.search-border">
-      <Setter Property="BorderBrush" Value="#FF6B35"/>
+      <Setter Property="BorderBrush" Value="#FF8A46"/>
       <Setter Property="Background" Value="#3D3D3D"/>
     </Style>
     
     <!-- 검색 텍스트박스 스타일 -->
     <Style Selector="TextBox.search-textbox">
       <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
     </Style>
     
     <Style Selector="UserControl.dark-theme TextBox.search-textbox">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    
+    <!-- 포커스 상태에서도 다크모드 스타일 유지 -->
+    <Style Selector="UserControl.dark-theme TextBox.search-textbox:focus">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    
+    <!-- 포커스 상태가 아닐 때도 다크모드 스타일 유지 -->
+    <Style Selector="UserControl.dark-theme TextBox.search-textbox:not(:focus)">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    
+    <!-- TextBox 내부 템플릿 스타일 강화 -->
+    <Style Selector="UserControl.dark-theme TextBox.search-textbox /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    
+    <!-- TextBox 내부 텍스트 프레젠터 스타일 -->
+    <Style Selector="UserControl.dark-theme TextBox.search-textbox /template/ TextPresenter#PART_TextPresenter">
       <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
     
@@ -108,7 +147,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme TextBlock.description-text">
-      <Setter Property="Foreground" Value="#FF6B35"/>
+      <Setter Property="Foreground" Value="#FF8A46"/>
     </Style>
     
     <!-- 모든 TextBlock에 대한 다크모드 스타일 (강제 적용) -->
@@ -189,7 +228,7 @@
           
           <Button Grid.Column="2" 
                   Content="검색" 
-                  Background="#FF6B35" 
+                  Background="#FF8A46" 
                   Foreground="White" 
                   BorderThickness="0" 
                   CornerRadius="4" 
@@ -251,7 +290,7 @@
                 <!-- Y축 화살표 -->
                 <Canvas Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Left" Width="40">
                   <Path Data="M 20,20 L 20,650 M 15,25 L 20,20 L 25,25" 
-                        Stroke="#FF6B35" StrokeThickness="2" Fill="#FF6B35"/>
+                        Stroke="#FF8A46" StrokeThickness="2" Fill="#FF8A46"/>
                 </Canvas>
                 
                 <!-- 차트 바들 -->
@@ -268,7 +307,7 @@
                     <!-- 회색 막대 (뒤) -->
                     <Rectangle Fill="#C0C0C0" Height="200" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
                     <!-- 주황색 막대 (앞, 살짝 겹침) -->
-                    <Rectangle Fill="#FF6B35" Height="150" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
+                    <Rectangle Fill="#FF8A46" Height="150" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
                   </Grid>
                   
                   <!-- 10,000 바 그룹 -->
@@ -276,7 +315,7 @@
                     <!-- 회색 막대 (뒤) -->
                     <Rectangle Fill="#C0C0C0" Height="120" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
                     <!-- 주황색 막대 (앞, 살짝 겹침) -->
-                    <Rectangle Fill="#FF6B35" Height="300" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
+                    <Rectangle Fill="#FF8A46" Height="300" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
                   </Grid>
                   
                   <!-- 50,000 바 그룹 -->
@@ -284,7 +323,7 @@
                     <!-- 회색 막대 (뒤) -->
                     <Rectangle Fill="#C0C0C0" Height="450" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
                     <!-- 주황색 막대 (앞, 살짝 겹침) -->
-                    <Rectangle Fill="#FF6B35" Height="100" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
+                    <Rectangle Fill="#FF8A46" Height="100" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
                   </Grid>
                   
                   <!-- 100,000 바 그룹 -->
@@ -292,12 +331,12 @@
                     <!-- 회색 막대 (뒤) -->
                     <Rectangle Fill="#C0C0C0" Height="220" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
                     <!-- 주황색 막대 (앞, 살짝 겹침) -->
-                    <Rectangle Fill="#FF6B35" Height="400" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
+                    <Rectangle Fill="#FF8A46" Height="400" Width="72" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="36,0,0,0"/>
                   </Grid>
                 </Grid>
                 
                 <!-- X축 가로 주황색 줄 -->
-                <Rectangle Grid.Row="2" Fill="#FF6B35" Height="2" Margin="50,0,20,25" VerticalAlignment="Top"/>
+                <Rectangle Grid.Row="2" Fill="#FF8A46" Height="2" Margin="50,0,20,25" VerticalAlignment="Top"/>
                 
                 <!-- X축 라벨 -->
                 <Grid Grid.Row="2" Margin="50,8,20,0">
@@ -457,7 +496,7 @@
     <Button x:Name="SidebarToggleButton"
             Width="20" 
             Height="100"
-            Background="#FF6B35"
+            Background="#FF8A46"
             BorderThickness="0"
             CornerRadius="12,0,0,12"
             HorizontalAlignment="Right"
@@ -490,7 +529,7 @@
               Grid.Column="0"
               Width="20"
               Height="100"
-              Background="#FF6B35"
+              Background="#FF8A46"
               BorderThickness="0"
               CornerRadius="12,0,0,12"
               HorizontalAlignment="Right"
@@ -545,7 +584,7 @@
             <!-- 불러오기 버튼 -->
             <Button Grid.Column="2"
                     Content="불러오기"
-                    Background="#FF6B35"
+                    Background="#FF8A46"
                     Foreground="White"
                     BorderThickness="0"
                     CornerRadius="4"
@@ -578,8 +617,8 @@
             <Canvas Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
               <!-- PDF 문서 아이콘 -->
               <Path Data="M3,2 L13,2 L17,6 L17,18 L3,18 Z M13,2 L13,6 L17,6" 
-                    Fill="#FF6B35" 
-                    Stroke="#FF6B35" 
+                    Fill="#FF8A46" 
+                    Stroke="#FF8A46" 
                     StrokeThickness="1"/>
               <!-- PDF 텍스트 -->
               <TextBlock Text="PDF" 
@@ -602,7 +641,7 @@
             <!-- 추출하기 버튼 -->
             <Button Grid.Column="4"
                     Content="추출하기"
-                    Background="#FF6B35"
+                    Background="#FF8A46"
                     Foreground="White"
                     BorderThickness="0"
                     CornerRadius="4"

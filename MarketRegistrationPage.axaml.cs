@@ -92,6 +92,14 @@ namespace Gumaedaehang
                         mainGrid.Background = new SolidColorBrush(Color.Parse("#2D2D2D"));
                     }
                     
+                    // 검색박스 다크모드 스타일 직접 적용
+                    var searchTextBox = this.FindControl<TextBox>("SearchTextBox");
+                    if (searchTextBox != null)
+                    {
+                        searchTextBox.Foreground = Brushes.White;
+                        searchTextBox.Background = Brushes.Transparent;
+                    }
+                    
                     System.Diagnostics.Debug.WriteLine("MarketRegistrationPage: 다크모드 적용됨");
                 }
                 else
@@ -110,6 +118,14 @@ namespace Gumaedaehang
                     if (mainGrid != null)
                     {
                         mainGrid.Background = new SolidColorBrush(Colors.White);
+                    }
+                    
+                    // 검색박스 라이트모드 스타일 직접 적용
+                    var searchTextBox = this.FindControl<TextBox>("SearchTextBox");
+                    if (searchTextBox != null)
+                    {
+                        searchTextBox.Foreground = new SolidColorBrush(Color.Parse("#333333"));
+                        searchTextBox.Background = Brushes.Transparent;
                     }
                     
                     System.Diagnostics.Debug.WriteLine("MarketRegistrationPage: 라이트모드 적용됨");
@@ -240,7 +256,7 @@ namespace Gumaedaehang
             if (isDarkMode)
             {
                 cardBorder.Background = new SolidColorBrush(Color.Parse("#3D3D3D"));
-                cardBorder.BorderBrush = new SolidColorBrush(Color.Parse("#FF6B35"));
+                cardBorder.BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46"));
                 cardBorder.BorderThickness = new Avalonia.Thickness(1);
             }
             else
@@ -291,7 +307,7 @@ namespace Gumaedaehang
                     HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
                     FontSize = 12,
-                    Foreground = new SolidColorBrush(Color.Parse("#999"))
+                    Foreground = isDarkMode ? new SolidColorBrush(Color.Parse("#CCCCCC")) : new SolidColorBrush(Color.Parse("#999"))
                 };
                 imageBorder.Child = placeholderText;
             }
@@ -321,7 +337,7 @@ namespace Gumaedaehang
             // 옵션 창
             var optionBorder = new Border
             {
-                BorderBrush = new SolidColorBrush(Color.Parse("#FF6B35")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46")),
                 BorderThickness = new Avalonia.Thickness(1),
                 CornerRadius = new Avalonia.CornerRadius(4),
                 Height = 60,
@@ -386,7 +402,7 @@ namespace Gumaedaehang
             {
                 Text = product.Feedback,
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Color.Parse("#FF6B35")),
+                Foreground = new SolidColorBrush(Color.Parse("#FF8A46")),
                 TextWrapping = TextWrapping.Wrap
             };
             feedbackStackPanel.Children.Add(feedbackLabel);

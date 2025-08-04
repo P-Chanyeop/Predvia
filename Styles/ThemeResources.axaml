@@ -14,9 +14,9 @@
     <SolidColorBrush x:Key="DarkBackgroundBrush" Color="#2D2D2D"/>
     <SolidColorBrush x:Key="DarkBackgroundSecondaryBrush" Color="#3D3D3D"/>
     <SolidColorBrush x:Key="DarkForegroundBrush" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="DarkAccentBrush" Color="#FF6B35"/>
-    <SolidColorBrush x:Key="DarkBorderBrush" Color="#FF6B35"/>
-    <SolidColorBrush x:Key="DarkDarkModeIconBrush" Color="#FF6B35"/>
+    <SolidColorBrush x:Key="DarkAccentBrush" Color="#FF8A46"/>
+    <SolidColorBrush x:Key="DarkBorderBrush" Color="#FF8A46"/>
+    <SolidColorBrush x:Key="DarkDarkModeIconBrush" Color="#FF8A46"/>
     
     <!-- 동적 테마 리소스 -->
     <SolidColorBrush x:Key="BackgroundBrush" Color="{DynamicResource BackgroundColor}"/>
