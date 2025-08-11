@@ -11,7 +11,7 @@
     <SolidColorBrush x:Key="LightDarkModeIconBrush" Color="#FFE4D0"/>
     
     <!-- 다크 테마 색상 -->
-    <SolidColorBrush x:Key="DarkBackgroundBrush" Color="#2D2D2D"/>
+    <SolidColorBrush x:Key="DarkBackgroundBrush" Color="#373737"/>
     <SolidColorBrush x:Key="DarkBackgroundSecondaryBrush" Color="#3D3D3D"/>
     <SolidColorBrush x:Key="DarkForegroundBrush" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="DarkAccentBrush" Color="#FF8A46"/>

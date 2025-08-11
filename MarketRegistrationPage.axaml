@@ -10,7 +10,7 @@
     
     <!-- 다크 모드 스타일 -->
     <Style Selector="UserControl.dark-theme">
-      <Setter Property="Background" Value="#453F3C"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- 메인 그리드 스타일 -->
@@ -19,7 +19,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Grid.main-grid">
-      <Setter Property="Background" Value="#453F3C"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- 상품 카드 스타일 -->
@@ -60,12 +60,12 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Border.chart-background">
-      <Setter Property="Background" Value="#453F3C"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
 
     <!-- 더 구체적인 차트 배경 스타일 -->
     <Style Selector="UserControl.dark-theme Border#ChartBackground">
-      <Setter Property="Background" Value="#453F3C"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- 사이드바 스타일 -->
@@ -171,12 +171,12 @@
     
     <!-- 모든 Grid에 대한 다크모드 스타일 -->
     <Style Selector="UserControl.dark-theme Grid">
-      <Setter Property="Background" Value="#453F3C"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- ScrollViewer 다크모드 스타일 -->
     <Style Selector="UserControl.dark-theme ScrollViewer">
-      <Setter Property="Background" Value="#453F3C"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- 루트 그리드 다크모드 스타일 -->
@@ -185,7 +185,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Grid#RootGrid">
-      <Setter Property="Background" Value="#453F3C"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- 메인 그리드 다크모드 스타일 -->
@@ -194,7 +194,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Grid#MainGrid">
-      <Setter Property="Background" Value="#453F3C"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- 체크박스 라벨 텍스트 스타일 -->

@@ -10,7 +10,7 @@
     
     <!-- 다크 모드 스타일 (강제 적용) -->
     <Style Selector="UserControl.dark-theme">
-      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- 메인 그리드 스타일 -->
@@ -19,12 +19,12 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Grid.main-grid">
-      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- 모든 Grid에 대한 다크모드 스타일 (강제 적용) -->
     <Style Selector="UserControl.dark-theme Grid">
-      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- 중앙 그리드 다크모드 스타일 -->
@@ -33,7 +33,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Grid.center-grid">
-      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="Background" Value="#373737"/>
     </Style>
     
     <!-- 버튼 스타일 -->
