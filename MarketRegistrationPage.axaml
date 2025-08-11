@@ -87,7 +87,25 @@
     
     <Style Selector="UserControl.dark-theme Border.search-border">
       <Setter Property="BorderBrush" Value="#FF8A46"/>
-      <Setter Property="Background" Value="#3D3D3D"/>
+      <Setter Property="Background" Value="#4A4A4A"/>
+    </Style>
+    
+    <!-- 더 구체적인 검색창 다크모드 스타일 -->
+    <Style Selector="UserControl.dark-theme Border#SearchBorder">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="BorderBrush" Value="#FF8A46"/>
+    </Style>
+    
+    <!-- 최고 우선순위 검색창 다크모드 스타일 -->
+    <Style Selector="UserControl.dark-theme Grid Border#SearchBorder">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="BorderBrush" Value="#FF8A46"/>
+    </Style>
+    
+    <!-- 항상 적용되는 검색창 스타일 (다크모드용) -->
+    <Style Selector="Border#SearchBorder">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="BorderBrush" Value="#FF8A46"/>
     </Style>
     
     <!-- 검색 텍스트박스 스타일 -->
@@ -138,7 +156,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme TextBlock.chart-label">
-      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="Foreground" Value="#E67E22"/>
     </Style>
     
     <!-- 설명 텍스트 스타일 -->
@@ -150,10 +168,6 @@
       <Setter Property="Foreground" Value="#FF8A46"/>
     </Style>
     
-    <!-- 모든 TextBlock에 대한 다크모드 스타일 (강제 적용) -->
-    <Style Selector="UserControl.dark-theme TextBlock">
-      <Setter Property="Foreground" Value="#FFFFFF"/>
-    </Style>
     
     <!-- 모든 Grid에 대한 다크모드 스타일 -->
     <Style Selector="UserControl.dark-theme Grid">
@@ -189,7 +203,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme CheckBox TextBlock">
-      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="Foreground" Value="#E67E22"/>
     </Style>
   </UserControl.Styles>
   
@@ -214,11 +228,11 @@
             <ColumnDefinition Width="*"/>
           </Grid.ColumnDefinitions>
           
-          <Border Grid.Column="0" Classes="search-border" BorderThickness="1" CornerRadius="4" Height="40">
+          <Border Grid.Column="0" Name="SearchBorder" Classes="search-border" BorderThickness="1" CornerRadius="4" Background="#4A4A4A" BorderBrush="#FF8A46" Height="40">
             <TextBox x:Name="SearchTextBox"
                      Classes="search-textbox"
                      Text="초코 바나나 시럽 아파트 핸드폰" 
-                     Background="Transparent" 
+                     
                      BorderThickness="0"
                      VerticalAlignment="Center"
                      Padding="12,0"
@@ -362,6 +376,7 @@
                            IsChecked="True" 
                            FontSize="13" 
                            FontWeight="Medium"
+                           Foreground="#E67E22"
                            Margin="0,0,0,4">
                     <CheckBox.Styles>
                       <Style Selector="CheckBox">
@@ -381,8 +396,9 @@
                                       StrokeThickness="2"
                                       IsVisible="False"/>
                               </Border>
-                              <ContentPresenter Content="{TemplateBinding Content}"
-                                              VerticalAlignment="Center"/>
+                              <TextBlock Text="{TemplateBinding Content}"
+                                       VerticalAlignment="Center"
+                                       Foreground="#E67E22"/>
                             </StackPanel>
                           </ControlTemplate>
                         </Setter>
@@ -401,6 +417,7 @@
                            IsChecked="True" 
                            FontSize="13" 
                            FontWeight="Medium"
+                           Foreground="#E67E22"
                            Margin="0,0,0,4">
                     <CheckBox.Styles>
                       <Style Selector="CheckBox">
@@ -420,8 +437,9 @@
                                       StrokeThickness="2"
                                       IsVisible="False"/>
                               </Border>
-                              <ContentPresenter Content="{TemplateBinding Content}"
-                                              VerticalAlignment="Center"/>
+                              <TextBlock Text="{TemplateBinding Content}"
+                                       VerticalAlignment="Center"
+                                       Foreground="#E67E22"/>
                             </StackPanel>
                           </ControlTemplate>
                         </Setter>
@@ -440,6 +458,7 @@
                            IsChecked="True" 
                            FontSize="13" 
                            FontWeight="Medium"
+                           Foreground="#E67E22"
                            Margin="0,0,0,4">
                     <CheckBox.Styles>
                       <Style Selector="CheckBox">
@@ -455,12 +474,12 @@
                                       CornerRadius="2">
                                 <Path Name="CheckMark"
                                       Data="M 2,6 L 6,10 L 14,2"
-                                      Stroke="White"
-                                      StrokeThickness="2"
+                                      Stroke="White" StrokeThickness="2"
                                       IsVisible="False"/>
                               </Border>
-                              <ContentPresenter Content="{TemplateBinding Content}"
-                                              VerticalAlignment="Center"/>
+                              <TextBlock Text="{TemplateBinding Content}"
+                                       VerticalAlignment="Center"
+                                       Foreground="#E67E22"/>
                             </StackPanel>
                           </ControlTemplate>
                         </Setter>
