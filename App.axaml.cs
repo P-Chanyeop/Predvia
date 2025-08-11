@@ -38,7 +38,7 @@ namespace Gumaedaehang
                 if (theme == ThemeManager.ThemeType.Dark)
                 {
                     resources["BackgroundBrush"] = new SolidColorBrush(Color.Parse("#1E1E1E"));
-                    resources["BackgroundSecondaryBrush"] = new SolidColorBrush(Color.Parse("#2D2D2D"));
+                    resources["BackgroundSecondaryBrush"] = new SolidColorBrush(Color.Parse("#373737"));
                     resources["ForegroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
                     resources["BorderBrush"] = new SolidColorBrush(Color.Parse("#444444"));
                     resources["AccentBrush"] = new SolidColorBrush(Color.Parse("#F47B20"));
