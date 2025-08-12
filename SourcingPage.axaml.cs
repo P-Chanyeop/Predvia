@@ -125,13 +125,18 @@ namespace Gumaedaehang
                 {
                     this.Classes.Add("dark-theme");
                     System.Diagnostics.Debug.WriteLine("SourcingPage: 다크모드 적용됨");
+                    
+                    // 다크모드에서 TextBox 배경색 강제 설정
+                    UpdateTextBoxColors("#4A4A4A", "#FFFFFF");
                 }
                 else
                 {
                     this.Classes.Remove("dark-theme");
                     System.Diagnostics.Debug.WriteLine("SourcingPage: 라이트모드 적용됨");
-                }
-                
+                    
+                    // 라이트모드에서 TextBox 배경색 강제 설정
+                    UpdateTextBoxColors("#FFDAC4", "#000000");
+                }                
                 // 기존 키워드들의 색상 업데이트
                 UpdateExistingKeywordColors();
             }
@@ -822,6 +827,49 @@ namespace Gumaedaehang
             foreach (var productId in _productElements.Keys)
             {
                 UpdateProductStatusIndicators(productId);
+            }
+        }
+        
+        // TextBox 배경색을 강제로 업데이트하는 메서드
+        private void UpdateTextBoxColors(string backgroundColor, string foregroundColor)
+        {
+            try
+            {
+                var backgroundBrush = Brush.Parse(backgroundColor);
+                var foregroundBrush = Brush.Parse(foregroundColor);
+                
+                // 모든 TextBox 찾아서 색상 업데이트
+                UpdateTextBoxColorsRecursive(this, backgroundBrush, foregroundBrush);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"TextBox 색상 업데이트 실패: {ex.Message}");
+            }
+        }
+        
+        // 재귀적으로 TextBox를 찾아서 색상 업데이트
+        private void UpdateTextBoxColorsRecursive(Control parent, IBrush backgroundBrush, IBrush foregroundBrush)
+        {
+            if (parent is TextBox textBox)
+            {
+                textBox.Background = backgroundBrush;
+                textBox.Foreground = foregroundBrush;
+            }
+            
+            if (parent is Panel panel)
+            {
+                foreach (Control child in panel.Children)
+                {
+                    UpdateTextBoxColorsRecursive(child, backgroundBrush, foregroundBrush);
+                }
+            }
+            else if (parent is ContentControl contentControl && contentControl.Content is Control childControl)
+            {
+                UpdateTextBoxColorsRecursive(childControl, backgroundBrush, foregroundBrush);
+            }
+            else if (parent is Decorator decorator && decorator.Child is Control decoratorChild)
+            {
+                UpdateTextBoxColorsRecursive(decoratorChild, backgroundBrush, foregroundBrush);
             }
         }
     }

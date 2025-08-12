@@ -16,6 +16,20 @@
             <Setter Property="Background" Value="#2D2D2D"/>
         </Style>
         
+        <!-- TextBox 기본 스타일 (라이트모드) -->
+        <Style Selector="UserControl TextBox">
+            <Setter Property="Background" Value="#FFDAC4"/>
+            <Setter Property="Foreground" Value="#000000"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+        </Style>
+        
+        <!-- TextBox 다크모드 스타일 (더 높은 우선순위) -->
+        <Style Selector="UserControl.dark-theme TextBox">
+            <Setter Property="Background" Value="#4A4A4A"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#666666"/>
+        </Style>
+        
         <!-- 키워드 태그 비활성 상태 텍스트 스타일 (더 강력하게) -->
         <Style Selector="TextBlock.keyword-inactive">
             <Setter Property="Foreground" Value="#666666"/>
@@ -128,13 +142,13 @@
                                     Spacing="20" 
                                     VerticalAlignment="Center">
                             <TextBox Width="280" Height="55" Text="1,000"
-                                     Background="#FFE5D3" BorderThickness="0" CornerRadius="8"
+                                     BorderThickness="0" CornerRadius="8"
                                      VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
                                      FontSize="18" FontWeight="Medium"/>
                             <TextBlock Text="원 ~" VerticalAlignment="Center" FontSize="20" FontWeight="Medium"
                                        />
                             <TextBox Width="280" Height="55" Text="100,000"
-                                     Background="#FFE5D3" BorderThickness="0" CornerRadius="8"
+                                     BorderThickness="0" CornerRadius="8"
                                      VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
                                      FontSize="18" FontWeight="Medium"/>
                             <TextBlock Text="원" VerticalAlignment="Center" FontSize="20" FontWeight="Medium"
@@ -159,7 +173,7 @@
                         </Grid.ColumnDefinitions>
                         
                         <TextBox Grid.Column="0" Height="55" Watermark="URL을 입력해주세요."
-                                 Background="#FFE5D3" BorderThickness="0" CornerRadius="8"
+                                 BorderThickness="0" CornerRadius="8"
                                  VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"/>
                         
                         <Button Grid.Column="1" Content="페어링" Background="#F47B20" Foreground="White" 
@@ -184,7 +198,7 @@
                         </Grid.ColumnDefinitions>
                         
                         <TextBox Grid.Column="0" Height="55" Watermark="소싱재료를 입력해주세요."
-                                 Background="#FFE5D3" BorderThickness="0" CornerRadius="8"
+                                 BorderThickness="0" CornerRadius="8"
                                  VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"/>
                         
                         <Button Grid.Column="1" Content="페어링" Background="#F47B20" Foreground="White" 
@@ -205,7 +219,7 @@
                         </Grid.ColumnDefinitions>
                         
                         <TextBox Grid.Column="0" Height="55" Watermark="메인상품을 입력해주세요."
-                                 Background="#FFE5D3" BorderThickness="0" CornerRadius="8"
+                                 BorderThickness="0" CornerRadius="8"
                                  VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"/>
                         
                         <Button Grid.Column="1" Content="페어링" Background="#F47B20" Foreground="White" 
