@@ -156,7 +156,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme TextBlock.chart-label">
-      <Setter Property="Foreground" Value="#E67E22"/>
+      <Setter Property="Foreground" Value="#FFDAC4"/>
     </Style>
     
     <!-- 설명 텍스트 스타일 -->
@@ -203,7 +203,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme CheckBox TextBlock">
-      <Setter Property="Foreground" Value="#E67E22"/>
+      <Setter Property="Foreground" Value="#FFDAC4"/>
     </Style>
   </UserControl.Styles>
   
@@ -376,7 +376,7 @@
                            IsChecked="True" 
                            FontSize="13" 
                            FontWeight="Medium"
-                           Foreground="#E67E22"
+                           Foreground="#DF6C29"
                            Margin="0,0,0,4">
                     <CheckBox.Styles>
                       <Style Selector="CheckBox">
@@ -398,7 +398,7 @@
                               </Border>
                               <TextBlock Text="{TemplateBinding Content}"
                                        VerticalAlignment="Center"
-                                       Foreground="#E67E22"/>
+                                       Foreground="#DF6C29"/>
                             </StackPanel>
                           </ControlTemplate>
                         </Setter>
@@ -417,7 +417,7 @@
                            IsChecked="True" 
                            FontSize="13" 
                            FontWeight="Medium"
-                           Foreground="#E67E22"
+                           Foreground="#DF6C29"
                            Margin="0,0,0,4">
                     <CheckBox.Styles>
                       <Style Selector="CheckBox">
@@ -439,7 +439,7 @@
                               </Border>
                               <TextBlock Text="{TemplateBinding Content}"
                                        VerticalAlignment="Center"
-                                       Foreground="#E67E22"/>
+                                       Foreground="#DF6C29"/>
                             </StackPanel>
                           </ControlTemplate>
                         </Setter>
@@ -458,7 +458,7 @@
                            IsChecked="True" 
                            FontSize="13" 
                            FontWeight="Medium"
-                           Foreground="#E67E22"
+                           Foreground="#DF6C29"
                            Margin="0,0,0,4">
                     <CheckBox.Styles>
                       <Style Selector="CheckBox">
@@ -479,7 +479,7 @@
                               </Border>
                               <TextBlock Text="{TemplateBinding Content}"
                                        VerticalAlignment="Center"
-                                       Foreground="#E67E22"/>
+                                       Foreground="#DF6C29"/>
                             </StackPanel>
                           </ControlTemplate>
                         </Setter>
