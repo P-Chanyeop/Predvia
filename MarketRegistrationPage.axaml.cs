@@ -487,7 +487,7 @@ namespace Gumaedaehang
                 FontWeight = FontWeight.Medium,
                 TextWrapping = TextWrapping.Wrap,
                 Classes = { "product-text" },
-                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#DF6C29"))
+                Foreground = isDarkMode ? Brushes.White : Brushes.Black
             };
             infoStackPanel.Children.Add(nameTextBlock);
             
@@ -514,7 +514,7 @@ namespace Gumaedaehang
                 AcceptsReturn = true,
                 TextWrapping = TextWrapping.Wrap,
                 Padding = new Avalonia.Thickness(8),
-                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#DF6C29"))
+                Foreground = isDarkMode ? Brushes.White : Brushes.Black
             };
             scrollViewer.Content = optionTextBox;
             optionBorder.Child = scrollViewer;
@@ -527,7 +527,7 @@ namespace Gumaedaehang
                 FontSize = 13,
                 FontWeight = FontWeight.SemiBold,
                 Classes = { "product-text" },
-                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#DF6C29"))
+                Foreground = isDarkMode ? Brushes.White : Brushes.Black
             };
             infoStackPanel.Children.Add(priceTextBlock);
             
@@ -553,7 +553,7 @@ namespace Gumaedaehang
             {
                 Text = "피드백:",
                 FontSize = 12,
-                Foreground = isDarkMode ? new SolidColorBrush(Color.Parse("#CCCCCC")) : new SolidColorBrush(Color.Parse("#DF6C29"))
+                Foreground = isDarkMode ? new SolidColorBrush(Color.Parse("#CCCCCC")) : Brushes.Black
             };
             var feedbackText = new TextBlock
             {
