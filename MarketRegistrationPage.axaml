@@ -71,7 +71,7 @@
     <!-- 사이드바 스타일 -->
     <Style Selector="Border.sidebar-panel">
       <Setter Property="Background" Value="White"/>
-      <Setter Property="BorderBrush" Value="#E0E0E0"/>
+      <Setter Property="BorderBrush" Value="#DF6C29"/>
     </Style>
     
     <Style Selector="UserControl.dark-theme Border.sidebar-panel">
@@ -81,7 +81,7 @@
     
     <!-- 검색 입력창 스타일 -->
     <Style Selector="Border.search-border">
-      <Setter Property="BorderBrush" Value="#E0E0E0"/>
+      <Setter Property="BorderBrush" Value="#DF6C29"/>
       <Setter Property="Background" Value="White"/>
     </Style>
     

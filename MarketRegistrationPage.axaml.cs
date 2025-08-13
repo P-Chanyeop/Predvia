@@ -197,7 +197,7 @@ namespace Gumaedaehang
                         searchBorder.ClearValue(Border.BorderBrushProperty);
                         
                         searchBorder.Background = new SolidColorBrush(Colors.White);
-                        searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
+                        searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#DF6C29"));
                         
                         // 강제 업데이트
                         searchBorder.InvalidateVisual();
@@ -267,7 +267,7 @@ namespace Gumaedaehang
                                 if (gridChild is Border border && border.Classes.Contains("product-card"))
                                 {
                                     border.Background = new SolidColorBrush(Color.Parse("#FAFAFA"));
-                                    border.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
+                                    border.BorderBrush = new SolidColorBrush(Color.Parse("#DF6C29"));
                                     border.BorderThickness = new Thickness(1);
                                 }
                             }
@@ -417,9 +417,9 @@ namespace Gumaedaehang
             }
             else
             {
-                // 라이트모드에서도 카드가 보이도록 연한 회색 배경과 테두리 추가
+                // 라이트모드에서도 카드가 보이도록 연한 회색 배경과 주황색 테두리 추가
                 cardBorder.Background = new SolidColorBrush(Color.Parse("#FAFAFA"));
-                cardBorder.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
+                cardBorder.BorderBrush = new SolidColorBrush(Color.Parse("#DF6C29"));
                 cardBorder.BorderThickness = new Avalonia.Thickness(1);
             }
             
@@ -494,7 +494,7 @@ namespace Gumaedaehang
             // 옵션 창
             var optionBorder = new Border
             {
-                BorderBrush = new SolidColorBrush(Color.Parse("#FFDAC4")),
+                BorderBrush = isDarkMode ? new SolidColorBrush(Color.Parse("#FFDAC4")) : new SolidColorBrush(Color.Parse("#DF6C29")),
                 BorderThickness = new Avalonia.Thickness(1),
                 CornerRadius = new Avalonia.CornerRadius(4),
                 Height = 60,
