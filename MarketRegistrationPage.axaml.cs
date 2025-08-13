@@ -20,7 +20,6 @@ namespace Gumaedaehang
         {
             InitializeComponent();
             InitializeProducts();
-            UpdateProductCards(allProducts?.Take(4).ToList() ?? new List<ProductInfo>()); // 초기 4개 상품 표시
             
             // 테마 변경 감지
             try
@@ -38,6 +37,19 @@ namespace Gumaedaehang
             {
                 // 테마 감지 실패시 기본 라이트 모드로 설정
             }
+            
+            // 초기 상품 카드 표시 (테마 설정 후)
+            UpdateProductCards(allProducts?.Take(4).ToList() ?? new List<ProductInfo>());
+            
+            // UI가 완전히 로드된 후 다시 한번 업데이트 (라이트모드 초기 렌더링 문제 해결)
+            this.Loaded += (s, e) => 
+            {
+                // 약간의 지연 후 다시 렌더링
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    UpdateProductCards(allProducts?.Take(4).ToList() ?? new List<ProductInfo>());
+                }, Avalonia.Threading.DispatcherPriority.Background);
+            };
         }
         
         private void OnThemeChanged(object? sender, EventArgs e)
@@ -243,6 +255,18 @@ namespace Gumaedaehang
                     SecondRowGrid.Children.Add(productCard);
                 }
             }
+            
+            // 강제로 UI 업데이트 (라이트모드 초기 렌더링 문제 해결)
+            try
+            {
+                FirstRowGrid.InvalidateVisual();
+                SecondRowGrid.InvalidateVisual();
+                this.InvalidateVisual();
+            }
+            catch
+            {
+                // 무시
+            }
         }
         
         private Border CreateProductCard(ProductInfo product)
@@ -263,7 +287,8 @@ namespace Gumaedaehang
             var cardBorder = new Border
             {
                 Classes = { "product-card" },
-                Padding = new Avalonia.Thickness(16)
+                Padding = new Avalonia.Thickness(16),
+                CornerRadius = new Avalonia.CornerRadius(8)
             };
             
             // 다크모드에 따른 스타일 적용
@@ -275,9 +300,10 @@ namespace Gumaedaehang
             }
             else
             {
-                cardBorder.Background = Brushes.White;
-                cardBorder.BorderBrush = Brushes.Transparent;
-                cardBorder.BorderThickness = new Avalonia.Thickness(0);
+                // 라이트모드에서도 카드가 보이도록 연한 회색 배경과 테두리 추가
+                cardBorder.Background = new SolidColorBrush(Color.Parse("#FAFAFA"));
+                cardBorder.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
+                cardBorder.BorderThickness = new Avalonia.Thickness(1);
             }
             
             // 메인 Grid
