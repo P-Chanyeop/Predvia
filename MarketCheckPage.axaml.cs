@@ -64,7 +64,7 @@ namespace Gumaedaehang
                     this.Classes.Add("dark-theme");
                     
                     // 배경색을 직접 설정 (강제 적용)
-                    this.Background = new SolidColorBrush(Color.Parse("#2D2D2D"));
+                    this.Background = new SolidColorBrush(Color.Parse("#1E1E1E"));
                     
                     // 메인 그리드와 중앙 그리드에도 직접 배경색 설정
                     var mainGrid = this.FindControl<Grid>("MainGrid");
@@ -72,12 +72,12 @@ namespace Gumaedaehang
                     
                     if (mainGrid != null)
                     {
-                        mainGrid.Background = new SolidColorBrush(Color.Parse("#2D2D2D"));
+                        mainGrid.Background = new SolidColorBrush(Color.Parse("#1E1E1E"));
                     }
                     
                     if (centerGrid != null)
                     {
-                        centerGrid.Background = new SolidColorBrush(Color.Parse("#2D2D2D"));
+                        centerGrid.Background = new SolidColorBrush(Color.Parse("#1E1E1E"));
                     }
                     
                     System.Diagnostics.Debug.WriteLine("MarketCheckPage: 다크모드 적용됨");

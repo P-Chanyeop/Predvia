@@ -471,7 +471,7 @@ namespace Gumaedaehang
                     if (ThemeManager.Instance.IsDarkTheme)
                     {
                         // 다크모드 색상으로 업데이트
-                        Application.Current.Resources["BackgroundColor"] = Color.Parse("#2D2D2D");
+                        Application.Current.Resources["BackgroundColor"] = Color.Parse("#1E1E1E");
                         Application.Current.Resources["BackgroundSecondaryColor"] = Color.Parse("#3D3D3D");
                         Application.Current.Resources["ForegroundColor"] = Colors.White;
                         Application.Current.Resources["AccentColor"] = Color.Parse("#FF8A46");

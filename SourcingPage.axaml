@@ -13,7 +13,7 @@
         
         <!-- 다크 모드 스타일 -->
         <Style Selector="UserControl.dark-theme">
-            <Setter Property="Background" Value="#2D2D2D"/>
+            <Setter Property="Background" Value="#1E1E1E"/>
         </Style>
         
         <!-- TextBox 기본 스타일 (라이트모드) -->
