@@ -51,17 +51,17 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Button.market-button">
-      <Setter Property="Background" Value="#FF8A46"/>
+      <Setter Property="Background" Value="#FFDAC4"/>
       <Setter Property="Foreground" Value="White"/>
     </Style>
     
     <!-- 버튼 호버 효과 -->
     <Style Selector="Button.market-button:pointerover">
-      <Setter Property="Background" Value="#D35400"/>
+      <Setter Property="Background" Value="#FFC088"/>
     </Style>
     
     <Style Selector="UserControl.dark-theme Button.market-button:pointerover">
-      <Setter Property="Background" Value="#E55A2B"/>
+      <Setter Property="Background" Value="#FFD0A6"/>
     </Style>
     
     <Style Selector="Button.market-button:pressed">
@@ -69,7 +69,7 @@
     </Style>
     
     <Style Selector="UserControl.dark-theme Button.market-button:pressed">
-      <Setter Property="Background" Value="#D35400"/>
+      <Setter Property="Background" Value="#FFC088"/>
     </Style>
   </UserControl.Styles>
   
