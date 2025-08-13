@@ -25,7 +25,7 @@
     <!-- 상품 카드 스타일 -->
     <Style Selector="Border.product-card">
       <Setter Property="Background" Value="White"/>
-      <Setter Property="BorderBrush" Value="#DF6C29"/>
+      <Setter Property="BorderBrush" Value="#E0E0E0"/>
       <Setter Property="BorderThickness" Value="1"/>
     </Style>
     
@@ -71,7 +71,7 @@
     <!-- 사이드바 스타일 -->
     <Style Selector="Border.sidebar-panel">
       <Setter Property="Background" Value="White"/>
-      <Setter Property="BorderBrush" Value="#DF6C29"/>
+      <Setter Property="BorderBrush" Value="#E0E0E0"/>
     </Style>
     
     <Style Selector="UserControl.dark-theme Border.sidebar-panel">
@@ -81,7 +81,7 @@
     
     <!-- 검색 입력창 스타일 -->
     <Style Selector="Border.search-border">
-      <Setter Property="BorderBrush" Value="#DF6C29"/>
+      <Setter Property="BorderBrush" Value="#E0E0E0"/>
       <Setter Property="Background" Value="White"/>
     </Style>
     
