@@ -228,7 +228,7 @@
             <ColumnDefinition Width="*"/>
           </Grid.ColumnDefinitions>
           
-          <Border Grid.Column="0" Name="SearchBorder" Classes="search-border" BorderThickness="1" CornerRadius="4" Background="#4A4A4A" BorderBrush="#FF8A46" Height="40">
+          <Border Grid.Column="0" Name="SearchBorder" Classes="search-border" BorderThickness="1" CornerRadius="4" Height="40">
             <TextBox x:Name="SearchTextBox"
                      Classes="search-textbox"
                      Text="초코 바나나 시럽 아파트 핸드폰" 
