@@ -117,7 +117,7 @@ namespace Gumaedaehang
                     if (searchBorder != null)
                     {
                         searchBorder.Background = new SolidColorBrush(Color.Parse("#4A4A4A"));
-                        searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46"));
+                        searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#FFDAC4"));
                     }
                     
                     // 차트 배경 다크모드 스타일 직접 적용
@@ -311,7 +311,7 @@ namespace Gumaedaehang
             if (isDarkMode)
             {
                 cardBorder.Background = new SolidColorBrush(Color.Parse("#3D3D3D"));
-                cardBorder.BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46"));
+                cardBorder.BorderBrush = new SolidColorBrush(Color.Parse("#FFDAC4"));
                 cardBorder.BorderThickness = new Avalonia.Thickness(1);
             }
             else
@@ -393,7 +393,7 @@ namespace Gumaedaehang
             // 옵션 창
             var optionBorder = new Border
             {
-                BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#FFDAC4")),
                 BorderThickness = new Avalonia.Thickness(1),
                 CornerRadius = new Avalonia.CornerRadius(4),
                 Height = 60,
@@ -458,7 +458,7 @@ namespace Gumaedaehang
             {
                 Text = product.Feedback,
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Color.Parse("#FF8A46")),
+                Foreground = new SolidColorBrush(Color.Parse("#FFDAC4")),
                 TextWrapping = TextWrapping.Wrap
             };
             feedbackStackPanel.Children.Add(feedbackLabel);
