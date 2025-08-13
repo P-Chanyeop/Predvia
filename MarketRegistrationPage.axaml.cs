@@ -112,6 +112,14 @@ namespace Gumaedaehang
                         searchTextBox.Background = Brushes.Transparent;
                     }
                     
+                    // 검색창 Border 다크모드 스타일 직접 적용
+                    var searchBorder = this.FindControl<Border>("SearchBorder");
+                    if (searchBorder != null)
+                    {
+                        searchBorder.Background = new SolidColorBrush(Color.Parse("#4A4A4A"));
+                        searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46"));
+                    }
+                    
                     // 차트 배경 다크모드 스타일 직접 적용
                     var chartBackground = this.FindControl<Border>("ChartBackground");
                     if (chartBackground != null)
@@ -145,6 +153,14 @@ namespace Gumaedaehang
                     {
                         searchTextBox.Foreground = new SolidColorBrush(Color.Parse("#333333"));
                         searchTextBox.Background = Brushes.Transparent;
+                    }
+                    
+                    // 검색창 Border 라이트모드 스타일 직접 적용
+                    var searchBorder = this.FindControl<Border>("SearchBorder");
+                    if (searchBorder != null)
+                    {
+                        searchBorder.Background = new SolidColorBrush(Colors.White);
+                        searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
                     }
                     
                     // 차트 배경 라이트모드 스타일 직접 적용
