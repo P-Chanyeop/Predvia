@@ -182,7 +182,7 @@ namespace Gumaedaehang
                     var searchTextBox = this.FindControl<TextBox>("SearchTextBox");
                     if (searchTextBox != null)
                     {
-                        searchTextBox.Foreground = new SolidColorBrush(Color.Parse("#DF6C29"));
+                        searchTextBox.Foreground = new SolidColorBrush(Color.Parse("#E0E0E0"));
                         searchTextBox.Background = Brushes.Transparent;
                     }
                     
@@ -197,7 +197,7 @@ namespace Gumaedaehang
                         searchBorder.ClearValue(Border.BorderBrushProperty);
                         
                         searchBorder.Background = new SolidColorBrush(Colors.White);
-                        searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#DF6C29"));
+                        searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
                         
                         // 강제 업데이트
                         searchBorder.InvalidateVisual();
@@ -267,7 +267,7 @@ namespace Gumaedaehang
                                 if (gridChild is Border border && border.Classes.Contains("product-card"))
                                 {
                                     border.Background = new SolidColorBrush(Color.Parse("#FAFAFA"));
-                                    border.BorderBrush = new SolidColorBrush(Color.Parse("#DF6C29"));
+                                    border.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
                                     border.BorderThickness = new Thickness(1);
                                 }
                             }
@@ -417,9 +417,9 @@ namespace Gumaedaehang
             }
             else
             {
-                // 라이트모드에서도 카드가 보이도록 연한 회색 배경과 주황색 테두리 추가
+                // 라이트모드에서도 카드가 보이도록 연한 회색 배경과 테두리 추가
                 cardBorder.Background = new SolidColorBrush(Color.Parse("#FAFAFA"));
-                cardBorder.BorderBrush = new SolidColorBrush(Color.Parse("#DF6C29"));
+                cardBorder.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
                 cardBorder.BorderThickness = new Avalonia.Thickness(1);
             }
             
@@ -487,7 +487,7 @@ namespace Gumaedaehang
                 FontWeight = FontWeight.Medium,
                 TextWrapping = TextWrapping.Wrap,
                 Classes = { "product-text" },
-                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#DF6C29"))
+                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#E0E0E0"))
             };
             infoStackPanel.Children.Add(nameTextBlock);
             
@@ -495,7 +495,7 @@ namespace Gumaedaehang
             var optionBorder = new Border
             {
                 BorderBrush = isDarkMode ? new SolidColorBrush(Color.Parse("#FFDAC4")) : new SolidColorBrush(Color.Parse("#DF6C29")),
-                BorderThickness = new Avalonia.Thickness(1),
+                BorderThickness = new Avalonia.Thickness(2), // 테두리를 더 두껍게
                 CornerRadius = new Avalonia.CornerRadius(4),
                 Height = 60,
                 Background = isDarkMode ? new SolidColorBrush(Color.Parse("#1E1E1E")) : Brushes.Transparent
@@ -514,7 +514,7 @@ namespace Gumaedaehang
                 AcceptsReturn = true,
                 TextWrapping = TextWrapping.Wrap,
                 Padding = new Avalonia.Thickness(8),
-                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#DF6C29"))
+                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#E0E0E0"))
             };
             scrollViewer.Content = optionTextBox;
             optionBorder.Child = scrollViewer;
@@ -527,7 +527,7 @@ namespace Gumaedaehang
                 FontSize = 13,
                 FontWeight = FontWeight.SemiBold,
                 Classes = { "product-text" },
-                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#DF6C29"))
+                Foreground = isDarkMode ? Brushes.White : new SolidColorBrush(Color.Parse("#E0E0E0"))
             };
             infoStackPanel.Children.Add(priceTextBlock);
             
@@ -553,13 +553,13 @@ namespace Gumaedaehang
             {
                 Text = "피드백:",
                 FontSize = 12,
-                Foreground = isDarkMode ? new SolidColorBrush(Color.Parse("#CCCCCC")) : new SolidColorBrush(Color.Parse("#DF6C29"))
+                Foreground = isDarkMode ? new SolidColorBrush(Color.Parse("#CCCCCC")) : new SolidColorBrush(Color.Parse("#E0E0E0"))
             };
             var feedbackText = new TextBlock
             {
                 Text = product.Feedback,
                 FontSize = 12,
-                Foreground = isDarkMode ? new SolidColorBrush(Color.Parse("#FFDAC4")) : new SolidColorBrush(Color.Parse("#DF6C29")),
+                Foreground = isDarkMode ? new SolidColorBrush(Color.Parse("#FFDAC4")) : new SolidColorBrush(Color.Parse("#E0E0E0")),
                 TextWrapping = TextWrapping.Wrap
             };
             feedbackStackPanel.Children.Add(feedbackLabel);
