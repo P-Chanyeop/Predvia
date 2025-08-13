@@ -24,6 +24,9 @@ namespace Gumaedaehang
             // 테마 변경 감지
             try
             {
+                System.Diagnostics.Debug.WriteLine("MarketRegistrationPage 생성자 시작");
+                System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage 생성자: ThemeManager.Instance.IsDarkTheme = {ThemeManager.Instance.IsDarkTheme}");
+                
                 if (Application.Current != null)
                 {
                     Application.Current.ActualThemeVariantChanged += OnThemeChanged;
@@ -32,6 +35,15 @@ namespace Gumaedaehang
                 
                 // ThemeManager 이벤트도 구독
                 ThemeManager.Instance.ThemeChanged += OnThemeManagerChanged;
+                
+                // 즉시 라이트모드 스타일 적용
+                ApplyLightModeStylesImmediately();
+                
+                // 강제로 라이트모드 스타일 적용 (초기화)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    ForceApplyLightModeStyles();
+                });
             }
             catch
             {
@@ -86,9 +98,15 @@ namespace Gumaedaehang
         {
             try
             {
-                if (ThemeManager.Instance.IsDarkTheme)
+                var isDarkTheme = ThemeManager.Instance.IsDarkTheme;
+                System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage UpdateTheme: isDarkTheme = {isDarkTheme}");
+                System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage UpdateTheme: 현재 Classes = [{string.Join(", ", this.Classes)}]");
+                
+                if (isDarkTheme)
                 {
                     this.Classes.Add("dark-theme");
+                    System.Diagnostics.Debug.WriteLine("MarketRegistrationPage: dark-theme 클래스 추가됨");
+                    System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage: 추가 후 Classes = [{string.Join(", ", this.Classes)}]");
                     
                     // 루트 그리드와 메인 그리드에도 다크모드 클래스 추가
                     var rootGrid = this.FindControl<Grid>("RootGrid");
@@ -116,8 +134,19 @@ namespace Gumaedaehang
                     var searchBorder = this.FindControl<Border>("SearchBorder");
                     if (searchBorder != null)
                     {
+                        System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage 다크모드: SearchBorder 적용 전 - Background: {searchBorder.Background}, BorderBrush: {searchBorder.BorderBrush}");
+                        
+                        // 강제로 스타일 제거 후 재적용
+                        searchBorder.ClearValue(Border.BackgroundProperty);
+                        searchBorder.ClearValue(Border.BorderBrushProperty);
+                        
                         searchBorder.Background = new SolidColorBrush(Color.Parse("#4A4A4A"));
                         searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                        
+                        // 강제 업데이트
+                        searchBorder.InvalidateVisual();
+                        
+                        System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage 다크모드: SearchBorder 적용 후 - Background: {searchBorder.Background}, BorderBrush: {searchBorder.BorderBrush}");
                     }
                     
                     // 차트 배경 다크모드 스타일 직접 적용
@@ -132,6 +161,8 @@ namespace Gumaedaehang
                 else
                 {
                     this.Classes.Remove("dark-theme");
+                    System.Diagnostics.Debug.WriteLine("MarketRegistrationPage: dark-theme 클래스 제거됨");
+                    System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage: 제거 후 Classes = [{string.Join(", ", this.Classes)}]");
                     
                     // 루트 그리드와 메인 그리드를 라이트모드로 설정
                     var rootGrid = this.FindControl<Grid>("RootGrid");
@@ -159,8 +190,19 @@ namespace Gumaedaehang
                     var searchBorder = this.FindControl<Border>("SearchBorder");
                     if (searchBorder != null)
                     {
+                        System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage 라이트모드: SearchBorder 적용 전 - Background: {searchBorder.Background}, BorderBrush: {searchBorder.BorderBrush}");
+                        
+                        // 강제로 스타일 제거 후 재적용
+                        searchBorder.ClearValue(Border.BackgroundProperty);
+                        searchBorder.ClearValue(Border.BorderBrushProperty);
+                        
                         searchBorder.Background = new SolidColorBrush(Colors.White);
                         searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
+                        
+                        // 강제 업데이트
+                        searchBorder.InvalidateVisual();
+                        
+                        System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage 라이트모드: SearchBorder 적용 후 - Background: {searchBorder.Background}, BorderBrush: {searchBorder.BorderBrush}");
                     }
                     
                     // 차트 배경 라이트모드 스타일 직접 적용
@@ -177,6 +219,65 @@ namespace Gumaedaehang
             {
                 // 테마 설정 실패시 기본값 유지
                 this.Classes.Remove("dark-theme");
+            }
+        }
+        
+        private void ApplyLightModeStylesImmediately()
+        {
+            try
+            {
+                // 검색창 Border 즉시 라이트모드 스타일 적용
+                var searchBorder = this.FindControl<Border>("SearchBorder");
+                if (searchBorder != null)
+                {
+                    searchBorder.Background = new SolidColorBrush(Colors.White);
+                    searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
+                    System.Diagnostics.Debug.WriteLine("ApplyLightModeStylesImmediately: 검색창 라이트모드 스타일 즉시 적용됨");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ApplyLightModeStylesImmediately 오류: {ex.Message}");
+            }
+        }
+        
+        private void ForceApplyLightModeStyles()
+        {
+            try
+            {
+                // 검색창 Border 강제 라이트모드 스타일 적용
+                var searchBorder = this.FindControl<Border>("SearchBorder");
+                if (searchBorder != null)
+                {
+                    searchBorder.Background = new SolidColorBrush(Colors.White);
+                    searchBorder.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
+                    System.Diagnostics.Debug.WriteLine("ForceApplyLightModeStyles: 검색창 라이트모드 스타일 강제 적용됨");
+                }
+                
+                // 상품 카드들도 강제로 라이트모드 스타일 적용
+                var productCardsContainer = this.FindControl<Grid>("ProductCardsContainer");
+                if (productCardsContainer != null)
+                {
+                    foreach (var child in productCardsContainer.Children)
+                    {
+                        if (child is Grid grid)
+                        {
+                            foreach (var gridChild in grid.Children)
+                            {
+                                if (gridChild is Border border && border.Classes.Contains("product-card"))
+                                {
+                                    border.Background = new SolidColorBrush(Color.Parse("#FAFAFA"));
+                                    border.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
+                                    border.BorderThickness = new Thickness(1);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ForceApplyLightModeStyles 오류: {ex.Message}");
             }
         }
         
