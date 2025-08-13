@@ -96,12 +96,12 @@ namespace Gumaedaehang
                     
                     if (rootGrid != null)
                     {
-                        rootGrid.Background = new SolidColorBrush(Color.Parse("#2D2D2D"));
+                        rootGrid.Background = new SolidColorBrush(Color.Parse("#1E1E1E"));
                     }
                     
                     if (mainGrid != null)
                     {
-                        mainGrid.Background = new SolidColorBrush(Color.Parse("#2D2D2D"));
+                        mainGrid.Background = new SolidColorBrush(Color.Parse("#1E1E1E"));
                     }
                     
                     // 검색박스 다크모드 스타일 직접 적용
@@ -381,7 +381,7 @@ namespace Gumaedaehang
                 BorderThickness = new Avalonia.Thickness(1),
                 CornerRadius = new Avalonia.CornerRadius(4),
                 Height = 60,
-                Background = isDarkMode ? new SolidColorBrush(Color.Parse("#2D2D2D")) : Brushes.Transparent
+                Background = isDarkMode ? new SolidColorBrush(Color.Parse("#1E1E1E")) : Brushes.Transparent
             };
             var scrollViewer = new ScrollViewer
             {

@@ -197,6 +197,13 @@ dotnet run
   - UI 로드 완료 후 재렌더링 메커니즘 구현 (`Dispatcher.UIThread.Post`)
   - `InvalidateVisual()` 강제 UI 업데이트로 초기 렌더링 타이밍 문제 해결
   - 다크모드 전환 없이도 라이트모드에서 상품 카드가 처음부터 정상 표시
+- [x] **다크모드 배경색 완전 통일**: 모든 페이지의 다크모드 배경색을 `#1E1E1E`로 통일
+  - **XAML 스타일 통일**: SourcingPage, MarketCheckPage, MarketRegistrationPage 모든 XAML 파일의 다크모드 배경색 `#1E1E1E` 적용
+  - **C# 코드 하드코딩 색상 수정**: 모든 `.axaml.cs` 파일에서 하드코딩된 `#2D2D2D`, `#373737` 색상을 `#1E1E1E`로 변경
+  - **스타일 우선순위 문제 해결**: C# 코드에서 강제 설정하던 배경색이 XAML 스타일을 덮어쓰던 문제 해결
+  - **마켓점검 페이지 배경색 불일치 문제 완전 해결**: 다른 탭과 다르게 표시되던 배경색 문제 근본 원인 제거
+  - **총 7개 위치 수정**: MainWindow.axaml.cs(1), MarketCheckPage.axaml.cs(3), MarketRegistrationPage.axaml.cs(3)
+  - **일관된 사용자 경험**: 모든 탭에서 동일한 다크모드 배경색 제공으로 UI 일관성 확보
 ### 🚧 진행 중인 작업
 - [ ] 메인상품찾기 기능 구현
 - [ ] 설정 페이지 상세 기능
