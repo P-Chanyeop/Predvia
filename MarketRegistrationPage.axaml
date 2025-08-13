@@ -161,7 +161,7 @@
     
     <!-- 설명 텍스트 스타일 -->
     <Style Selector="TextBlock.description-text">
-      <Setter Property="Foreground" Value="Black"/>
+      <Setter Property="Foreground" Value="#DF6C29"/>
     </Style>
     
     <Style Selector="UserControl.dark-theme TextBlock.description-text">
@@ -199,7 +199,7 @@
     
     <!-- 체크박스 라벨 텍스트 스타일 -->
     <Style Selector="CheckBox TextBlock">
-      <Setter Property="Foreground" Value="Black"/>
+      <Setter Property="Foreground" Value="#DF6C29"/>
     </Style>
     
     <Style Selector="UserControl.dark-theme CheckBox TextBlock">
