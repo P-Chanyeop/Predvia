@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.Input;
 using System;
 
 namespace Gumaedaehang
@@ -42,6 +43,40 @@ namespace Gumaedaehang
             {
                 Console.WriteLine($"테마 업데이트 오류: {ex.Message}");
             }
+        }
+
+        // 사이드바 관련 메서드들 (마켓점검 탭과 동일)
+        private void ToggleSidebar(object sender, RoutedEventArgs e)
+        {
+            if (SidebarContainer.IsVisible)
+            {
+                CloseSidebarInstant();
+            }
+            else
+            {
+                OpenSidebarInstant();
+            }
+        }
+        
+        private void CloseSidebar(object sender, RoutedEventArgs e)
+        {
+            CloseSidebarInstant();
+        }
+        
+        private void OpenSidebarInstant()
+        {
+            // 사이드바 표시
+            SidebarContainer.IsVisible = true;
+            // 토글 버튼 숨기기
+            SidebarToggleButton.IsVisible = false;
+        }
+        
+        private void CloseSidebarInstant()
+        {
+            // 사이드바 숨기기
+            SidebarContainer.IsVisible = false;
+            // 토글 버튼 다시 표시
+            SidebarToggleButton.IsVisible = true;
         }
 
         // 버튼 클릭 이벤트 핸들러들 (향후 구현)
