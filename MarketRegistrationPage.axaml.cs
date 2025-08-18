@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Styling;
 using Avalonia;
+using Avalonia.LogicalTree;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -156,6 +157,83 @@ namespace Gumaedaehang
                         chartBackground.Background = new SolidColorBrush(Color.Parse("#453F3C"));
                     }
                     
+                    // 사이드바 패널 다크모드 스타일 직접 적용
+                    var sidebarPanel = this.FindControl<Border>("SidebarPanel");
+                    if (sidebarPanel != null)
+                    {
+                        sidebarPanel.Background = new SolidColorBrush(Color.Parse("#2D2D2D"));
+                        sidebarPanel.BorderBrush = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                        sidebarPanel.BorderThickness = new Thickness(2);
+                        System.Diagnostics.Debug.WriteLine("MarketRegistrationPage 다크모드: 사이드바 패널 스타일 적용됨");
+                        
+                        // 사이드바 패널 내의 모든 TextBlock 찾기 (같은 변수 재사용)
+                        var textBlocks = FindAllTextBlocks(sidebarPanel);
+                        foreach (var textBlock in textBlocks)
+                        {
+                            if (textBlock.Classes.Contains("sidebar-text"))
+                            {
+                                textBlock.Foreground = Brushes.White;
+                                System.Diagnostics.Debug.WriteLine("MarketRegistrationPage 다크모드: 사이드바 텍스트 색상 적용됨");
+                            }
+                        }
+                    }
+                    
+                    // 사이드바 토글 버튼 다크모드 스타일 적용
+                    var sidebarToggleButton = this.FindControl<Button>("SidebarToggleButton");
+                    if (sidebarToggleButton != null)
+                    {
+                        sidebarToggleButton.Background = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                        
+                        // 호버 효과 추가
+                        sidebarToggleButton.PointerEntered += (s, e) => {
+                            if (s is Button btn) btn.Background = new SolidColorBrush(Color.Parse("#FFD0A6"));
+                        };
+                        sidebarToggleButton.PointerExited += (s, e) => {
+                            if (s is Button btn) btn.Background = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                        };
+                        
+                        System.Diagnostics.Debug.WriteLine("MarketRegistrationPage 다크모드: 사이드바 토글 버튼 스타일 적용됨");
+                    }
+                    
+                    // 사이드바 닫기 버튼 다크모드 스타일 적용
+                    var sidebarCloseButton = this.FindControl<Button>("SidebarCloseButton");
+                    if (sidebarCloseButton != null)
+                    {
+                        sidebarCloseButton.Background = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                        
+                        // 호버 효과 추가
+                        sidebarCloseButton.PointerEntered += (s, e) => {
+                            if (s is Button btn) btn.Background = new SolidColorBrush(Color.Parse("#FFD0A6"));
+                        };
+                        sidebarCloseButton.PointerExited += (s, e) => {
+                            if (s is Button btn) btn.Background = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                        };
+                        
+                        System.Diagnostics.Debug.WriteLine("MarketRegistrationPage 다크모드: 사이드바 닫기 버튼 스타일 적용됨");
+                    }
+                    
+                    // 사이드바 내부 버튼들 다크모드 스타일 적용
+                    var sidebarButtons = new[] { "LoadButton", "ExtractButton" };
+                    foreach (var buttonName in sidebarButtons)
+                    {
+                        var button = this.FindControl<Button>(buttonName);
+                        if (button != null)
+                        {
+                            button.Background = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                            button.Foreground = new SolidColorBrush(Color.Parse("#333333"));
+                            
+                            // 호버 효과 추가
+                            button.PointerEntered += (s, e) => {
+                                if (s is Button btn) btn.Background = new SolidColorBrush(Color.Parse("#FFD0A6"));
+                            };
+                            button.PointerExited += (s, e) => {
+                                if (s is Button btn) btn.Background = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                            };
+                            
+                            System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage 다크모드: {buttonName} 스타일 적용됨");
+                        }
+                    }
+                    
                     System.Diagnostics.Debug.WriteLine("MarketRegistrationPage: 다크모드 적용됨");
                 }
                 else
@@ -210,6 +288,65 @@ namespace Gumaedaehang
                     if (chartBackground != null)
                     {
                         chartBackground.Background = new SolidColorBrush(Color.Parse("#FFF8F0"));
+                    }
+                    
+                    // 사이드바 패널 라이트모드 스타일 직접 적용
+                    var sidebarPanel2 = this.FindControl<Border>("SidebarPanel");
+                    if (sidebarPanel2 != null)
+                    {
+                        sidebarPanel2.Background = Brushes.White;
+                        sidebarPanel2.BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0"));
+                        sidebarPanel2.BorderThickness = new Thickness(1);
+                        System.Diagnostics.Debug.WriteLine("MarketRegistrationPage 라이트모드: 사이드바 패널 스타일 적용됨");
+                        
+                        // 사이드바 패널 내의 모든 TextBlock 찾기 (같은 변수 재사용)
+                        var textBlocks = FindAllTextBlocks(sidebarPanel2);
+                        foreach (var textBlock in textBlocks)
+                        {
+                            if (textBlock.Classes.Contains("sidebar-text"))
+                            {
+                                textBlock.Foreground = Brushes.Black;
+                                System.Diagnostics.Debug.WriteLine("MarketRegistrationPage 라이트모드: 사이드바 텍스트 색상 적용됨");
+                            }
+                        }
+                    }
+                    
+                    // 사이드바 토글 버튼 라이트모드 스타일 적용
+                    var sidebarToggleButton2 = this.FindControl<Button>("SidebarToggleButton");
+                    if (sidebarToggleButton2 != null)
+                    {
+                        sidebarToggleButton2.Background = new SolidColorBrush(Color.Parse("#DF6C29"));
+                        System.Diagnostics.Debug.WriteLine("MarketRegistrationPage 라이트모드: 사이드바 토글 버튼 스타일 적용됨");
+                    }
+                    
+                    // 사이드바 닫기 버튼 라이트모드 스타일 적용
+                    var sidebarCloseButton2 = this.FindControl<Button>("SidebarCloseButton");
+                    if (sidebarCloseButton2 != null)
+                    {
+                        sidebarCloseButton2.Background = new SolidColorBrush(Color.Parse("#DF6C29"));
+                        System.Diagnostics.Debug.WriteLine("MarketRegistrationPage 라이트모드: 사이드바 닫기 버튼 스타일 적용됨");
+                    }
+                    
+                    // 사이드바 내부 버튼들 라이트모드 스타일 적용
+                    var sidebarButtons2 = new[] { "LoadButton", "ExtractButton" };
+                    foreach (var buttonName in sidebarButtons2)
+                    {
+                        var button = this.FindControl<Button>(buttonName);
+                        if (button != null)
+                        {
+                            button.Background = new SolidColorBrush(Color.Parse("#DF6C29"));
+                            button.Foreground = Brushes.White;
+                            
+                            // 호버 효과 추가
+                            button.PointerEntered += (s, e) => {
+                                if (s is Button btn) btn.Background = new SolidColorBrush(Color.Parse("#E55A2B"));
+                            };
+                            button.PointerExited += (s, e) => {
+                                if (s is Button btn) btn.Background = new SolidColorBrush(Color.Parse("#DF6C29"));
+                            };
+                            
+                            System.Diagnostics.Debug.WriteLine($"MarketRegistrationPage 라이트모드: {buttonName} 스타일 적용됨");
+                        }
                     }
                     
                     System.Diagnostics.Debug.WriteLine("MarketRegistrationPage: 라이트모드 적용됨");
@@ -646,6 +783,35 @@ namespace Gumaedaehang
             
             // 사이드바 닫기
             CloseSidebarInstant();
+        }
+        
+        // TextBlock을 재귀적으로 찾는 헬퍼 메서드
+        private List<TextBlock> FindAllTextBlocks(Control parent)
+        {
+            var textBlocks = new List<TextBlock>();
+            
+            if (parent is TextBlock textBlock)
+            {
+                textBlocks.Add(textBlock);
+            }
+            
+            if (parent is Panel panel)
+            {
+                foreach (Control child in panel.Children)
+                {
+                    textBlocks.AddRange(FindAllTextBlocks(child));
+                }
+            }
+            else if (parent is ContentControl contentControl && contentControl.Content is Control childControl)
+            {
+                textBlocks.AddRange(FindAllTextBlocks(childControl));
+            }
+            else if (parent is Border border && border.Child is Control borderChild)
+            {
+                textBlocks.AddRange(FindAllTextBlocks(borderChild));
+            }
+            
+            return textBlocks;
         }
     }
     
