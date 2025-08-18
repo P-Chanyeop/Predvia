@@ -81,6 +81,9 @@ namespace Gumaedaehang
                     }
                     
                     System.Diagnostics.Debug.WriteLine("MarketCheckPage: 다크모드 적용됨");
+                    
+                    // 토글 버튼 색상 업데이트
+                    UpdateSidebarButtonColors(true);
                 }
                 else
                 {
@@ -104,6 +107,9 @@ namespace Gumaedaehang
                     }
                     
                     System.Diagnostics.Debug.WriteLine("MarketCheckPage: 라이트모드 적용됨");
+                    
+                    // 토글 버튼 색상 업데이트
+                    UpdateSidebarButtonColors(false);
                 }
             }
             catch
@@ -124,6 +130,47 @@ namespace Gumaedaehang
                 // 마켓등록 페이지로 이동
                 mainWindow.NavigateToMarketRegistration();
                 System.Diagnostics.Debug.WriteLine("마켓등록 페이지로 이동했습니다.");
+            }
+        }
+        private void UpdateSidebarButtonColors(bool isDarkMode)
+        {
+            try
+            {
+                // 사이드바 토글 버튼 색상 업데이트
+                var toggleButton = this.FindControl<Button>("SidebarToggleButton");
+                if (toggleButton != null)
+                {
+                    if (isDarkMode)
+                    {
+                        toggleButton.Background = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                        System.Diagnostics.Debug.WriteLine("MarketCheckPage 다크모드: 토글 버튼 색상 적용됨");
+                    }
+                    else
+                    {
+                        toggleButton.Background = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                        System.Diagnostics.Debug.WriteLine("MarketCheckPage 라이트모드: 토글 버튼 색상 유지됨");
+                    }
+                }
+
+                // 사이드바 닫기 버튼 색상 업데이트
+                var closeButton = this.FindControl<Button>("SidebarCloseButton");
+                if (closeButton != null)
+                {
+                    if (isDarkMode)
+                    {
+                        closeButton.Background = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                        System.Diagnostics.Debug.WriteLine("MarketCheckPage 다크모드: 닫기 버튼 색상 적용됨");
+                    }
+                    else
+                    {
+                        closeButton.Background = new SolidColorBrush(Color.Parse("#FFDAC4"));
+                        System.Diagnostics.Debug.WriteLine("MarketCheckPage 라이트모드: 닫기 버튼 색상 유지됨");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"사이드바 버튼 색상 업데이트 오류: {ex.Message}");
             }
         }
     }
