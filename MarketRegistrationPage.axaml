@@ -242,8 +242,8 @@
           
           <Button Grid.Column="2" 
                   Content="검색" 
-                  Background="#DF6C29" 
-                  Foreground="White" 
+                   
+                   
                   BorderThickness="0" 
                   CornerRadius="4" 
                   Height="40"
@@ -520,7 +520,7 @@
     <Button x:Name="SidebarToggleButton"
             Width="20" 
             Height="100"
-            Background="#DF6C29"
+            
             BorderThickness="0"
             CornerRadius="12,0,0,12"
             HorizontalAlignment="Right"
@@ -553,7 +553,7 @@
               Grid.Column="0"
               Width="20"
               Height="100"
-              Background="#DF6C29"
+              
               BorderThickness="0"
               CornerRadius="12,0,0,12"
               HorizontalAlignment="Right"
@@ -565,11 +565,6 @@
               Stroke="White"
               StrokeThickness="2"
               Fill="Transparent"/>
-        <Button.Styles>
-          <Style Selector="Button:pointerover">
-            <Setter Property="Background" Value="#E55A2B"/>
-          </Style>
-        </Button.Styles>
       </Button>
       
       <!-- 메인 사이드바 -->
@@ -607,9 +602,10 @@
             
             <!-- 불러오기 버튼 -->
             <Button Grid.Column="2"
+                    x:Name="LoadButton"
                     Content="불러오기"
-                    Background="#DF6C29"
-                    Foreground="White"
+                    
+                    
                     BorderThickness="0"
                     CornerRadius="4"
                     Height="35"
@@ -619,11 +615,6 @@
                     HorizontalContentAlignment="Center"
                     VerticalContentAlignment="Center"
                     Click="LoadHistory">
-              <Button.Styles>
-                <Style Selector="Button:pointerover">
-                  <Setter Property="Background" Value="#E55A2B"/>
-                </Style>
-              </Button.Styles>
             </Button>
           </Grid>
           
@@ -648,7 +639,7 @@
               <TextBlock Text="PDF" 
                          FontSize="6" 
                          FontWeight="Bold" 
-                         Foreground="White"
+                         
                          Canvas.Left="5"
                          Canvas.Top="8"/>
             </Canvas>
@@ -664,9 +655,10 @@
             
             <!-- 추출하기 버튼 -->
             <Button Grid.Column="4"
+                    x:Name="ExtractButton"
                     Content="추출하기"
-                    Background="#DF6C29"
-                    Foreground="White"
+                    
+                    
                     BorderThickness="0"
                     CornerRadius="4"
                     Height="35"
@@ -676,11 +668,6 @@
                     HorizontalContentAlignment="Center"
                     VerticalContentAlignment="Center"
                     Click="ExportToPdf">
-              <Button.Styles>
-                <Style Selector="Button:pointerover">
-                  <Setter Property="Background" Value="#E55A2B"/>
-                </Style>
-              </Button.Styles>
             </Button>
           </Grid>
         </Grid>
