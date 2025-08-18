@@ -97,21 +97,32 @@
         </Grid>
 
         <!-- 오늘의 명언 영역 -->
-        <StackPanel Grid.Row="1" 
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Center" 
-                    VerticalAlignment="Center"
-                    Spacing="5">
-            <TextBlock Text="오늘의 명언: " 
+        <Grid Grid.Row="1" 
+              HorizontalAlignment="Center" 
+              VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="800"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBlock Grid.Column="0"
+                       Text="오늘의 명언: " 
                        FontSize="18"
                        FontWeight="Bold"
+                       VerticalAlignment="Center"
                        Foreground="{DynamicResource ForegroundBrush}"/>
             
             <!-- 슬라이딩 명언 컨테이너 -->
-            <Border Width="800" Height="30" ClipToBounds="True">
+            <Border Grid.Column="2" 
+                    Width="800" 
+                    Height="30" 
+                    ClipToBounds="True" 
+                    VerticalAlignment="Center">
                 <ScrollViewer x:Name="adviceScrollViewer"
                               HorizontalScrollBarVisibility="Hidden"
-                              VerticalScrollBarVisibility="Hidden">
+                              VerticalScrollBarVisibility="Hidden"
+                              VerticalAlignment="Center">
                     <StackPanel x:Name="adviceContainer" 
                                 Orientation="Horizontal" 
                                 Spacing="5"
@@ -137,7 +148,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </Border>
-        </StackPanel>
+        </Grid>
         
         <!-- 구분선 -->
         <Rectangle Grid.Row="2" 
@@ -262,223 +273,19 @@
                     <local:SourcingPage/>
                 </ContentControl>
                 
-                <!-- 마켓점검 화면 (추후 구현) -->
-                <Grid x:Name="MarketCheckContent" IsVisible="False">
-                    <Button x:Name="MarketRegistrationButton" Content="마켓등록하기" 
-                            FontSize="20" 
-                            FontWeight="SemiBold"
-                            Width="240" 
-                            Height="70"
-                            Background="#E67E22" 
-                            Foreground="White"
-                            BorderThickness="0" 
-                            CornerRadius="12"
-                            HorizontalAlignment="Center" 
-                            VerticalAlignment="Center"
-                            HorizontalContentAlignment="Center" 
-                            VerticalContentAlignment="Center"/>
-                </Grid>
+                <!-- 마켓점검 화면 -->
+                <ContentControl x:Name="MarketCheckContent" IsVisible="False">
+                    <local:MarketCheckPage/>
+                </ContentControl>
                 
+                <!-- 마켓등록 화면 -->
+                <ContentControl x:Name="MarketRegistrationContent" IsVisible="False">
+                    <local:MarketRegistrationPage/>
+                </ContentControl>
                 
-                <!-- 마켓등록 화면 (11.png와 동일) -->
-                <Grid x:Name="MarketRegistrationContent" IsVisible="False">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Spacing="30" 
-                                    VerticalAlignment="Top" 
-                                    HorizontalAlignment="Center"
-                                    MaxWidth="1200"
-                                    Width="1200"
-                                    Margin="40,30,40,40">
-                            
-                            <!-- 상품 등록 폼 섹션 -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                
-                                <!-- 상품 1 -->
-                                <Border Grid.Row="0" Grid.Column="0" Background="White" 
-                                        BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" 
-                                        Padding="20" Margin="0,0,15,15">
-                                    <StackPanel Spacing="15">
-                                        <StackPanel Orientation="Horizontal" Spacing="15">
-                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
-                                                   Width="100" Height="100" Stretch="Uniform"/>
-                                            <StackPanel Spacing="10">
-                                                <TextBlock Text="상품명: 초코 바나나 시럽 아마토 핸드폰" FontSize="14" FontWeight="Medium"/>
-                                                <Border BorderBrush="#E67E22" BorderThickness="1" CornerRadius="4" Padding="8">
-                                                    <TextBox Text="옵션" FontSize="12" Background="Transparent" BorderThickness="0"/>
-                                                </Border>
-                                                <TextBlock Text="가격 : 100,000" FontSize="14" FontWeight="Medium"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <TextBlock Text="네이버쇼핑 바로가기" FontSize="11" 
-                                                       Foreground="Black" TextDecorations="Underline" Cursor="Hand"/>
-                                                    Background="#E67E22" Foreground="White" 
-                                                    Padding="8,4" CornerRadius="4" BorderThickness="0"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                                
-                                <!-- 상품 2 -->
-                                <Border Grid.Row="0" Grid.Column="1" Background="White" 
-                                        BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" 
-                                        Padding="20" Margin="15,0,0,15">
-                                    <StackPanel Spacing="15">
-                                        <StackPanel Orientation="Horizontal" Spacing="15">
-                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
-                                                   Width="100" Height="100" Stretch="Uniform"/>
-                                            <StackPanel Spacing="10">
-                                                <TextBlock Text="상품명: 초코 바나나 시럽 아마토 핸드폰" FontSize="14" FontWeight="Medium"/>
-                                                <Border BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Padding="8">
-                                                    <TextBox Text="옵션" FontSize="12" Background="Transparent" BorderThickness="0"/>
-                                                </Border>
-                                                <TextBlock Text="가격 : 100,000" FontSize="14" FontWeight="Medium"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <TextBlock Text="피드백: " FontSize="12"/>
-                                            <TextBlock Text="브랜드명이 포함되어있습니다." FontSize="12" Foreground="#E67E22"/>
-                                            <TextBlock Text="네이버쇼핑 바로가기" FontSize="11" 
-                                                       Foreground="Black" TextDecorations="Underline" Cursor="Hand"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                                
-                                <!-- 상품 3 -->
-                                <Border Grid.Row="1" Grid.Column="0" Background="White" 
-                                        BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" 
-                                        Padding="20" Margin="0,15,15,0">
-                                    <StackPanel Spacing="15">
-                                        <StackPanel Orientation="Horizontal" Spacing="15">
-                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
-                                                   Width="100" Height="100" Stretch="Uniform"/>
-                                            <StackPanel Spacing="10">
-                                                <TextBlock Text="상품명: 초코 바나나 시럽 아마토 핸드폰" FontSize="14" FontWeight="Medium"/>
-                                                <Border BorderBrush="#E67E22" BorderThickness="1" CornerRadius="4" Padding="8">
-                                                    <TextBox Text="옵션" FontSize="12" Background="Transparent" BorderThickness="0"/>
-                                                </Border>
-                                                <TextBlock Text="가격 : 100,000" FontSize="14" FontWeight="Medium"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <TextBlock Text="피드백: " FontSize="12"/>
-                                            <TextBlock Text="중국어가 있습니다." FontSize="12" Foreground="#E67E22"/>
-                                            <TextBlock Text="네이버쇼핑 바로가기" FontSize="11" 
-                                                       Foreground="Black" TextDecorations="Underline" Cursor="Hand"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                                
-                                <!-- 상품 4 -->
-                                <Border Grid.Row="1" Grid.Column="1" Background="White" 
-                                        BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" 
-                                        Padding="20" Margin="15,15,0,0">
-                                    <StackPanel Spacing="15">
-                                        <StackPanel Orientation="Horizontal" Spacing="15">
-                                            <Image Source="avares://Gumaedaehang/images/predvia_logo.png" 
-                                                   Width="100" Height="100" Stretch="Uniform"/>
-                                            <StackPanel Spacing="10">
-                                                <TextBlock Text="상품명: 초코 바나나 시럽 아마토 핸드폰" FontSize="14" FontWeight="Medium"/>
-                                                <Border BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Padding="8">
-                                                    <TextBox Text="옵션" FontSize="12" Background="Transparent" BorderThickness="0"/>
-                                                </Border>
-                                                <TextBlock Text="가격 : 100,000" FontSize="14" FontWeight="Medium"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <TextBlock Text="피드백: " FontSize="12"/>
-                                            <TextBlock Text="중국어가 있습니다." FontSize="12" Foreground="#E67E22"/>
-                                            <TextBlock Text="네이버쇼핑 바로가기" FontSize="11" 
-                                                       Foreground="Black" TextDecorations="Underline" Cursor="Hand"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-                            
-                            <!-- 하단 차트 섹션 -->
-                            <Border Background="#FFF5E6" CornerRadius="12" Padding="30">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="300"/>
-                                    </Grid.ColumnDefinitions>
-                                    
-                                    <!-- 왼쪽: 차트 -->
-                                    <StackPanel Grid.Column="0" Spacing="20">
-                                        <Canvas Height="350" Background="Transparent">
-                                            <!-- Y축 -->
-                                            <Line StartPoint="60,320" EndPoint="60,40" Stroke="#E67E22" StrokeThickness="2"/>
-                                            <Polygon Points="55,40 60,30 65,40" Fill="#E67E22"/>
-                                            
-                                            <!-- X축 -->
-                                            <Line StartPoint="60,320" EndPoint="500,320" Stroke="#E0E0E0" StrokeThickness="1"/>
-                                            
-                                            <!-- 막대 그래프 - 겹쳐진 스타일 -->
-                                            <!-- 1,000 -->
-                                            <Rectangle Canvas.Left="100" Canvas.Top="280" Width="50" Height="40" Fill="#D0D0D0"/>
-                                            <Rectangle Canvas.Left="100" Canvas.Top="300" Width="50" Height="20" Fill="#E67E22"/>
-                                            <TextBlock Canvas.Left="115" Canvas.Top="330" Text="1,000" FontSize="11" HorizontalAlignment="Center"/>
-                                            
-                                            <!-- 10,000 -->
-                                            <Rectangle Canvas.Left="180" Canvas.Top="200" Width="50" Height="120" Fill="#D0D0D0"/>
-                                            <Rectangle Canvas.Left="180" Canvas.Top="260" Width="50" Height="60" Fill="#E67E22"/>
-                                            <TextBlock Canvas.Left="195" Canvas.Top="330" Text="10,000" FontSize="11" HorizontalAlignment="Center"/>
-                                            
-                                            <!-- 50,000 -->
-                                            <Rectangle Canvas.Left="260" Canvas.Top="120" Width="50" Height="200" Fill="#D0D0D0"/>
-                                            <Rectangle Canvas.Left="260" Canvas.Top="220" Width="50" Height="100" Fill="#E67E22"/>
-                                            <TextBlock Canvas.Left="275" Canvas.Top="330" Text="50,000" FontSize="11" HorizontalAlignment="Center"/>
-                                            
-                                            <!-- 100,000 -->
-                                            <Rectangle Canvas.Left="340" Canvas.Top="80" Width="50" Height="240" Fill="#D0D0D0"/>
-                                            <Rectangle Canvas.Left="340" Canvas.Top="180" Width="50" Height="140" Fill="#E67E22"/>
-                                            <TextBlock Canvas.Left="355" Canvas.Top="330" Text="100,000" FontSize="11" HorizontalAlignment="Center"/>
-                                        </Canvas>
-                                    </StackPanel>
-                                    
-                                    <!-- 오른쪽: 범례와 설명 -->
-                                    <StackPanel Grid.Column="1" Spacing="20" Margin="30,0,0,0" VerticalAlignment="Top">
-                                        <!-- 범례 -->
-                                        <StackPanel Spacing="12">
-                                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                                <Rectangle Width="15" Height="15" Fill="#E67E22"/>
-                                                <TextBlock Text="주문처리형" FontSize="14" Foreground="#333"/>
-                                            </StackPanel>
-                                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                                <Rectangle Width="15" Height="15" Fill="#D0D0D0"/>
-                                                <TextBlock Text="밸런스형" FontSize="14" Foreground="#333"/>
-                                            </StackPanel>
-                                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                                <Rectangle Width="15" Height="15" Fill="#F0C0A0"/>
-                                                <TextBlock Text="크무비형" FontSize="14" Foreground="#333"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                        
-                                        <!-- 피드백 텍스트 -->
-                                        <StackPanel Spacing="10">
-                                            <TextBlock Text="피드백 입니다. 주문처리형 밸런스형 크무비형 초코 바나나 시럽 아파트 핸드폰 중국어가 있습니다. 브랜드명이 포함되어 있습니다." 
-                                                       FontSize="14" 
-                                                       Foreground="#E67E22"
-                                                       TextWrapping="Wrap" 
-                                                       MaxWidth="250"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-                            
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
-                <!-- 메인상품찾기 화면 (추후 구현) -->
-                <Grid x:Name="MainProductContent" IsVisible="False">
-                    <TextBlock Text="메인상품찾기 페이지 - 준비 중입니다." 
+                <!-- 메인상품찾기 화면 -->
+                <ContentControl x:Name="MainProductContent" IsVisible="False">
+                    <local:MainProductFinderPage/> 
                                HorizontalAlignment="Center" 
                                VerticalAlignment="Center" 
                                FontSize="24"/>

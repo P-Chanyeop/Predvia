@@ -283,13 +283,10 @@
                     <local:MarketRegistrationPage/>
                 </ContentControl>
                 
-                <!-- 메인상품찾기 화면 (추후 구현) -->
-                <Grid x:Name="MainProductContent" IsVisible="False">
-                    <TextBlock Text="메인상품찾기 페이지 - 준비 중입니다." 
-                               HorizontalAlignment="Center" 
-                               VerticalAlignment="Center" 
-                               FontSize="24"/>
-                </Grid>
+                <!-- 메인상품찾기 화면 -->
+                <ContentControl x:Name="MainProductContent" IsVisible="False">
+                    <local:MainProductFinderPage/> 
+                </ContentControl>
                 
                 <!-- 설정 화면 (추후 구현) -->
                 <Grid x:Name="SettingsContent" IsVisible="False">

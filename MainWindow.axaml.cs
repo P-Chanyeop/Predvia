@@ -26,7 +26,7 @@ namespace Gumaedaehang
         private ContentControl? _sourcingContent;
         private ContentControl? _marketCheckContent;
         private ContentControl? _marketRegistrationContent;
-        private Grid? _mainProductContent;
+        private ContentControl? _mainProductContent;
         private Grid? _settingsContent;
         
         // 명언 관련 요소
@@ -82,7 +82,7 @@ namespace Gumaedaehang
             _marketRegistrationContent = this.FindControl<ContentControl>("MarketRegistrationContent");
             Debug.WriteLine($"MarketRegistrationContent found: {_marketRegistrationContent != null}");
             
-            _mainProductContent = this.FindControl<Grid>("MainProductContent");
+            _mainProductContent = this.FindControl<ContentControl>("MainProductContent");
             Debug.WriteLine($"MainProductContent found: {_mainProductContent != null}");
             
             _settingsContent = this.FindControl<Grid>("SettingsContent");
@@ -147,6 +147,16 @@ namespace Gumaedaehang
                     activeTab = _settingsTab;
                 
                 UpdateTabStyles(activeTab);
+                
+                // 각 페이지의 테마 업데이트
+                if (_sourcingContent?.Content is SourcingPage sourcingPage)
+                    sourcingPage.UpdateTheme();
+                if (_marketCheckContent?.Content is MarketCheckPage marketCheckPage)
+                    marketCheckPage.UpdateTheme();
+                if (_marketRegistrationContent?.Content is MarketRegistrationPage marketRegistrationPage)
+                    marketRegistrationPage.UpdateTheme();
+                if (_mainProductContent?.Content is MainProductFinderPage mainProductFinderPage)
+                    mainProductFinderPage.UpdateTheme();
             };
             
             // 인증 상태 변경 이벤트 구독

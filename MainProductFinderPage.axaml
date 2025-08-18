@@ -1,0 +1,325 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Gumaedaehang.MainProductFinderPage"
+             Name="MainProductFinderPageControl">
+
+  <UserControl.Styles>
+    <!-- 라이트모드 스타일 -->
+    <Style Selector="UserControl">
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <!-- 다크모드 스타일 -->
+    <Style Selector="UserControl.dark">
+      <Setter Property="Background" Value="#1E1E1E"/>
+    </Style>
+
+    <!-- 상품 카드 스타일 - 라이트모드 -->
+    <Style Selector="Border.product-card">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="#E0E0E0"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Margin" Value="0,20,0,0"/>
+      <Setter Property="Padding" Value="20"/>
+    </Style>
+
+    <!-- 상품 카드 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark Border.product-card">
+      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+      <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+
+    <!-- 상품명 텍스트 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.product-title">
+      <Setter Property="FontSize" Value="18"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="Margin" Value="0,0,0,20"/>
+    </Style>
+
+    <!-- 상품명 텍스트 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark TextBlock.product-title">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- 정보 패널 스타일 - 라이트모드 -->
+    <Style Selector="Border.info-panel">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="#E0E0E0"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="20"/>
+      <Setter Property="Margin" Value="20,0,0,0"/>
+    </Style>
+
+    <!-- 정보 패널 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark Border.info-panel">
+      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+      <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+
+    <!-- 정보 라벨 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.info-label">
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+
+    <!-- 정보 라벨 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark TextBlock.info-label">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- 정보 값 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.info-value">
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#DF6C29"/>
+      <Setter Property="Margin" Value="0,0,0,15"/>
+    </Style>
+
+    <!-- 정보 값 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark TextBlock.info-value">
+      <Setter Property="Foreground" Value="#FFDAC4"/>
+    </Style>
+
+    <!-- 버튼 스타일 - 라이트모드 -->
+    <Style Selector="Button.action-button">
+      <Setter Property="Background" Value="#FFDAC4"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="16,12"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Margin" Value="0,0,12,0"/>
+      <Setter Property="MinWidth" Value="160"/>
+      <Setter Property="Height" Value="42"/>
+    </Style>
+
+    <!-- 버튼 호버 스타일 - 라이트모드 -->
+    <Style Selector="Button.action-button:pointerover">
+      <Setter Property="Background" Value="#FFD0A6"/>
+    </Style>
+
+    <!-- 버튼 클릭 스타일 - 라이트모드 -->
+    <Style Selector="Button.action-button:pressed">
+      <Setter Property="Background" Value="#FFC088"/>
+    </Style>
+
+    <!-- 버튼 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark Button.action-button">
+      <Setter Property="Background" Value="#FFDAC4"/>
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+
+    <!-- 버튼 호버 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark Button.action-button:pointerover">
+      <Setter Property="Background" Value="#FFD0A6"/>
+    </Style>
+
+    <!-- 버튼 클릭 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark Button.action-button:pressed">
+      <Setter Property="Background" Value="#FFC088"/>
+    </Style>
+
+    <!-- 상품 이미지 스타일 -->
+    <Style Selector="Border.product-image">
+      <Setter Property="Width" Value="200"/>
+      <Setter Property="Height" Value="150"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+
+    <!-- 이미지 플레이스홀더 스타일 - 라이트모드 -->
+    <Style Selector="Border.image-placeholder">
+      <Setter Property="Background" Value="#F0F0F0"/>
+      <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+
+    <!-- 이미지 플레이스홀더 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark Border.image-placeholder">
+      <Setter Property="Background" Value="#4A4A4A"/>
+    </Style>
+
+    <!-- 플레이스홀더 텍스트 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.placeholder-text">
+      <Setter Property="Foreground" Value="#999999"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- 플레이스홀더 텍스트 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark TextBlock.placeholder-text">
+      <Setter Property="Foreground" Value="#CCCCCC"/>
+    </Style>
+
+  </UserControl.Styles>
+
+  <ScrollViewer>
+    <StackPanel Margin="40">
+      
+      <!-- 첫 번째 상품 -->
+      <Border Classes="product-card">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+
+          <!-- 상품 이미지 -->
+          <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" Classes="product-image" VerticalAlignment="Top">
+            <Border Classes="image-placeholder">
+              <TextBlock Classes="placeholder-text" Text="상품 이미지"/>
+            </Border>
+          </Border>
+
+          <!-- 상품 정보 영역 -->
+          <StackPanel Grid.Column="1" Grid.Row="0" Margin="20,0,0,0">
+            
+            <!-- 상품명 -->
+            <TextBlock Classes="product-title" Text="상품명: 초코 바나나 시럽 핸드폰 나이크"/>
+
+            <!-- 정보 패널 -->
+            <Border Classes="info-panel">
+              <StackPanel>
+                <TextBlock Classes="info-label" Text="누적판매수:"/>
+                <TextBlock Classes="info-value" Text="2"/>
+                
+                <TextBlock Classes="info-label" Text="동일 키워드 상품 최대 리뷰(해외직구몰 기준):"/>
+                <TextBlock Classes="info-value" Text="3개"/>
+                
+                <TextBlock Classes="info-label" Text="카테고리 제조사:"/>
+                <TextBlock Classes="info-value" Text="기구"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <!-- 버튼 영역 (하단 가로 배치) -->
+          <StackPanel Grid.Column="1" Grid.Row="1" 
+                     Orientation="Horizontal" 
+                     HorizontalAlignment="Left"
+                     Margin="20,15,0,0">
+            <Button Classes="action-button" Content="상세페이지 만들기 (BETA)"/>
+            <Button Classes="action-button" Content="썸네일 만들기 (BETA)"/>
+            <Button Classes="action-button" Content="타오바오 링크 재배어링 하기"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- 두 번째 상품 -->
+      <Border Classes="product-card">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+
+          <!-- 상품 이미지 -->
+          <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" Classes="product-image" VerticalAlignment="Top">
+            <Border Classes="image-placeholder">
+              <TextBlock Classes="placeholder-text" Text="상품 이미지"/>
+            </Border>
+          </Border>
+
+          <!-- 상품 정보 영역 -->
+          <StackPanel Grid.Column="1" Grid.Row="0" Margin="20,0,0,0">
+            
+            <!-- 상품명 -->
+            <TextBlock Classes="product-title" Text="상품명: 초코 바나나 시럽 핸드폰 나이크"/>
+
+            <!-- 정보 패널 -->
+            <Border Classes="info-panel">
+              <StackPanel>
+                <TextBlock Classes="info-label" Text="누적판매수:"/>
+                <TextBlock Classes="info-value" Text="2"/>
+                
+                <TextBlock Classes="info-label" Text="동일 키워드 상품 최대 리뷰(해외직구몰 기준):"/>
+                <TextBlock Classes="info-value" Text="3개"/>
+                
+                <TextBlock Classes="info-label" Text="카테고리 제조사:"/>
+                <TextBlock Classes="info-value" Text="기구"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <!-- 버튼 영역 (하단 가로 배치) -->
+          <StackPanel Grid.Column="1" Grid.Row="1" 
+                     Orientation="Horizontal" 
+                     HorizontalAlignment="Left"
+                     Margin="20,15,0,0">
+            <Button Classes="action-button" Content="상세페이지 만들기 (BETA)"/>
+            <Button Classes="action-button" Content="썸네일 만들기 (BETA)"/>
+            <Button Classes="action-button" Content="타오바오 링크 재배어링 하기"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- 세 번째 상품 -->
+      <Border Classes="product-card">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+
+          <!-- 상품 이미지 -->
+          <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" Classes="product-image" VerticalAlignment="Top">
+            <Border Classes="image-placeholder">
+              <TextBlock Classes="placeholder-text" Text="상품 이미지"/>
+            </Border>
+          </Border>
+
+          <!-- 상품 정보 영역 -->
+          <StackPanel Grid.Column="1" Grid.Row="0" Margin="20,0,0,0">
+            
+            <!-- 상품명 -->
+            <TextBlock Classes="product-title" Text="상품명: 초코 바나나 시럽 핸드폰 나이크"/>
+
+            <!-- 정보 패널 -->
+            <Border Classes="info-panel">
+              <StackPanel>
+                <TextBlock Classes="info-label" Text="누적판매수:"/>
+                <TextBlock Classes="info-value" Text="2"/>
+                
+                <TextBlock Classes="info-label" Text="동일 키워드 상품 최대 리뷰(해외직구몰 기준):"/>
+                <TextBlock Classes="info-value" Text="3개"/>
+                
+                <TextBlock Classes="info-label" Text="카테고리 제조사:"/>
+                <TextBlock Classes="info-value" Text="기구"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <!-- 버튼 영역 (하단 가로 배치) -->
+          <StackPanel Grid.Column="1" Grid.Row="1" 
+                     Orientation="Horizontal" 
+                     HorizontalAlignment="Left"
+                     Margin="20,15,0,0">
+            <Button Classes="action-button" Content="상세페이지 만들기 (BETA)"/>
+            <Button Classes="action-button" Content="썸네일 만들기 (BETA)"/>
+            <Button Classes="action-button" Content="타오바오 링크 재배어링 하기"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

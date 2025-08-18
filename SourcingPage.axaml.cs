@@ -117,7 +117,7 @@ namespace Gumaedaehang
             }
         }
         
-        private void UpdateTheme()
+        public void UpdateTheme()
         {
             try
             {
