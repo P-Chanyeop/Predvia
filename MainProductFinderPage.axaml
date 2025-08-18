@@ -10,7 +10,7 @@
     </Style>
     
     <!-- 다크모드 스타일 -->
-    <Style Selector="UserControl.dark">
+    <Style Selector="UserControl.dark-theme">
       <Setter Property="Background" Value="#1E1E1E"/>
     </Style>
 
@@ -25,7 +25,7 @@
     </Style>
 
     <!-- 상품 카드 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Border.product-card">
+    <Style Selector="UserControl.dark-theme Border.product-card">
       <Setter Property="Background" Value="#2D2D2D"/>
       <Setter Property="BorderBrush" Value="#FFDAC4"/>
       <Setter Property="BorderThickness" Value="2"/>
@@ -40,7 +40,7 @@
     </Style>
 
     <!-- 상품명 텍스트 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark TextBlock.product-title">
+    <Style Selector="UserControl.dark-theme TextBlock.product-title">
       <Setter Property="Foreground" Value="White"/>
     </Style>
 
@@ -55,10 +55,10 @@
     </Style>
 
     <!-- 정보 패널 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Border.info-panel">
+    <Style Selector="UserControl.dark-theme Border.info-panel">
       <Setter Property="Background" Value="#2D2D2D"/>
-      <Setter Property="BorderBrush" Value="#FFDAC4"/>
-      <Setter Property="BorderThickness" Value="2"/>
+      <Setter Property="BorderBrush" Value="#444444"/>
+      <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
     <!-- 정보 라벨 스타일 - 라이트모드 -->
@@ -69,7 +69,7 @@
     </Style>
 
     <!-- 정보 라벨 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark TextBlock.info-label">
+    <Style Selector="UserControl.dark-theme TextBlock.info-label">
       <Setter Property="Foreground" Value="White"/>
     </Style>
 
@@ -82,7 +82,7 @@
     </Style>
 
     <!-- 정보 값 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark TextBlock.info-value">
+    <Style Selector="UserControl.dark-theme TextBlock.info-value">
       <Setter Property="Foreground" Value="#FFDAC4"/>
     </Style>
 
@@ -111,18 +111,18 @@
     </Style>
 
     <!-- 버튼 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Button.action-button">
+    <Style Selector="UserControl.dark-theme Button.action-button">
       <Setter Property="Background" Value="#FFDAC4"/>
       <Setter Property="Foreground" Value="#333333"/>
     </Style>
 
     <!-- 버튼 호버 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Button.action-button:pointerover">
+    <Style Selector="UserControl.dark-theme Button.action-button:pointerover">
       <Setter Property="Background" Value="#FFD0A6"/>
     </Style>
 
     <!-- 버튼 클릭 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Button.action-button:pressed">
+    <Style Selector="UserControl.dark-theme Button.action-button:pressed">
       <Setter Property="Background" Value="#FFC088"/>
     </Style>
 
@@ -141,7 +141,7 @@
     </Style>
 
     <!-- 이미지 플레이스홀더 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Border.image-placeholder">
+    <Style Selector="UserControl.dark-theme Border.image-placeholder">
       <Setter Property="Background" Value="#4A4A4A"/>
     </Style>
 
@@ -154,7 +154,7 @@
     </Style>
 
     <!-- 플레이스홀더 텍스트 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark TextBlock.placeholder-text">
+    <Style Selector="UserControl.dark-theme TextBlock.placeholder-text">
       <Setter Property="Foreground" Value="#CCCCCC"/>
     </Style>
 
@@ -170,7 +170,7 @@
     </Style>
 
     <!-- 사이드바 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Border.sidebar">
+    <Style Selector="UserControl.dark-theme Border.sidebar">
       <Setter Property="Background" Value="#2D2D2D"/>
       <Setter Property="BorderBrush" Value="#FFDAC4"/>
       <Setter Property="BorderThickness" Value="2"/>
@@ -185,7 +185,7 @@
     </Style>
 
     <!-- 사이드바 제목 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark TextBlock.sidebar-title">
+    <Style Selector="UserControl.dark-theme TextBlock.sidebar-title">
       <Setter Property="Foreground" Value="White"/>
     </Style>
 
@@ -213,18 +213,18 @@
     </Style>
 
     <!-- 사이드바 버튼 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Button.sidebar-button">
+    <Style Selector="UserControl.dark-theme Button.sidebar-button">
       <Setter Property="Background" Value="#FFDAC4"/>
       <Setter Property="Foreground" Value="#333333"/>
     </Style>
 
     <!-- 사이드바 버튼 호버 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Button.sidebar-button:pointerover">
+    <Style Selector="UserControl.dark-theme Button.sidebar-button:pointerover">
       <Setter Property="Background" Value="#FFD0A6"/>
     </Style>
 
     <!-- 사이드바 버튼 클릭 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Button.sidebar-button:pressed">
+    <Style Selector="UserControl.dark-theme Button.sidebar-button:pressed">
       <Setter Property="Background" Value="#FFC088"/>
     </Style>
 
@@ -237,22 +237,42 @@
 
     <!-- 토글 사이드바 스타일 - 라이트모드 -->
     <Style Selector="Border.toggle-sidebar">
-      <Setter Property="Background" Value="#FFF5E6"/>
+      <Setter Property="Background" Value="White"/>
       <Setter Property="BorderBrush" Value="#E67E22"/>
     </Style>
 
     <!-- 토글 사이드바 스타일 - 다크모드 -->
-    <Style Selector="UserControl.dark Border.toggle-sidebar">
+    <Style Selector="UserControl.dark-theme Border.toggle-sidebar">
       <Setter Property="Background" Value="#2D2D2D"/>
       <Setter Property="BorderBrush" Value="#FFDAC4"/>
     </Style>
 
-    <!-- 다크모드 텍스트 스타일 -->
-    <Style Selector="UserControl.dark TextBlock">
+    <!-- 사이드바 제목 텍스트 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.sidebar-title-text">
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+
+    <!-- 사이드바 제목 텍스트 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBlock.sidebar-title-text">
       <Setter Property="Foreground" Value="White"/>
     </Style>
 
-    <Style Selector="UserControl.dark TextBlock.description">
+    <!-- 사이드바 설명 텍스트 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.sidebar-desc-text">
+      <Setter Property="Foreground" Value="#444444"/>
+    </Style>
+
+    <!-- 사이드바 설명 텍스트 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBlock.sidebar-desc-text">
+      <Setter Property="Foreground" Value="#CCCCCC"/>
+    </Style>
+
+    <!-- 다크모드 텍스트 스타일 -->
+    <Style Selector="UserControl.dark-theme TextBlock">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme TextBlock.description">
       <Setter Property="Foreground" Value="#CCCCCC"/>
     </Style>
 
@@ -475,8 +495,7 @@
       
       <!-- 메인 사이드바 (14.png와 100% 일치) -->
       <Border Grid.Column="1"
-              Background="White"
-              BorderBrush="#E67E22"
+              Classes="toggle-sidebar"
               BorderThickness="2"
               CornerRadius="12"
               Padding="25"
@@ -497,10 +516,10 @@
             </Grid.ColumnDefinitions>
             
             <TextBlock Grid.Column="0" 
+                       Classes="sidebar-title-text"
                        Text="내마켓에서 메인상품찾기"
                        FontSize="17"
                        FontWeight="Bold"
-                       Foreground="#333333"
                        VerticalAlignment="Center"/>
             
             <Button Grid.Column="1" 
@@ -517,11 +536,10 @@
 
           <!-- 하단 설명 (박스 아래쪽에 배치) -->
           <TextBlock Grid.Row="2"
+                     Classes="sidebar-desc-text"
                      Text="새로운 메인상품 만들기"
-                     Classes="description"
                      FontSize="17"
                      FontWeight="Bold"
-                     Foreground="#444444"
                      VerticalAlignment="Bottom"/>
         </Grid>
       </Border>
