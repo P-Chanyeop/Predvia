@@ -1,0 +1,268 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Gumaedaehang.SettingsPage"
+             Name="SettingsPageControl">
+
+  <UserControl.Styles>
+    <!-- 라이트모드 스타일 -->
+    <Style Selector="UserControl">
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <!-- 다크모드 스타일 -->
+    <Style Selector="UserControl.dark-theme">
+      <Setter Property="Background" Value="#1E1E1E"/>
+    </Style>
+
+    <!-- 메뉴 제목 버튼 스타일 - 라이트모드 -->
+    <Style Selector="Button.menu-title-button">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+
+    <!-- 메뉴 제목 버튼 호버 스타일 - 라이트모드 -->
+    <Style Selector="Button.menu-title-button:pointerover">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <!-- 메뉴 제목 버튼 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Button.menu-title-button">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <!-- 메뉴 제목 버튼 호버 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Button.menu-title-button:pointerover">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <!-- 메인 제목 스타일 - 라이트모드 (계정관리 - 주황색, 매우 큰 크기) -->
+    <Style Selector="Button.main-title">
+      <Setter Property="FontSize" Value="48"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Foreground" Value="#E67E22"/>
+      <Setter Property="Margin" Value="0,0,0,80"/>
+    </Style>
+
+    <!-- 메인 제목 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Button.main-title">
+      <Setter Property="Foreground" Value="#FFDAC4"/>
+    </Style>
+
+    <!-- 서브 제목 스타일 - 라이트모드 (마켓주소관리, 프로그램 설정 - 회색, 큰 크기) -->
+    <Style Selector="Button.sub-title">
+      <Setter Property="FontSize" Value="36"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#999999"/>
+      <Setter Property="Margin" Value="0,0,0,60"/>
+    </Style>
+
+    <!-- 서브 제목 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Button.sub-title">
+      <Setter Property="Foreground" Value="#AAAAAA"/>
+    </Style>
+
+    <!-- 동적 위치 설정 박스 스타일 - 라이트모드 -->
+    <Style Selector="Border.settings-box">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="#E67E22"/>
+      <Setter Property="BorderThickness" Value="2"/>
+      <Setter Property="CornerRadius" Value="15"/>
+      <Setter Property="Padding" Value="40"/>
+      <Setter Property="Width" Value="400"/>
+      <Setter Property="Height" Value="320"/>
+    </Style>
+
+    <!-- 중앙 설정 박스 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Border.settings-box">
+      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <!-- 메뉴 항목 버튼 스타일 - 라이트모드 (크기 증가) -->
+    <Style Selector="Button.menu-item">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="FontSize" Value="20"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Padding" Value="0,20"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Width" Value="320"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+
+    <!-- 메뉴 항목 버튼 호버 스타일 - 라이트모드 -->
+    <Style Selector="Button.menu-item:pointerover">
+      <Setter Property="Background" Value="#FFF5E6"/>
+      <Setter Property="Foreground" Value="#E67E22"/>
+    </Style>
+
+    <!-- 메뉴 항목 버튼 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Button.menu-item">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- 메뉴 항목 버튼 호버 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Button.menu-item:pointerover">
+      <Setter Property="Background" Value="#3A3A3A"/>
+      <Setter Property="Foreground" Value="#FFDAC4"/>
+    </Style>
+
+    <!-- PREDVIA 워터마크 스타일 - 라이트모드 (크기 증가) -->
+    <Style Selector="TextBlock.watermark">
+      <Setter Property="FontSize" Value="64"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Foreground" Value="#F0F0F0"/>
+      <Setter Property="Opacity" Value="0.3"/>
+      <Setter Property="HorizontalAlignment" Value="Right"/>
+      <Setter Property="VerticalAlignment" Value="Bottom"/>
+      <Setter Property="Margin" Value="0,0,80,80"/>
+    </Style>
+
+    <!-- PREDVIA 워터마크 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBlock.watermark">
+      <Setter Property="Foreground" Value="#404040"/>
+      <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+
+  </UserControl.Styles>
+
+  <Grid>
+    <!-- 메인 레이아웃 (15.png 비율에 맞춤) -->
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="500"/>
+      <ColumnDefinition Width="*"/>
+      <ColumnDefinition Width="400"/>
+    </Grid.ColumnDefinitions>
+
+    <!-- 왼쪽 영역 - 메뉴 제목들 (15.png와 정확히 일치하는 크기와 위치) -->
+    <StackPanel Grid.Column="0" 
+                VerticalAlignment="Center" 
+                HorizontalAlignment="Left"
+                Margin="120,0,0,0"
+                x:Name="MenuStackPanel">
+      
+      <!-- 계정관리 (클릭 가능한 버튼) -->
+      <Button Classes="menu-title-button main-title" 
+              Content="계정관리" 
+              Click="OnAccountManagementClick"
+              x:Name="AccountManagementButton"/>
+      
+      <!-- 동적 간격 1 -->
+      <Border Height="0" x:Name="Spacer1"/>
+      
+      <!-- 마켓주소관리 (클릭 가능한 버튼) -->
+      <Button Classes="menu-title-button sub-title" 
+              Content="마켓주소관리" 
+              Click="OnMarketAddressClick"
+              x:Name="MarketAddressButton"/>
+      
+      <!-- 동적 간격 2 -->
+      <Border Height="0" x:Name="Spacer2"/>
+      
+      <!-- 프로그램 설정 (클릭 가능한 버튼) -->
+      <Button Classes="menu-title-button sub-title" 
+              Content="프로그램 설정" 
+              Click="OnProgramSettingsClick"
+              x:Name="ProgramSettingsButton"/>
+      
+    </StackPanel>
+
+    <!-- 동적 위치 설정 박스 (Canvas로 절대 위치 지정) -->
+    <Canvas Grid.Column="0" Grid.ColumnSpan="3" x:Name="SettingsCanvas">
+      <!-- 계정관리용 설정 박스 -->
+      <Border Classes="settings-box" 
+              x:Name="AccountSettingsBox"
+              Canvas.Left="520" 
+              Canvas.Top="150"
+              IsVisible="False">
+        <StackPanel>
+          
+          <!-- 닉네임 변경 -->
+          <Button Classes="menu-item" Content="닉네임 변경" Click="OnNicknameChangeClick"/>
+          
+          <!-- 구분선 -->
+          <Border Height="1" 
+                  Background="#E0E0E0" 
+                  Margin="0,10,0,10"
+                  x:Name="AccountSeparator1"/>
+          
+          <!-- API키 찾기 -->
+          <Button Classes="menu-item" Content="API키 찾기" Click="OnApiKeyFindClick"/>
+          
+          <!-- 구분선 -->
+          <Border Height="1" 
+                  Background="#E0E0E0" 
+                  Margin="0,10,0,10"
+                  x:Name="AccountSeparator2"/>
+          
+          <!-- 비밀번호찾기 -->
+          <Button Classes="menu-item" Content="비밀번호찾기" Click="OnPasswordResetClick"/>
+          
+        </StackPanel>
+      </Border>
+
+      <!-- 마켓주소관리용 설정 박스 (16.png와 100% 일치) -->
+      <Border Classes="settings-box" 
+              x:Name="MarketSettingsBox"
+              Canvas.Left="520" 
+              Canvas.Top="350"
+              IsVisible="False">
+        <StackPanel>
+          
+          <!-- 내마켓 설정하기 (16.png의 유일한 버튼) -->
+          <Button Classes="menu-item" 
+                  Content="내마켓 설정하기" 
+                  Click="OnMarketSetupClick"
+                  HorizontalAlignment="Center"
+                  Margin="0,80,0,80"/>
+          
+        </StackPanel>
+      </Border>
+
+      <!-- 프로그램 설정용 설정 박스 -->
+      <Border Classes="settings-box" 
+              x:Name="ProgramSettingsBox"
+              Canvas.Left="520" 
+              Canvas.Top="550"
+              IsVisible="False">
+        <StackPanel>
+          
+          <!-- 프로그램 설정 관련 메뉴들 (향후 추가) -->
+          <Button Classes="menu-item" Content="테마 설정" Click="OnThemeSettingsClick"/>
+          
+          <!-- 구분선 -->
+          <Border Height="1" 
+                  Background="#E0E0E0" 
+                  Margin="0,10,0,10"
+                  x:Name="ProgramSeparator1"/>
+          
+          <!-- 언어 설정 -->
+          <Button Classes="menu-item" Content="언어 설정" Click="OnLanguageSettingsClick"/>
+          
+          <!-- 구분선 -->
+          <Border Height="1" 
+                  Background="#E0E0E0" 
+                  Margin="0,10,0,10"
+                  x:Name="ProgramSeparator2"/>
+          
+          <!-- 알림 설정 -->
+          <Button Classes="menu-item" Content="알림 설정" Click="OnNotificationSettingsClick"/>
+          
+        </StackPanel>
+      </Border>
+    </Canvas>
+
+    <!-- 우측 영역 - PREDVIA 워터마크 -->
+    <TextBlock Grid.Column="2" 
+               Classes="watermark" 
+               Text="PREDVIA"/>
+
+  </Grid>
+
+</UserControl>

@@ -81,7 +81,7 @@ namespace Gumaedaehang.Services
             }
             else
             {
-                throw new ApiException("API 키 인증 실패", "유효하지 않은 API 키입니다.");
+                throw new ApiException("API 키 인증 실패", "유효하지 않은 API 키입니다. 올바른 API 키를 입력해주세요.");
             }
         }
     }
@@ -96,3 +96,23 @@ namespace Gumaedaehang.Services
         public string Message { get; set; }
     }
 }
+    // API 예외 클래스
+    public class ApiException : Exception
+    {
+        public string ErrorDetails { get; }
+
+        public ApiException(string message) : base(message)
+        {
+            ErrorDetails = message;
+        }
+
+        public ApiException(string message, string errorDetails) : base(message)
+        {
+            ErrorDetails = errorDetails;
+        }
+
+        public ApiException(string message, Exception innerException) : base(message, innerException)
+        {
+            ErrorDetails = innerException?.Message ?? message;
+        }
+    }

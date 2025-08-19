@@ -27,7 +27,7 @@ namespace Gumaedaehang
         private ContentControl? _marketCheckContent;
         private ContentControl? _marketRegistrationContent;
         private ContentControl? _mainProductContent;
-        private Grid? _settingsContent;
+        private ContentControl? _settingsContent;
         
         // 명언 관련 요소
         private TextBlock? _adviceText;
@@ -85,7 +85,7 @@ namespace Gumaedaehang
             _mainProductContent = this.FindControl<ContentControl>("MainProductContent");
             Debug.WriteLine($"MainProductContent found: {_mainProductContent != null}");
             
-            _settingsContent = this.FindControl<Grid>("SettingsContent");
+            _settingsContent = this.FindControl<ContentControl>("SettingsContent");
             Debug.WriteLine($"SettingsContent found: {_settingsContent != null}");
             
             // 이벤트 핸들러 등록
@@ -157,6 +157,8 @@ namespace Gumaedaehang
                     marketRegistrationPage.UpdateTheme();
                 if (_mainProductContent?.Content is MainProductFinderPage mainProductFinderPage)
                     mainProductFinderPage.UpdateTheme();
+                if (SettingsPageInstance != null)
+                    SettingsPageInstance.UpdateTheme();
             };
             
             // 인증 상태 변경 이벤트 구독

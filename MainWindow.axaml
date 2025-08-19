@@ -288,13 +288,10 @@
                     <local:MainProductFinderPage/> 
                 </ContentControl>
                 
-                <!-- 설정 화면 (추후 구현) -->
-                <Grid x:Name="SettingsContent" IsVisible="False">
-                    <TextBlock Text="설정 페이지 - 준비 중입니다." 
-                               HorizontalAlignment="Center" 
-                               VerticalAlignment="Center" 
-                               FontSize="24"/>
-                </Grid>
+                <!-- 설정 화면  -->
+                <ContentControl x:Name="SettingsContent" IsVisible="False">
+                    <local:SettingsPage x:Name="SettingsPageInstance"/>
+                </ContentControl>
             </Grid>
         </Grid>
     </Grid>
