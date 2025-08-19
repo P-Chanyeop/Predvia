@@ -143,9 +143,9 @@ namespace Gumaedaehang.Services
     public class AuthResponse
     {
         public bool Success { get; set; }
-        public string Token { get; set; }
-        public string Username { get; set; }
-        public string Message { get; set; }
+        public string? Token { get; set; }
+        public string? Username { get; set; }
+        public string? Message { get; set; }
     }
 
     // API 예외 클래스

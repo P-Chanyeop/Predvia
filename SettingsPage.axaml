@@ -130,6 +130,109 @@
       <Setter Property="Opacity" Value="0.4"/>
     </Style>
 
+    <!-- 인라인 UI 스타일 - 라이트모드 -->
+    <Style Selector="TextBox">
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Padding" Value="12,8"/>
+      <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+
+    <!-- 인라인 UI 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBox">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme ComboBox">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme TextBlock">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Button">
+      <Setter Property="Background" Value="#FFDAC4"/>
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Button:pointerover">
+      <Setter Property="Background" Value="#FFE4C4"/>
+    </Style>
+
+    <!-- 새 페이지 다크모드 스타일 -->
+    <Style Selector="UserControl.dark-theme Border#NicknameChangePage">
+      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Border#MarketSetupPage">
+      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <!-- 다크모드 텍스트 색상 -->
+    <Style Selector="UserControl.dark-theme Border#NicknameChangePage TextBlock">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Border#MarketSetupPage TextBlock">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- 다크모드 제목 색상 유지 -->
+    <Style Selector="UserControl.dark-theme Border#NicknameChangePage > ScrollViewer > StackPanel > TextBlock:nth-child(1)">
+      <Setter Property="Foreground" Value="#FFDAC4"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Border#MarketSetupPage > ScrollViewer > StackPanel > TextBlock:nth-child(1)">
+      <Setter Property="Foreground" Value="#FFDAC4"/>
+    </Style>
+
+    <!-- 다크모드 입력 필드 -->
+    <Style Selector="UserControl.dark-theme Border#NicknameChangePage TextBox">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Border#MarketSetupPage TextBox">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Border#MarketSetupPage ComboBox">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <!-- 다크모드 버튼 -->
+    <Style Selector="UserControl.dark-theme Border#NicknameChangePage Button">
+      <Setter Property="Background" Value="#FFDAC4"/>
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Border#MarketSetupPage Button">
+      <Setter Property="Background" Value="#FFDAC4"/>
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+
+    <!-- 다크모드 취소 버튼 -->
+    <Style Selector="UserControl.dark-theme Border#NicknameChangePage Button:nth-child(2)">
+      <Setter Property="Background" Value="#666666"/>
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Border#MarketSetupPage Button:nth-child(2)">
+      <Setter Property="Background" Value="#666666"/>
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
   </UserControl.Styles>
 
   <Grid>
@@ -165,11 +268,13 @@
       <!-- 동적 간격 2 -->
       <Border Height="0" x:Name="Spacer2"/>
       
-      <!-- 프로그램 설정 (클릭 가능한 버튼) -->
+      <!-- 프로그램 설정 (클릭 가능한 버튼) - 주석 처리 -->
+      <!--
       <Button Classes="menu-title-button sub-title" 
               Content="프로그램 설정" 
               Click="OnProgramSettingsClick"
               x:Name="ProgramSettingsButton"/>
+      -->
       
     </StackPanel>
 
@@ -185,24 +290,6 @@
           
           <!-- 닉네임 변경 -->
           <Button Classes="menu-item" Content="닉네임 변경" Click="OnNicknameChangeClick"/>
-          
-          <!-- 구분선 -->
-          <Border Height="1" 
-                  Background="#E0E0E0" 
-                  Margin="0,10,0,10"
-                  x:Name="AccountSeparator1"/>
-          
-          <!-- API키 찾기 -->
-          <Button Classes="menu-item" Content="API키 찾기" Click="OnApiKeyFindClick"/>
-          
-          <!-- 구분선 -->
-          <Border Height="1" 
-                  Background="#E0E0E0" 
-                  Margin="0,10,0,10"
-                  x:Name="AccountSeparator2"/>
-          
-          <!-- 비밀번호찾기 -->
-          <Button Classes="menu-item" Content="비밀번호찾기" Click="OnPasswordResetClick"/>
           
         </StackPanel>
       </Border>
@@ -220,12 +307,13 @@
                   Content="내마켓 설정하기" 
                   Click="OnMarketSetupClick"
                   HorizontalAlignment="Center"
-                  Margin="0,80,0,80"/>
+                  Margin="0,20,0,20"/>
           
         </StackPanel>
       </Border>
 
-      <!-- 프로그램 설정용 설정 박스 -->
+      <!-- 프로그램 설정용 설정 박스 - 주석 처리 -->
+      <!--
       <Border Classes="settings-box" 
               x:Name="ProgramSettingsBox"
               Canvas.Left="520" 
@@ -233,35 +321,309 @@
               IsVisible="False">
         <StackPanel>
           
-          <!-- 프로그램 설정 관련 메뉴들 (향후 추가) -->
           <Button Classes="menu-item" Content="테마 설정" Click="OnThemeSettingsClick"/>
           
-          <!-- 구분선 -->
           <Border Height="1" 
                   Background="#E0E0E0" 
                   Margin="0,10,0,10"
                   x:Name="ProgramSeparator1"/>
           
-          <!-- 언어 설정 -->
           <Button Classes="menu-item" Content="언어 설정" Click="OnLanguageSettingsClick"/>
           
-          <!-- 구분선 -->
           <Border Height="1" 
                   Background="#E0E0E0" 
                   Margin="0,10,0,10"
                   x:Name="ProgramSeparator2"/>
           
-          <!-- 알림 설정 -->
           <Button Classes="menu-item" Content="알림 설정" Click="OnNotificationSettingsClick"/>
           
         </StackPanel>
       </Border>
+      -->
     </Canvas>
 
     <!-- 우측 영역 - PREDVIA 워터마크 -->
-    <TextBlock Grid.Column="2" 
-               Classes="watermark" 
-               Text="PREDVIA"/>
+    <Grid Grid.Column="2">
+      
+      <!-- PREDVIA 워터마크 (기본 상태) -->
+      <TextBlock Classes="watermark" 
+                 Text="PREDVIA"
+                 x:Name="PredviaWatermark"/>
+
+    </Grid>
+
+    <!-- 전체 화면 오버레이 - 닉네임 변경 페이지 -->
+    <Border x:Name="NicknameChangePage" 
+            Grid.ColumnSpan="3"
+            IsVisible="False"
+            Background="White"
+            BorderBrush="#E67E22"
+            BorderThickness="4"
+            CornerRadius="25"
+            Padding="80"
+            Margin="100,80,100,80"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            ZIndex="1000">
+      
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="800">
+          
+          <!-- 제목 -->
+          <TextBlock Text="닉네임 변경" 
+                     FontSize="48"
+                     FontWeight="Bold"
+                     Foreground="#E67E22"
+                     HorizontalAlignment="Center"
+                     Margin="0,0,0,60"/>
+          
+          <!-- 현재 닉네임 -->
+          <TextBlock Text="현재 닉네임" 
+                     FontSize="24" 
+                     FontWeight="SemiBold" 
+                     Foreground="#333333"
+                     Margin="0,0,0,20"/>
+          
+          <TextBox x:Name="CurrentNicknameDisplay"
+                   Text="사용자123"
+                   IsReadOnly="True"
+                   FontSize="24"
+                   Padding="25,20"
+                   Background="#F5F5F5"
+                   Foreground="#333333"
+                   BorderBrush="#E0E0E0"
+                   BorderThickness="3"
+                   CornerRadius="15"
+                   Margin="0,0,0,40"/>
+          
+          <!-- 새 닉네임 -->
+          <TextBlock Text="새 닉네임" 
+                     FontSize="24" 
+                     FontWeight="SemiBold" 
+                     Foreground="#333333"
+                     Margin="0,0,0,20"/>
+          
+          <TextBox x:Name="NewNicknameInput"
+                   Watermark="새로운 닉네임을 입력하세요"
+                   FontSize="24"
+                   Padding="25,20"
+                   Background="#FFDAC4"
+                   Foreground="#333333"
+                   BorderBrush="#E67E22"
+                   BorderThickness="4"
+                   CornerRadius="15"
+                   MaxLength="20"
+                   Margin="0,0,0,50"/>
+          
+          <!-- 버튼들 -->
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,40">
+            <Button Content="변경" 
+                    Click="OnNicknameSaveClick"
+                    FontSize="24"
+                    FontWeight="Bold"
+                    Padding="50,25"
+                    Background="#E67E22"
+                    Foreground="White"
+                    BorderThickness="0"
+                    CornerRadius="20"
+                    Margin="0,0,30,0"
+                    Cursor="Hand"/>
+            
+            <Button Content="취소" 
+                    Click="OnNicknameCancelClick"
+                    FontSize="24"
+                    FontWeight="Bold"
+                    Padding="50,25"
+                    Background="#CCCCCC"
+                    Foreground="#333333"
+                    BorderThickness="0"
+                    CornerRadius="20"
+                    Cursor="Hand"/>
+          </StackPanel>
+          
+          <!-- 오류 메시지 -->
+          <TextBlock x:Name="NicknameErrorMessage"
+                     Text=""
+                     FontSize="20"
+                     Foreground="#E74C3C"
+                     HorizontalAlignment="Center"
+                     Margin="0,20,0,0"
+                     IsVisible="False"/>
+          
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <!-- 전체 화면 오버레이 - 마켓 설정 페이지 -->
+    <Border x:Name="MarketSetupPage" 
+            Grid.ColumnSpan="3"
+            IsVisible="False"
+            Background="White"
+            BorderBrush="#E67E22"
+            BorderThickness="4"
+            CornerRadius="25"
+            Padding="80"
+            Margin="100,80,100,80"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            ZIndex="1000">
+      
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" MaxWidth="900">
+          
+          <!-- 제목 -->
+          <TextBlock Text="내마켓 설정하기" 
+                     FontSize="48"
+                     FontWeight="Bold"
+                     Foreground="#E67E22"
+                     HorizontalAlignment="Center"
+                     Margin="0,0,0,60"/>
+          
+          <!-- 마켓 이름 -->
+          <TextBlock Text="📍 마켓 이름" 
+                     FontSize="26" 
+                     FontWeight="Bold" 
+                     Foreground="#333333"
+                     Margin="0,0,0,20"/>
+          
+          <TextBox x:Name="MarketNameInput"
+                   Watermark="예: 홍길동의 쇼핑몰"
+                   FontSize="24"
+                   Padding="25,20"
+                   Background="#FFDAC4"
+                   Foreground="#333333"
+                   BorderBrush="#E67E22"
+                   BorderThickness="4"
+                   CornerRadius="15"
+                   Margin="0,0,0,40"/>
+          
+          <!-- 마켓 카테고리 -->
+          <TextBlock Text="🏷️ 마켓 카테고리" 
+                     FontSize="26" 
+                     FontWeight="Bold" 
+                     Foreground="#333333"
+                     Margin="0,0,0,20"/>
+          
+          <ComboBox x:Name="MarketCategorySelect"
+                    PlaceholderText="카테고리를 선택하세요"
+                    FontSize="24"
+                    Padding="25,20"
+                    Background="#FFDAC4"
+                    Foreground="#333333"
+                    BorderBrush="#E67E22"
+                    BorderThickness="4"
+                    CornerRadius="15"
+                    Margin="0,0,0,40">
+            <ComboBoxItem Content="패션/의류"/>
+            <ComboBoxItem Content="뷰티/화장품"/>
+            <ComboBoxItem Content="생활용품"/>
+            <ComboBoxItem Content="전자제품"/>
+            <ComboBoxItem Content="스포츠/레저"/>
+            <ComboBoxItem Content="기타"/>
+          </ComboBox>
+          
+          <!-- 네이버 스토어 URL -->
+          <TextBlock Text="🔗 네이버 쇼핑 스토어 URL" 
+                     FontSize="26" 
+                     FontWeight="Bold" 
+                     Foreground="#333333"
+                     Margin="0,0,0,20"/>
+          
+          <TextBox x:Name="NaverStoreUrlInput"
+                   Watermark="https://smartstore.naver.com/yourstore"
+                   FontSize="24"
+                   Padding="25,20"
+                   Background="#FFDAC4"
+                   Foreground="#333333"
+                   BorderBrush="#E67E22"
+                   BorderThickness="4"
+                   CornerRadius="15"
+                   Margin="0,0,0,40"/>
+          
+          <!-- 기본 배송비 -->
+          <TextBlock Text="🚚 기본 배송비" 
+                     FontSize="26" 
+                     FontWeight="Bold" 
+                     Foreground="#333333"
+                     Margin="0,0,0,20"/>
+          
+          <TextBox x:Name="ShippingFeeInput"
+                   Text="3000"
+                   Watermark="예: 3000"
+                   FontSize="24"
+                   Padding="25,20"
+                   Background="#FFDAC4"
+                   Foreground="#333333"
+                   BorderBrush="#E67E22"
+                   BorderThickness="4"
+                   CornerRadius="15"
+                   Margin="0,0,0,40"/>
+          
+          <!-- 무료배송 최소금액 -->
+          <TextBlock Text="📦 무료배송 최소 주문금액" 
+                     FontSize="26" 
+                     FontWeight="Bold" 
+                     Foreground="#333333"
+                     Margin="0,0,0,20"/>
+          
+          <TextBox x:Name="FreeShippingMinInput"
+                   Text="50000"
+                   Watermark="예: 50000"
+                   FontSize="24"
+                   Padding="25,20"
+                   Background="#FFDAC4"
+                   Foreground="#333333"
+                   BorderBrush="#E67E22"
+                   BorderThickness="4"
+                   CornerRadius="15"
+                   Margin="0,0,0,50"/>
+          
+          <!-- 버튼들 -->
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,40">
+            <Button Content="설정 저장" 
+                    Click="OnMarketSaveClick"
+                    FontSize="26"
+                    FontWeight="Bold"
+                    Padding="60,25"
+                    Background="#E67E22"
+                    Foreground="White"
+                    BorderThickness="0"
+                    CornerRadius="20"
+                    Margin="0,0,30,0"
+                    Cursor="Hand"/>
+            
+            <Button Content="취소" 
+                    Click="OnMarketCancelClick"
+                    FontSize="26"
+                    FontWeight="Bold"
+                    Padding="60,25"
+                    Background="#CCCCCC"
+                    Foreground="#333333"
+                    BorderThickness="0"
+                    CornerRadius="20"
+                    Cursor="Hand"/>
+          </StackPanel>
+          
+          <!-- 성공/오류 메시지 -->
+          <TextBlock x:Name="MarketSuccessMessage"
+                     Text=""
+                     FontSize="22"
+                     Foreground="#27AE60"
+                     HorizontalAlignment="Center"
+                     Margin="0,20,0,0"
+                     IsVisible="False"/>
+          
+          <TextBlock x:Name="MarketErrorMessage"
+                     Text=""
+                     FontSize="22"
+                     Foreground="#E74C3C"
+                     HorizontalAlignment="Center"
+                     Margin="0,20,0,0"
+                     IsVisible="False"/>
+          
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
 
   </Grid>
 

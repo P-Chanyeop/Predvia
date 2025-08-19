@@ -90,10 +90,10 @@ namespace Gumaedaehang.Services
     public class ApiKeyAuthResponse
     {
         public bool Success { get; set; }
-        public string LicenseType { get; set; }
+        public string? LicenseType { get; set; }
         public DateTime ExpiryDate { get; set; }
-        public string CompanyName { get; set; }
-        public string Message { get; set; }
+        public string? CompanyName { get; set; }
+        public string? Message { get; set; }
     }
 }
     // API 예외 클래스
