@@ -115,7 +115,7 @@ namespace Gumaedaehang
                 // 기타 예외 처리 - 디버깅을 위해 실제 예외 정보 출력
                 System.Diagnostics.Debug.WriteLine($"API 키 인증 중 예외 발생: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"스택 트레이스: {ex.StackTrace}");
-                _errorMessage.Text = $"인증 중 오류가 발생했습니다: {ex.Message}";
+                _errorMessage.Text = $"인증 중 오류가 발생했습니다. 다시 시도해주세요. (오류: {ex.Message})";
                 _errorMessage.IsVisible = true;
             }
             finally
