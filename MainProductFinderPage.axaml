@@ -14,21 +14,22 @@
       <Setter Property="Background" Value="#1E1E1E"/>
     </Style>
 
-    <!-- 상품 카드 스타일 - 라이트모드 -->
+    <!-- 상품 카드 스타일 - 라이트모드 (테두리 제거, 왼쪽 정렬) -->
     <Style Selector="Border.product-card">
       <Setter Property="Background" Value="White"/>
-      <Setter Property="BorderBrush" Value="#E0E0E0"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="0"/>
       <Setter Property="Margin" Value="0,20,0,0"/>
       <Setter Property="Padding" Value="20"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
     </Style>
 
-    <!-- 상품 카드 스타일 - 다크모드 -->
+    <!-- 상품 카드 스타일 - 다크모드 (테두리 제거, 크기 조정) -->
     <Style Selector="UserControl.dark-theme Border.product-card">
-      <Setter Property="Background" Value="#2D2D2D"/>
-      <Setter Property="BorderBrush" Value="#FFDAC4"/>
-      <Setter Property="BorderThickness" Value="2"/>
+      <Setter Property="Background" Value="#1E1E1E"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
     </Style>
 
     <!-- 상품명 텍스트 스타일 - 라이트모드 -->
@@ -44,14 +45,16 @@
       <Setter Property="Foreground" Value="White"/>
     </Style>
 
-    <!-- 정보 패널 스타일 - 라이트모드 -->
+    <!-- 정보 패널 스타일 - 라이트모드 (버튼과 정렬 맞춤) -->
     <Style Selector="Border.info-panel">
       <Setter Property="Background" Value="White"/>
-      <Setter Property="BorderBrush" Value="#E0E0E0"/>
-      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="#E67E22"/>
+      <Setter Property="BorderThickness" Value="2"/>
       <Setter Property="CornerRadius" Value="8"/>
       <Setter Property="Padding" Value="20"/>
-      <Setter Property="Margin" Value="20,0,0,0"/>
+      <Setter Property="Margin" Value="0,0,20,0"/>
+      <Setter Property="MinWidth" Value="800"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
 
     <!-- 정보 패널 스타일 - 다크모드 -->
@@ -86,10 +89,10 @@
       <Setter Property="Foreground" Value="#FFDAC4"/>
     </Style>
 
-    <!-- 버튼 스타일 - 라이트모드 -->
+    <!-- 버튼 스타일 - 라이트모드 (주황색으로 변경) -->
     <Style Selector="Button.action-button">
-      <Setter Property="Background" Value="#FFDAC4"/>
-      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="Background" Value="#E67E22"/>
+      <Setter Property="Foreground" Value="White"/>
       <Setter Property="BorderThickness" Value="0"/>
       <Setter Property="CornerRadius" Value="8"/>
       <Setter Property="Padding" Value="16,12"/>
@@ -102,34 +105,34 @@
 
     <!-- 버튼 호버 스타일 - 라이트모드 -->
     <Style Selector="Button.action-button:pointerover">
-      <Setter Property="Background" Value="#FFD0A6"/>
+      <Setter Property="Background" Value="#D85A1A"/>
     </Style>
 
     <!-- 버튼 클릭 스타일 - 라이트모드 -->
     <Style Selector="Button.action-button:pressed">
-      <Setter Property="Background" Value="#FFC088"/>
+      <Setter Property="Background" Value="#C54E12"/>
     </Style>
 
-    <!-- 버튼 스타일 - 다크모드 -->
+    <!-- 버튼 스타일 - 다크모드 (연한 주황색으로 수정) -->
     <Style Selector="UserControl.dark-theme Button.action-button">
       <Setter Property="Background" Value="#FFDAC4"/>
       <Setter Property="Foreground" Value="#333333"/>
     </Style>
 
-    <!-- 버튼 호버 스타일 - 다크모드 -->
+    <!-- 버튼 호버 스타일 - 다크모드 (연한 주황색으로 수정) -->
     <Style Selector="UserControl.dark-theme Button.action-button:pointerover">
       <Setter Property="Background" Value="#FFD0A6"/>
     </Style>
 
-    <!-- 버튼 클릭 스타일 - 다크모드 -->
+    <!-- 버튼 클릭 스타일 - 다크모드 (연한 주황색으로 수정) -->
     <Style Selector="UserControl.dark-theme Button.action-button:pressed">
       <Setter Property="Background" Value="#FFC088"/>
     </Style>
 
-    <!-- 상품 이미지 스타일 -->
+    <!-- 상품 이미지 스타일 (크기 대폭 증가) -->
     <Style Selector="Border.product-image">
-      <Setter Property="Width" Value="200"/>
-      <Setter Property="Height" Value="150"/>
+      <Setter Property="Width" Value="320"/>
+      <Setter Property="Height" Value="240"/>
       <Setter Property="CornerRadius" Value="8"/>
       <Setter Property="ClipToBounds" Value="True"/>
     </Style>
@@ -281,7 +284,7 @@
   <Grid>
     <!-- 메인 컨텐츠 영역 -->
     <ScrollViewer>
-      <StackPanel Margin="40">
+      <StackPanel Margin="20,20,40,20" HorizontalAlignment="Left">
         
         <!-- 첫 번째 상품 -->
         <Border Classes="product-card">

@@ -103,14 +103,14 @@ namespace Gumaedaehang
         {
             try
             {
-                // 모든 상품 카드 Border 찾기
+                // 모든 상품 카드 Border 찾기 (테두리 제거, 배경색만 적용)
                 var productCards = this.FindAll<Border>().Where(b => b.Classes.Contains("product-card"));
                 foreach (var card in productCards)
                 {
-                    card.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2D2D2D"));
-                    card.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFDAC4"));
-                    card.BorderThickness = new Avalonia.Thickness(2);
-                    System.Diagnostics.Debug.WriteLine("다크모드: 상품카드 배경색 적용됨");
+                    card.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1E1E1E"));
+                    card.BorderBrush = Avalonia.Media.Brushes.Transparent;
+                    card.BorderThickness = new Avalonia.Thickness(0);
+                    System.Diagnostics.Debug.WriteLine("다크모드: 상품카드 배경색 적용됨 (테두리 제거)");
                 }
 
                 // 사이드바 Border 찾기 (toggle-sidebar 클래스)
@@ -170,6 +170,7 @@ namespace Gumaedaehang
                     panel.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2D2D2D"));
                     panel.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#444444"));
                     panel.BorderThickness = new Avalonia.Thickness(1);
+                    panel.Margin = new Avalonia.Thickness(0, 0, 20, 0); // 버튼과 정렬
                 }
 
                 // 모든 이미지 플레이스홀더 찾기
@@ -203,6 +204,15 @@ namespace Gumaedaehang
                 {
                     text.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC"));
                 }
+
+                // 모든 액션 버튼 색상 변경 (다크모드)
+                var actionButtons = this.FindAll<Button>().Where(b => b.Classes.Contains("action-button"));
+                foreach (var button in actionButtons)
+                {
+                    button.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFDAC4"));
+                    button.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#333333"));
+                    System.Diagnostics.Debug.WriteLine("다크모드: 액션 버튼 색상 적용됨");
+                }
             }
             catch (Exception ex)
             {
@@ -214,13 +224,13 @@ namespace Gumaedaehang
         {
             try
             {
-                // 모든 상품 카드 Border 찾기
+                // 모든 상품 카드 Border 찾기 (테두리 제거, 배경색만 적용)
                 var productCards = this.FindAll<Border>().Where(b => b.Classes.Contains("product-card"));
                 foreach (var card in productCards)
                 {
                     card.Background = Avalonia.Media.Brushes.White;
-                    card.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E0E0E0"));
-                    card.BorderThickness = new Avalonia.Thickness(1);
+                    card.BorderBrush = Avalonia.Media.Brushes.Transparent;
+                    card.BorderThickness = new Avalonia.Thickness(0);
                 }
 
                 // 사이드바 Border 찾기 (toggle-sidebar 클래스)
@@ -273,13 +283,14 @@ namespace Gumaedaehang
                     System.Diagnostics.Debug.WriteLine("라이트모드: 닫기 버튼 색상 복원됨");
                 }
 
-                // 모든 정보 패널 Border 찾기
+                // 모든 정보 패널 Border 찾기 (라이트모드 주황색 테두리)
                 var infoPanels = this.FindAll<Border>().Where(b => b.Classes.Contains("info-panel"));
                 foreach (var panel in infoPanels)
                 {
                     panel.Background = Avalonia.Media.Brushes.White;
-                    panel.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E0E0E0"));
-                    panel.BorderThickness = new Avalonia.Thickness(1);
+                    panel.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E67E22"));
+                    panel.BorderThickness = new Avalonia.Thickness(2);
+                    panel.Margin = new Avalonia.Thickness(0, 0, 20, 0); // 버튼과 정렬
                 }
 
                 // 모든 이미지 플레이스홀더 찾기
@@ -313,6 +324,15 @@ namespace Gumaedaehang
                 {
                     text.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#999999"));
                 }
+
+                // 모든 액션 버튼 색상 변경 (라이트모드)
+                var actionButtons = this.FindAll<Button>().Where(b => b.Classes.Contains("action-button"));
+                foreach (var button in actionButtons)
+                {
+                    button.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E67E22"));
+                    button.Foreground = Avalonia.Media.Brushes.White;
+                    System.Diagnostics.Debug.WriteLine("라이트모드: 액션 버튼 색상 적용됨");
+                }
             }
             catch (Exception ex)
             {
@@ -335,15 +355,30 @@ namespace Gumaedaehang
                             {
                                 if (isDark)
                                 {
-                                    border.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2D2D2D"));
-                                    border.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFDAC4"));
-                                    border.BorderThickness = new Avalonia.Thickness(2);
+                                    border.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1E1E1E"));
+                                    border.BorderBrush = Avalonia.Media.Brushes.Transparent;
+                                    border.BorderThickness = new Avalonia.Thickness(0);
                                 }
                                 else
                                 {
                                     border.Background = Avalonia.Media.Brushes.White;
-                                    border.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E0E0E0"));
+                                    border.BorderBrush = Avalonia.Media.Brushes.Transparent;
+                                    border.BorderThickness = new Avalonia.Thickness(0);
+                                }
+                            }
+                            else if (border.Classes.Contains("info-panel"))
+                            {
+                                if (isDark)
+                                {
+                                    border.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2D2D2D"));
+                                    border.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#444444"));
                                     border.BorderThickness = new Avalonia.Thickness(1);
+                                }
+                                else
+                                {
+                                    border.Background = Avalonia.Media.Brushes.White;
+                                    border.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E67E22"));
+                                    border.BorderThickness = new Avalonia.Thickness(2);
                                 }
                             }
                             else if (border.Classes.Contains("toggle-sidebar"))
