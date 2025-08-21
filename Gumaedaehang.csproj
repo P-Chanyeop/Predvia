@@ -3,11 +3,33 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <!-- 단일 파일 실행 파일 설정 -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishTrimmed>false</PublishTrimmed>
+    <TrimMode>link</TrimMode>
+    <!-- 출력 경로를 IRENE_XD 다운로드 폴더로 설정 -->
+    <PublishDir>C:\Users\IRENE_XD\Downloads\</PublishDir>
+    <!-- 윈도우 아이콘 설정 (PNG를 ICO로 자동 변환) -->
+    <Win32Resource />
+    <ApplicationIcon />
+    <!-- 애플리케이션 정보 -->
+    <AssemblyTitle>Predvia 구매대행 시스템</AssemblyTitle>
+    <AssemblyDescription>전문적인 구매대행 서비스를 위한 통합 관리 시스템</AssemblyDescription>
+    <AssemblyCompany>Softcat Team</AssemblyCompany>
+    <AssemblyProduct>Predvia</AssemblyProduct>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
   
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
     <AvaloniaResource Include="images\**" />
+    <AvaloniaResource Include="Styles\**" />
+    <EmbeddedResource Include="Assets\**" />
+    <EmbeddedResource Include="images\**" />
+    <EmbeddedResource Include="Styles\**" />
   </ItemGroup>
   
   <ItemGroup>

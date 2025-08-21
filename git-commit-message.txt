@@ -1,0 +1,11 @@
+🎉 feat: Complete Windows build system and documentation update
+
+- Implement self-contained Windows executable (91MB)
+- Add all required DLLs (av_libglesv2, libHarfBuzzSharp, libSkiaSharp)
+- Create convenient execution scripts (실행.bat, 빌드-성공확인.bat)
+- Update comprehensive README.md with v1.0 features
+- Add user manual (README-실행방법.txt)
+- Resolve all resource errors and build issues
+- Achieve zero build errors with .NET 8.0 self-contained deployment
+
+Ready for production deployment 🚀
