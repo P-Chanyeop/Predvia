@@ -262,6 +262,13 @@ namespace Gumaedaehang
                 {
                     UpdateOverlayTheme(taobaoOverlay);
                 }
+
+                // 검색 페이지 오버레이 업데이트 추가
+                var searchOverlay = this.FindControl<Grid>("SearchPageOverlay");
+                if (searchOverlay?.IsVisible == true)
+                {
+                    UpdateSearchPageTheme();
+                }
             }
             catch (Exception ex)
             {
@@ -1134,6 +1141,383 @@ namespace Gumaedaehang
         {
             // 간단한 메시지 표시 (실제로는 MessageBox나 Toast 사용)
             Console.WriteLine($"메시지: {message}");
+        }
+
+        // 🔍 검색 페이지 관련 이벤트 핸들러들
+        private void OnSearchButtonClick(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ShowSearchPageOverlay();
+                CloseSidebarInstant(); // 사이드바 닫기
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"검색 페이지 열기 중 오류: {ex.Message}");
+            }
+        }
+
+        private void ShowSearchPageOverlay()
+        {
+            try
+            {
+                var overlay = this.FindControl<Grid>("SearchPageOverlay");
+                if (overlay != null)
+                {
+                    overlay.IsVisible = true;
+                    
+                    // ComboBox 기본값 설정
+                    var categorySelector = this.FindControl<ComboBox>("CategorySelector");
+                    if (categorySelector != null && categorySelector.Items.Count > 0)
+                    {
+                        categorySelector.SelectedIndex = 0;
+                    }
+                    
+                    var minSalesSelector = this.FindControl<ComboBox>("MinSalesSelector");
+                    if (minSalesSelector != null && minSalesSelector.Items.Count > 0)
+                    {
+                        minSalesSelector.SelectedIndex = 0;
+                    }
+                    
+                    var sortSelector = this.FindControl<ComboBox>("SortSelector");
+                    if (sortSelector != null && sortSelector.Items.Count > 0)
+                    {
+                        sortSelector.SelectedIndex = 0;
+                    }
+                    
+                    // 테마 적용
+                    UpdateSearchPageTheme();
+                    
+                    // TextBox 플레이스홀더 텍스트 설정
+                    var searchKeywordInput = this.FindControl<TextBox>("SearchKeywordInput");
+                    if (searchKeywordInput != null && string.IsNullOrEmpty(searchKeywordInput.Text))
+                    {
+                        searchKeywordInput.Text = "예: 무선이어폰, 스마트워치, 케이스...";
+                        searchKeywordInput.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#999999"));
+                    }
+                    
+                    var minPriceInput = this.FindControl<TextBox>("MinPriceInput");
+                    if (minPriceInput != null && string.IsNullOrEmpty(minPriceInput.Text))
+                    {
+                        minPriceInput.Text = "최소 가격";
+                        minPriceInput.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#999999"));
+                    }
+                    
+                    var maxPriceInput = this.FindControl<TextBox>("MaxPriceInput");
+                    if (maxPriceInput != null && string.IsNullOrEmpty(maxPriceInput.Text))
+                    {
+                        maxPriceInput.Text = "최대 가격";
+                        maxPriceInput.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#999999"));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"검색 페이지 표시 중 오류: {ex.Message}");
+            }
+        }
+
+        private void CloseSearchPageOverlay(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var overlay = this.FindControl<Grid>("SearchPageOverlay");
+                if (overlay != null)
+                {
+                    overlay.IsVisible = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"검색 페이지 닫기 중 오류: {ex.Message}");
+            }
+        }
+
+        private void ExecuteProductSearch(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var keywordInput = this.FindControl<TextBox>("SearchKeywordInput");
+                var categorySelector = this.FindControl<ComboBox>("CategorySelector");
+                var minPriceInput = this.FindControl<TextBox>("MinPriceInput");
+                var maxPriceInput = this.FindControl<TextBox>("MaxPriceInput");
+                var minSalesSelector = this.FindControl<ComboBox>("MinSalesSelector");
+                var resultsContainer = this.FindControl<StackPanel>("SearchResultsContainer");
+                var resultCount = this.FindControl<TextBlock>("SearchResultCount");
+
+                if (resultsContainer == null || resultCount == null) return;
+
+                // 기존 결과 지우기
+                resultsContainer.Children.Clear();
+
+                // 검색 조건 수집
+                string keyword = keywordInput?.Text ?? "";
+                string category = (categorySelector?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "전체";
+                string minPrice = minPriceInput?.Text ?? "";
+                string maxPrice = maxPriceInput?.Text ?? "";
+                string minSales = (minSalesSelector?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "제한 없음";
+
+                if (string.IsNullOrWhiteSpace(keyword))
+                {
+                    ShowMessage("검색 키워드를 입력해주세요.");
+                    return;
+                }
+
+                // 검색 결과 생성 (샘플 데이터)
+                GenerateSearchResults(resultsContainer, keyword, category);
+                
+                // 결과 카운트 업데이트
+                resultCount.Text = $"'{keyword}' 검색 결과 - 총 {resultsContainer.Children.Count}개 상품 발견";
+
+                ShowMessage($"'{keyword}' 검색이 완료되었습니다.");
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"상품 검색 중 오류: {ex.Message}");
+            }
+        }
+
+        private void GenerateSearchResults(StackPanel container, string keyword, string category)
+        {
+            try
+            {
+                // 샘플 검색 결과 생성
+                var sampleProducts = new[]
+                {
+                    new { Name = $"{keyword} 프리미엄 모델", Price = "₩25,900", Sales = "15,420개", Rating = "4.8★", Image = "📱" },
+                    new { Name = $"{keyword} 베스트셀러", Price = "₩18,500", Sales = "8,932개", Rating = "4.6★", Image = "⌚" },
+                    new { Name = $"{keyword} 신상품", Price = "₩32,400", Sales = "3,156개", Rating = "4.9★", Image = "🎧" },
+                    new { Name = $"{keyword} 인기상품", Price = "₩12,800", Sales = "22,847개", Rating = "4.7★", Image = "📷" },
+                    new { Name = $"{keyword} 할인특가", Price = "₩9,900", Sales = "6,234개", Rating = "4.5★", Image = "💻" }
+                };
+
+                foreach (var product in sampleProducts)
+                {
+                    var productCard = CreateSearchResultCard(product.Name, product.Price, product.Sales, product.Rating, product.Image);
+                    container.Children.Add(productCard);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"검색 결과 생성 중 오류: {ex.Message}");
+            }
+        }
+
+        private Border CreateSearchResultCard(string name, string price, string sales, string rating, string emoji)
+        {
+            var card = new Border
+            {
+                Background = Avalonia.Media.Brushes.White,
+                BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E2E8F0")),
+                BorderThickness = new Avalonia.Thickness(1),
+                CornerRadius = new Avalonia.CornerRadius(12),
+                Padding = new Avalonia.Thickness(20),
+                Margin = new Avalonia.Thickness(0, 0, 0, 15)
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+
+            // 상품 이미지
+            var imageContainer = new Border
+            {
+                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F7FAFC")),
+                CornerRadius = new Avalonia.CornerRadius(8),
+                Width = 80,
+                Height = 80,
+                Margin = new Avalonia.Thickness(0, 0, 15, 0)
+            };
+            
+            var imageText = new TextBlock
+            {
+                Text = emoji,
+                FontSize = 32,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+            };
+            
+            imageContainer.Child = imageText;
+            Grid.SetColumn(imageContainer, 0);
+            grid.Children.Add(imageContainer);
+
+            // 상품 정보
+            var infoPanel = new StackPanel
+            {
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Spacing = 5
+            };
+
+            infoPanel.Children.Add(new TextBlock
+            {
+                Text = name,
+                FontSize = 16,
+                FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2D3748"))
+            });
+
+            infoPanel.Children.Add(new TextBlock
+            {
+                Text = $"판매량: {sales} | 평점: {rating}",
+                FontSize = 12,
+                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#718096"))
+            });
+
+            infoPanel.Children.Add(new TextBlock
+            {
+                Text = price,
+                FontSize = 14,
+                FontWeight = Avalonia.Media.FontWeight.Bold,
+                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E53E3E"))
+            });
+
+            Grid.SetColumn(infoPanel, 1);
+            grid.Children.Add(infoPanel);
+
+            // 선택 버튼
+            var selectButton = new Button
+            {
+                Content = "메인상품 등록",
+                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E67E22")),
+                Foreground = Avalonia.Media.Brushes.White,
+                BorderThickness = new Avalonia.Thickness(0),
+                CornerRadius = new Avalonia.CornerRadius(8),
+                Padding = new Avalonia.Thickness(15, 8),
+                FontSize = 12,
+                FontWeight = Avalonia.Media.FontWeight.SemiBold
+            };
+
+            selectButton.Click += (s, e) => {
+                ShowMessage($"'{name}' 상품을 메인상품으로 등록했습니다.");
+            };
+
+            Grid.SetColumn(selectButton, 2);
+            grid.Children.Add(selectButton);
+
+            card.Child = grid;
+            return card;
+        }
+
+        private void RefreshSearchResults(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ShowMessage("검색 결과를 새로고침합니다...");
+                // 새로고침 로직
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"새로고침 중 오류: {ex.Message}");
+            }
+        }
+
+        private void ShowAnalysis(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ShowMessage("상품 분석 페이지를 준비 중입니다...");
+                // 분석 페이지 로직
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"분석 페이지 열기 중 오류: {ex.Message}");
+            }
+        }
+
+        private void ExportResults(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ShowMessage("검색 결과를 내보내는 중입니다...");
+                // 내보내기 로직
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"결과 내보내기 중 오류: {ex.Message}");
+            }
+        }
+
+        private void UpdateSearchPageTheme()
+        {
+            try
+            {
+                var overlay = this.FindControl<Grid>("SearchPageOverlay");
+                if (overlay == null) return;
+
+                bool isDarkMode = ThemeManager.Instance.IsDarkTheme;
+
+                // 메인 컨테이너 배경색 업데이트
+                var mainBorder = overlay.Children.OfType<Border>().FirstOrDefault();
+                if (mainBorder != null)
+                {
+                    mainBorder.Background = isDarkMode ? 
+                        new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2D2D2D")) : 
+                        Avalonia.Media.Brushes.White;
+                }
+
+                // 모든 하위 요소들의 테마 업데이트
+                UpdateSearchPageElementsTheme(overlay, isDarkMode);
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"검색 페이지 테마 업데이트 중 오류: {ex.Message}");
+            }
+        }
+
+        private void UpdateSearchPageElementsTheme(Control parent, bool isDarkMode)
+        {
+            try
+            {
+                foreach (var child in parent.GetLogicalDescendants().OfType<Control>())
+                {
+                    switch (child)
+                    {
+                        case Border border when border.Classes.Contains("search-card"):
+                            border.Background = isDarkMode ? 
+                                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")) : 
+                                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F8F9FA"));
+                            border.BorderBrush = isDarkMode ? 
+                                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFDAC4")) : 
+                                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E0E6ED"));
+                            break;
+                            
+                        case TextBlock textBlock:
+                            if (!textBlock.Classes.Contains("header-text"))
+                            {
+                                textBlock.Foreground = isDarkMode ? 
+                                    Avalonia.Media.Brushes.White : 
+                                    new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2D3748"));
+                            }
+                            break;
+                            
+                        case TextBox textBox:
+                            textBox.Background = isDarkMode ? 
+                                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#4A4A4A")) : 
+                                Avalonia.Media.Brushes.White;
+                            textBox.Foreground = isDarkMode ? 
+                                Avalonia.Media.Brushes.White : 
+                                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2D3748"));
+                            textBox.BorderBrush = isDarkMode ? 
+                                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFDAC4")) : 
+                                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E2E8F0"));
+                            break;
+                            
+                        case ComboBox comboBox:
+                            comboBox.Background = isDarkMode ? 
+                                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#4A4A4A")) : 
+                                Avalonia.Media.Brushes.White;
+                            comboBox.Foreground = isDarkMode ? 
+                                Avalonia.Media.Brushes.White : 
+                                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2D3748"));
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"검색 페이지 요소 테마 업데이트 중 오류: {ex.Message}");
+            }
         }
     }
 
