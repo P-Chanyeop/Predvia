@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Gumaedaehang.LogWindow"
+        Title="작업 로그"
+        Width="600"
+        Height="400"
+        WindowStartupLocation="CenterOwner">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <ScrollViewer Grid.Row="0" Margin="10">
+            <TextBox x:Name="LogTextBox"
+                     IsReadOnly="True"
+                     Background="#F5F5F5"
+                     FontFamily="Consolas"
+                     FontSize="12"/>
+        </ScrollViewer>
+        
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
+            <Button x:Name="CopyButton" Content="복사" Width="60" Height="30" Margin="5" Click="CopyButton_Click"/>
+            <Button x:Name="ClearButton" Content="지우기" Width="60" Height="30" Margin="5" Click="ClearButton_Click"/>
+            <Button x:Name="CloseButton" Content="닫기" Width="60" Height="30" Margin="5" Click="CloseButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
