@@ -29,6 +29,8 @@ namespace Gumaedaehang
         private ContentControl? _mainProductContent;
         private ContentControl? _settingsContent;
         
+        // 로그 창
+        private LogWindow? _logWindow;        
         // 명언 관련 요소
         private TextBlock? _adviceText;
         private TextBlock? _adviceAuthor;
@@ -272,6 +274,16 @@ namespace Gumaedaehang
             ThemeManager.Instance.ToggleTheme();
         }
         
+        private void LogButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (_logWindow == null)
+            {
+                _logWindow = new LogWindow();
+            }
+            
+            _logWindow.Show();
+            _logWindow.Activate();
+        }        
         // 탭 전환 메서드들
         public void SourcingTab_Click(object? sender, RoutedEventArgs e)
         {

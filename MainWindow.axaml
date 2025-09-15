@@ -45,7 +45,20 @@
                     </StackPanel>
                 </Button>
                 
-                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                
+                <Button Background="Transparent" 
+                        BorderThickness="0"
+                        VerticalAlignment="Center"
+                        x:Name="LogButton"
+                        Click="LogButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Ellipse Width="24" Height="24" Fill="#F47B20"/>
+                        <TextBlock Text="작업로그" 
+                                   FontSize="16" 
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                    </StackPanel>
+                </Button>                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                     <TextBlock Text="진여 일수:" 
                                FontSize="16" 
                                Foreground="{DynamicResource ForegroundBrush}"
