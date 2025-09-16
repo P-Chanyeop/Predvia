@@ -174,11 +174,12 @@
                         
                         <TextBox Grid.Column="0" Height="55" Watermark="URL을 입력해주세요."
                                  BorderThickness="0" CornerRadius="8"
-                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"/>
+                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"
+                                 x:Name="ManualSourcingTextBox"/>
                         
                         <Button Grid.Column="1" Content="페어링" Background="#F47B20" Foreground="White" 
                                 Padding="40,15" CornerRadius="8" FontSize="18" FontWeight="Medium"
-                                BorderThickness="0" Height="55"/>
+                                BorderThickness="0" Height="55" x:Name="ManualSourcingButton" Click="ManualSourcingButton_Click"/>
                     </Grid>
                     
                     <TextBlock Text="추가하기 +" FontSize="18" Foreground="#F47B20" 
@@ -199,11 +200,12 @@
                         
                         <TextBox Grid.Column="0" Height="55" Watermark="소싱재료를 입력해주세요."
                                  BorderThickness="0" CornerRadius="8"
-                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"/>
+                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"
+                                 x:Name="AutoSourcingTextBox"/>
                         
                         <Button Grid.Column="1" Content="페어링" Background="#F47B20" Foreground="White" 
                                 Padding="40,15" CornerRadius="8" FontSize="18" FontWeight="Medium"
-                                BorderThickness="0" Height="55"/>
+                                BorderThickness="0" Height="55" x:Name="AutoSourcingButton" Click="AutoSourcingButton_Click"/>
                     </Grid>
                 </StackPanel>
                 
@@ -220,11 +222,12 @@
                         
                         <TextBox Grid.Column="0" Height="55" Watermark="메인상품을 입력해주세요."
                                  BorderThickness="0" CornerRadius="8"
-                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"/>
+                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"
+                                 x:Name="MainProductTextBox"/>
                         
                         <Button Grid.Column="1" Content="페어링" Background="#F47B20" Foreground="White" 
                                 Padding="40,15" CornerRadius="8" FontSize="18" FontWeight="Medium"
-                                BorderThickness="0" Height="55"/>
+                                BorderThickness="0" Height="55" x:Name="MainProductButton" Click="MainProductButton_Click"/>
                     </Grid>
                 </StackPanel>
                 
