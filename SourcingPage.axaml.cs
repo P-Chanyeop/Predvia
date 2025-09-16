@@ -37,6 +37,7 @@ namespace Gumaedaehang
         
         // 네이버 스마트스토어 서비스
         private NaverSmartStoreService? _naverService;
+        private ChromeExtensionService? _extensionService;
         
         // UI 요소 참조
         private TextBox? _manualSourcingTextBox;
@@ -998,10 +999,19 @@ namespace Gumaedaehang
                     return;
                 }
                 
-                _naverService ??= new NaverSmartStoreService();
-                await _naverService.OpenNaverSmartStoreWithKeyword(searchText);
+                _extensionService ??= new ChromeExtensionService();
+                var success = await _extensionService.SearchWithExtension(searchText);
                 
-                button.Content = "연결 완료";
+                if (success)
+                {
+                    button.Content = "연결 완료";
+                    Debug.WriteLine($"{type} 확장프로그램 검색 완료 - 키워드: {searchText}");
+                }
+                else
+                {
+                    button.Content = "연결 실패";
+                    Debug.WriteLine($"{type} 확장프로그램 실행 실패");
+                }
                 await Task.Delay(1500);
             }
             catch (Exception ex)

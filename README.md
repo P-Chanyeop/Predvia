@@ -20,7 +20,12 @@ Avalonia UI를 기반으로 하여 Windows, macOS, Linux에서 동일한 사용�
 
 1. **릴리스 다운로드**: [Releases](https://github.com/your-repo/Predvia/releases)에서 최신 버전 다운로드
 2. **압축 해제**: 다운로드한 파일을 원하는 폴더에 압축 해제
-3. **실행**: `실행.bat` 더블클릭 또는 `Predvia.exe` 직접 실행
+3. **Chrome 확장프로그램 설치**: 
+   - Chrome에서 `chrome://extensions/` 접속
+   - "개발자 모드" 활성화
+   - "압축해제된 확장 프로그램을 로드합니다" 클릭
+   - `chrome-extension` 폴더 선택
+4. **실행**: `실행.bat` 더블클릭 또는 `Predvia.exe` 직접 실행
 
 ### 🔑 테스트 API 키
 ```
@@ -108,12 +113,20 @@ FREE-TRIAL-KEY         (무료 체험 라이선스)
 ```
 Predvia/
 ├── 📁 Assets/                 # 리소스 파일
+├── 📁 chrome-extension/       # Chrome 확장프로그램
+│   ├── manifest.json          # 확장프로그램 설정
+│   ├── background.js          # 백그라운드 서비스 워커
+│   ├── content.js             # 네이버 페이지 스크립트
+│   ├── popup.html             # 확장프로그램 팝업 UI
+│   └── popup.js               # 팝업 기능 스크립트
 ├── 📁 images/                 # UI 참조 이미지
 ├── 📁 Services/              # 비즈니스 로직
 │   ├── ApiClient.cs          # API 통신 클라이언트
 │   ├── ApiKeyAuthClient.cs   # 인증 서비스
 │   ├── AuthManager.cs        # 인증 관리자
-│   └── AdviceService.cs      # 조언 서비스
+│   ├── AdviceService.cs      # 조언 서비스
+│   ├── NaverSmartStoreService.cs    # 네이버 스마트스토어 서비스
+│   └── ChromeExtensionService.cs    # Chrome 확장프로그램 서비스
 ├── 📁 Styles/                # UI 스타일 정의
 ├── 📁 publish-windows/       # Windows 배포 파일
 ├── MainWindow.axaml          # 메인 윈도우 UI
@@ -216,6 +229,14 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **라이트모드 텍스트 가시성** - 모든 텍스트 요소 완벽한 가독성
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
+
+### 🔄 최신 업데이트 (v1.2)
+- [x] **🌐 Chrome 확장프로그램 방식 구현** - 경쟁업체와 동일한 방식 적용
+  - **Chrome Extension 기반 스크래핑** - 웹사이트 차단 우회 가능한 확장프로그램 방식
+  - **자동 Chrome 실행** - 확장프로그램이 설치된 Chrome 브라우저 자동 실행
+  - **10초 자동 종료** - 경쟁업체처럼 빠른 처리 후 자동 창 닫기
+  - **완벽한 프로세스 관리** - 정상 종료 → 강제 종료 → 리소스 정리 순서
+  - **사용자 권한 활용** - 확장프로그램 권한으로 네이버 차단 우회
 
 ### 🔄 최신 업데이트 (v1.1)
 - [x] **🌐 네이버 스마트스토어 해외직구 연동** - 셀레니움 기반 자동 브라우저 제어
