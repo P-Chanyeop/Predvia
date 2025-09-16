@@ -54,7 +54,7 @@ namespace Gumaedaehang.Services
 
                 // 네이버 스마트스토어 해외직구 페이지로 이동
                 string encodedKeyword = Uri.EscapeDataString(keyword);
-                string url = $"https://smartstore.naver.com/globalshop/search?q={encodedKeyword}";
+                string url = $"https://search.shopping.naver.com/search/all?adQuery={encodedKeyword}&origQuery={encodedKeyword}&pagingIndex=1&pagingSize=40&productSet=overseas&query={encodedKeyword}&sort=rel&timestamp=&viewType=list";
                 
                 await Task.Run(() => _driver.Navigate().GoToUrl(url));
 

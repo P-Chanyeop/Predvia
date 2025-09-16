@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Predvia 네이버 쇼핑 연동",
+  "version": "1.0",
+  "description": "네이버 쇼핑 해외직구 자동 검색 도구",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://search.shopping.naver.com/*",
+    "*://smartstore.naver.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://search.shopping.naver.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Predvia 검색"
+  }
+}
