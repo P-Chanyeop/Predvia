@@ -13,6 +13,8 @@ using System.Linq;
 using System;
 using System.Text;
 using System.IO;
+using System.Threading.Tasks;
+using Gumaedaehang.Services;
 
 namespace Gumaedaehang
 {
@@ -32,6 +34,17 @@ namespace Gumaedaehang
         
         // 상품별 UI 요소들을 관리하는 딕셔너리
         private Dictionary<int, ProductUIElements> _productElements = new Dictionary<int, ProductUIElements>();
+        
+        // 네이버 스마트스토어 서비스
+        private NaverSmartStoreService? _naverService;
+        
+        // UI 요소 참조
+        private TextBox? _manualSourcingTextBox;
+        private Button? _manualSourcingButton;
+        private TextBox? _autoSourcingTextBox;
+        private Button? _autoSourcingButton;
+        private TextBox? _mainProductTextBox;
+        private Button? _mainProductButton;
         
         public SourcingPage()
         {
@@ -70,6 +83,14 @@ namespace Gumaedaehang
                 _testDataButton = this.FindControl<Button>("TestDataButton");
                 _testDataButton2 = this.FindControl<Button>("TestDataButton2");
                 _selectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
+                
+                // 페어링 버튼 UI 요소 참조
+                _manualSourcingTextBox = this.FindControl<TextBox>("ManualSourcingTextBox");
+                _manualSourcingButton = this.FindControl<Button>("ManualSourcingButton");
+                _autoSourcingTextBox = this.FindControl<TextBox>("AutoSourcingTextBox");
+                _autoSourcingButton = this.FindControl<Button>("AutoSourcingButton");
+                _mainProductTextBox = this.FindControl<TextBox>("MainProductTextBox");
+                _mainProductButton = this.FindControl<Button>("MainProductButton");
                 
                 // 상품들의 UI 요소들 초기화
                 InitializeProductElements();
@@ -511,13 +532,81 @@ namespace Gumaedaehang
         }
         
         // 타오바오 페어링 버튼 클릭 이벤트
-        private void TaobaoPairingButton_Click(int productId)
+        private async void TaobaoPairingButton_Click(int productId)
         {
             if (_productElements.TryGetValue(productId, out var product))
             {
-                product.IsTaobaoPaired = true;
-                UpdateProductStatusIndicators(productId);
-                Debug.WriteLine($"상품 {productId} 타오바오 페어링 완료");
+                try
+                {
+                    // 버튼 비활성화
+                    if (product.TaobaoPairingButton != null)
+                    {
+                        product.TaobaoPairingButton.IsEnabled = false;
+                        product.TaobaoPairingButton.Content = "연결 중...";
+                    }
+
+                    // 선택된 키워드들을 조합하여 검색어 생성
+                    var searchKeyword = string.Join(" ", product.SelectedKeywords);
+                    
+                    if (string.IsNullOrEmpty(searchKeyword))
+                    {
+                        // 키워드가 없으면 상품명 키워드 사용
+                        searchKeyword = string.Join(" ", product.ProductNameKeywords);
+                    }
+
+                    if (!string.IsNullOrEmpty(searchKeyword))
+                    {
+                        // 네이버 스마트스토어 서비스 초기화
+                        _naverService ??= new NaverSmartStoreService();
+                        
+                        // 네이버 스마트스토어 해외직구 페이지 열기
+                        await _naverService.OpenNaverSmartStoreWithKeyword(searchKeyword);
+                        
+                        // 페어링 완료 처리
+                        product.IsTaobaoPaired = true;
+                        UpdateProductStatusIndicators(productId);
+                        
+                        Debug.WriteLine($"상품 {productId} 네이버 스마트스토어 연결 완료 - 키워드: {searchKeyword}");
+                        
+                        // 성공 메시지 표시
+                        if (product.TaobaoPairingButton != null)
+                        {
+                            product.TaobaoPairingButton.Content = "연결 완료";
+                            await Task.Delay(1500);
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"상품 {productId} 검색 키워드가 없습니다.");
+                        
+                        // 키워드 없음 메시지 표시
+                        if (product.TaobaoPairingButton != null)
+                        {
+                            product.TaobaoPairingButton.Content = "키워드 없음";
+                            await Task.Delay(2000);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"네이버 스마트스토어 연결 실패: {ex.Message}");
+                    
+                    // 오류 메시지 표시
+                    if (product.TaobaoPairingButton != null)
+                    {
+                        product.TaobaoPairingButton.Content = "연결 실패";
+                        await Task.Delay(2000);
+                    }
+                }
+                finally
+                {
+                    // 버튼 다시 활성화
+                    if (product.TaobaoPairingButton != null)
+                    {
+                        product.TaobaoPairingButton.IsEnabled = true;
+                        product.TaobaoPairingButton.Content = "페어링";
+                    }
+                }
             }
         }
         
@@ -870,6 +959,77 @@ namespace Gumaedaehang
             else if (parent is Decorator decorator && decorator.Child is Control decoratorChild)
             {
                 UpdateTextBoxColorsRecursive(decoratorChild, backgroundBrush, foregroundBrush);
+            }
+        }
+        
+        // 수동으로 소싱하기 페어링 버튼 클릭
+        private async void ManualSourcingButton_Click(object? sender, RoutedEventArgs e)
+        {
+            await HandlePairingButtonClick(_manualSourcingTextBox, _manualSourcingButton, "수동 소싱");
+        }
+        
+        // 소싱재료 자동찾기 페어링 버튼 클릭
+        private async void AutoSourcingButton_Click(object? sender, RoutedEventArgs e)
+        {
+            await HandlePairingButtonClick(_autoSourcingTextBox, _autoSourcingButton, "자동 소싱");
+        }
+        
+        // 메인상품 자동찾기 페어링 버튼 클릭
+        private async void MainProductButton_Click(object? sender, RoutedEventArgs e)
+        {
+            await HandlePairingButtonClick(_mainProductTextBox, _mainProductButton, "메인상품");
+        }
+        
+        // 페어링 버튼 공통 처리 메서드
+        private async Task HandlePairingButtonClick(TextBox? textBox, Button? button, string type)
+        {
+            if (textBox == null || button == null) return;
+            
+            try
+            {
+                button.IsEnabled = false;
+                button.Content = "연결 중...";
+                
+                var searchText = textBox.Text?.Trim();
+                if (string.IsNullOrEmpty(searchText))
+                {
+                    button.Content = "입력 필요";
+                    await Task.Delay(2000);
+                    return;
+                }
+                
+                _naverService ??= new NaverSmartStoreService();
+                await _naverService.OpenNaverSmartStoreWithKeyword(searchText);
+                
+                button.Content = "연결 완료";
+                await Task.Delay(1500);
+            }
+            catch (Exception ex)
+            {
+                button.Content = "연결 실패";
+                await Task.Delay(2000);
+            }
+            finally
+            {
+                if (button != null)
+                {
+                    button.IsEnabled = true;
+                    button.Content = "페어링";
+                }
+            }
+        }
+        
+        // 리소스 정리
+        public void Dispose()
+        {
+            try
+            {
+                _naverService?.Close();
+                _naverService = null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"리소스 정리 중 오류: {ex.Message}");
             }
         }
     }

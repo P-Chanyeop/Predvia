@@ -519,5 +519,25 @@ namespace Gumaedaehang
                 System.Diagnostics.Debug.WriteLine($"테마 리소스 업데이트 실패: {ex.Message}");
             }
         }
+        protected override void OnClosed(EventArgs e)
+        {
+            try
+            {
+                // SourcingPage 리소스 정리
+                if (_sourcingContent?.Content is SourcingPage sourcingPage)
+                {
+                    sourcingPage.Dispose();
+                }
+                
+                // 로그 창 정리
+                _logWindow?.Close();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"리소스 정리 중 오류: {ex.Message}");
+            }
+            
+            base.OnClosed(e);
+        }
     }
 }
