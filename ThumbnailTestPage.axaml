@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Gumaedaehang.ThumbnailTestPage">
+  
+  <Grid Background="{DynamicResource BackgroundBrush}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+    
+    <!-- 헤더 -->
+    <Border Grid.Row="0" Background="#E67E22" Padding="20,15">
+      <StackPanel Orientation="Horizontal" Spacing="15">
+        <TextBlock Text="📸" FontSize="24"/>
+        <TextBlock Text="저장된 썸네일" FontSize="20" FontWeight="Bold" Foreground="White"/>
+        <Button Name="RefreshButton" Content="새로고침" Background="#F47B20" Foreground="White" 
+                Padding="10,5" CornerRadius="5" Click="RefreshButton_Click"/>
+        <Button Name="OpenFolderButton" Content="폴더 열기" Background="#F47B20" Foreground="White" 
+                Padding="10,5" CornerRadius="5" Click="OpenFolderButton_Click"/>
+      </StackPanel>
+    </Border>
+    
+    <!-- 썸네일 그리드 -->
+    <ScrollViewer Grid.Row="1" Padding="20">
+      <WrapPanel Name="ThumbnailContainer" Orientation="Horizontal" ItemWidth="200" ItemHeight="280">
+        <!-- 썸네일 카드들이 여기에 동적으로 추가됨 -->
+      </WrapPanel>
+    </ScrollViewer>
+    
+  </Grid>
+  
+</UserControl>

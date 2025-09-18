@@ -4,6 +4,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Threading;
@@ -20,6 +21,7 @@ namespace Gumaedaehang
 {
     public partial class SourcingPage : UserControl
     {
+        private readonly ThumbnailService _thumbnailService;
         private Grid? _noDataView;
         private Grid? _dataAvailableView;
         private TextBlock? _addMoreLink;
@@ -52,6 +54,9 @@ namespace Gumaedaehang
             try
             {
                 InitializeComponent();
+                
+                // 썸네일 서비스 초기화
+                _thumbnailService = new ThumbnailService();
                 
                 // 한글 입력 처리용 타이머 초기화
                 _inputTimer = new DispatcherTimer
@@ -96,6 +101,9 @@ namespace Gumaedaehang
                 // 상품들의 UI 요소들 초기화
                 InitializeProductElements();
                 
+                // 저장된 썸네일 로드 및 표시
+                _ = Task.Run(LoadAndDisplayThumbnails);
+                
                 // 이벤트 핸들러 등록
                 RegisterEventHandlers();
                 
@@ -107,6 +115,60 @@ namespace Gumaedaehang
                 System.Diagnostics.Debug.WriteLine($"SourcingPage 초기화 중 오류: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"스택 트레이스: {ex.StackTrace}");
                 throw; // 예외를 다시 던져서 상위에서 처리하도록 함
+            }
+        }
+
+        // 저장된 썸네일 로드 및 표시
+        private async Task LoadAndDisplayThumbnails()
+        {
+            try
+            {
+                var thumbnails = await _thumbnailService.LoadThumbnailInfoAsync();
+                Debug.WriteLine($"📸 {thumbnails.Count}개의 저장된 썸네일 발견");
+                
+                if (thumbnails.Count > 0)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        // 첫 번째 썸네일을 메인 상품 이미지로 표시
+                        var firstThumbnail = thumbnails[0];
+                        if (File.Exists(firstThumbnail.LocalPath))
+                        {
+                            DisplayThumbnailInMainImage(firstThumbnail.LocalPath);
+                            Debug.WriteLine($"✅ 첫 번째 썸네일 표시: {firstThumbnail.ProductTitle}");
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 썸네일 로드 오류: {ex.Message}");
+            }
+        }
+        
+        // 메인 상품 이미지에 썸네일 표시
+        private void DisplayThumbnailInMainImage(string imagePath)
+        {
+            try
+            {
+                // 모든 Image 요소를 찾아서 첫 번째 큰 이미지에 썸네일 설정
+                var images = this.FindAll<Image>();
+                var mainImage = images.FirstOrDefault(img => 
+                {
+                    var parent = img.Parent as Border;
+                    return parent != null && parent.Width == 260 && parent.Height == 260;
+                });
+                
+                if (mainImage != null)
+                {
+                    var bitmap = new Bitmap(imagePath);
+                    mainImage.Source = bitmap;
+                    Debug.WriteLine($"🖼️ 메인 이미지에 썸네일 설정 완료: {System.IO.Path.GetFileName(imagePath)}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 이미지 표시 오류: {ex.Message}");
             }
         }
 
@@ -1063,5 +1125,35 @@ namespace Gumaedaehang
         public List<string> ProductNameKeywords { get; set; } = new List<string>();
         public List<string> SelectedKeywords { get; set; } = new List<string>();
         public bool IsTaobaoPaired { get; set; } = false;
+    }
+}
+// 확장 메서드 클래스
+public static class ControlExtensions
+{
+    public static IEnumerable<T> FindAll<T>(this Control control) where T : Control
+    {
+        var result = new List<T>();
+        FindAllRecursive(control, result);
+        return result;
+    }
+
+    private static void FindAllRecursive<T>(Control parent, List<T> result) where T : Control
+    {
+        if (parent is T item)
+            result.Add(item);
+
+        if (parent is Panel panel)
+        {
+            foreach (Control child in panel.Children)
+                FindAllRecursive(child, result);
+        }
+        else if (parent is ContentControl contentControl && contentControl.Content is Control childControl)
+        {
+            FindAllRecursive(childControl, result);
+        }
+        else if (parent is Border border && border.Child is Control borderChild)
+        {
+            FindAllRecursive(borderChild, result);
+        }
     }
 }
