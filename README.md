@@ -126,7 +126,9 @@ Predvia/
 │   ├── AuthManager.cs        # 인증 관리자
 │   ├── AdviceService.cs      # 조언 서비스
 │   ├── NaverSmartStoreService.cs    # 네이버 스마트스토어 서비스
-│   └── ChromeExtensionService.cs    # Chrome 확장프로그램 서비스
+│   ├── ChromeExtensionService.cs    # Chrome 확장프로그램 서비스
+│   ├── ThumbnailService.cs   # 썸네일 다운로드 및 로컬 저장 서비스
+│   └── ThumbnailApiService.cs       # 썸네일 API HTTP 서버
 ├── 📁 Styles/                # UI 스타일 정의
 ├── 📁 publish-windows/       # Windows 배포 파일
 ├── MainWindow.axaml          # 메인 윈도우 UI
@@ -138,6 +140,8 @@ Predvia/
 ├── ApiKeyAuthWindow.axaml    # 인증 윈도우
 ├── LoginWindow.axaml         # 로그인 윈도우
 ├── SignupWindow.axaml        # 회원가입 윈도우
+├── LogWindow.axaml           # 작업로그 윈도우
+├── ThumbnailTestPage.axaml   # 썸네일 표시 테스트 페이지
 ├── ThemeManager.cs           # 테마 관리자
 ├── Predvia.exe              # 실행 파일 (91MB)
 ├── 실행.bat                  # 실행 스크립트
@@ -229,6 +233,16 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **라이트모드 텍스트 가시성** - 모든 텍스트 요소 완벽한 가독성
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
+
+### 🔄 최신 업데이트 (v1.3)
+- [x] **🖼️ 썸네일 로컬 저장 & 표시 시스템 완전 구현**
+  - **ThumbnailService** - 썸네일 다운로드 및 로컬 저장 (`%APPDATA%\Predvia\Thumbnails\`)
+  - **ThumbnailApiService** - HTTP API 서버 (localhost:8080) Chrome 확장프로그램 연동
+  - **Chrome 확장프로그램 업데이트** - 네이버 쇼핑 상품 데이터 및 썸네일 추출 기능
+  - **SourcingPage 썸네일 표시** - 저장된 썸네일을 소싱 페이지에 자동 표시
+  - **작업로그 시스템 강화** - API 서버 상태, 썸네일 처리 과정 실시간 로그 표시
+  - **완벽한 오류 처리** - 네트워크 오류, 파일 저장 오류, API 통신 오류 대응
+  - **메타데이터 관리** - `thumbnails.json`으로 상품 정보 및 파일 경로 관리
 
 ### 🔄 최신 업데이트 (v1.2)
 - [x] **🌐 Chrome 확장프로그램 방식 구현** - 경쟁업체와 동일한 방식 적용

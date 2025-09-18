@@ -37,6 +37,7 @@ namespace Gumaedaehang
         private ScrollViewer? _adviceScrollViewer;
         private StackPanel? _adviceContainer;
         private readonly AdviceService _adviceService;
+        private readonly ThumbnailApiService _thumbnailApiService;
         private DispatcherTimer? _slideTimer;
         
         public MainWindow()
@@ -46,6 +47,23 @@ namespace Gumaedaehang
             
             // 서비스 초기화
             _adviceService = new AdviceService();
+            _thumbnailApiService = new ThumbnailApiService();
+            
+            // LogWindow 인스턴스 미리 생성 (로그 기록을 위해)
+            _logWindow = new LogWindow();
+            
+            // 썸네일 API 서버 시작
+            _ = Task.Run(async () => 
+            {
+                await _thumbnailApiService.StartAsync();
+                
+                // 로그 창에 API 서버 시작 메시지 추가
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    LogWindow.AddLogStatic("🚀 썸네일 API 서버 시작됨: http://localhost:8080");
+                    LogWindow.AddLogStatic("📡 Chrome 확장프로그램 연동 준비 완료");
+                });
+            });
             
             // UI 요소 참조 가져오기
             var themeToggleButton = this.FindControl<Button>("themeToggleButton");
@@ -276,13 +294,11 @@ namespace Gumaedaehang
         
         private void LogButton_Click(object? sender, RoutedEventArgs e)
         {
-            if (_logWindow == null)
+            if (_logWindow != null)
             {
-                _logWindow = new LogWindow();
+                _logWindow.Show();
+                _logWindow.Activate();
             }
-            
-            _logWindow.Show();
-            _logWindow.Activate();
         }        
         // 탭 전환 메서드들
         public void SourcingTab_Click(object? sender, RoutedEventArgs e)
