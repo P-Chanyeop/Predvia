@@ -11,7 +11,8 @@
   ],
   "host_permissions": [
     "*://search.shopping.naver.com/*",
-    "*://smartstore.naver.com/*"
+    "*://smartstore.naver.com/*",
+    "http://localhost:8080/*"
   ],
   "background": {
     "service_worker": "background.js"

@@ -37,85 +37,38 @@ function extractCurrentPageData() {
   const products = [];
   const thumbnails = [];
   
-  // 상품 요소들 찾기 (더 정확한 선택자)
-  const productElements = document.querySelectorAll([
-    '.basicList_item__2XT81',
-    '.product_item', 
-    '.adProduct_item',
-    '[data-shp-contents-id]',
-    '.list_item'
-  ].join(','));
+  // 상품 이미지 직접 선택 (가장 간단한 방법)
+  const productImages = document.querySelectorAll('img[src*="shopping-phinf.pstatic.net"]');
   
-  console.log(`📦 총 ${productElements.length}개 상품 요소 발견`);
+  console.log(`📦 총 ${productImages.length}개 상품 이미지 발견`);
   
-  productElements.forEach((element, index) => {
+  productImages.forEach((imgElement, index) => {
     try {
-      // 썸네일 이미지 추출
-      const imgElement = element.querySelector('img');
-      let thumbnailUrl = '';
-      if (imgElement && imgElement.src && imgElement.src.startsWith('http')) {
-        thumbnailUrl = imgElement.src;
-        console.log(`🖼️ ${index + 1}번째 썸네일: ${thumbnailUrl.substring(0, 50)}...`);
+      // 상품명은 img의 alt 속성에서
+      const title = imgElement.alt || '';
+      
+      // 썸네일은 img의 src에서
+      const thumbnailUrl = imgElement.src || '';
+      
+      if (title && thumbnailUrl) {
+        console.log(`✅ ${index + 1}번째 상품: ${title.substring(0, 30)}...`);
+        
+        products.push({
+          index: index + 1,
+          title,
+          price: 'N/A', // 가격은 나중에
+          thumbnail: thumbnailUrl,
+          link: '', // 링크는 나중에
+          extractedAt: new Date().toISOString()
+        });
         
         thumbnails.push({
           index: index + 1,
           src: thumbnailUrl,
-          alt: imgElement.alt || '',
+          alt: title,
           width: imgElement.naturalWidth || imgElement.width,
           height: imgElement.naturalHeight || imgElement.height
         });
-      }
-      
-      // 상품 제목 추출
-      let title = '';
-      const titleSelectors = [
-        '.basicList_title__3P9Q7 a',
-        '.product_title a',
-        '.adProduct_title a',
-        'a[data-shp-contents-id]',
-        '.list_title a'
-      ];
-      
-      for (const selector of titleSelectors) {
-        const titleElement = element.querySelector(selector);
-        if (titleElement) {
-          title = titleElement.textContent.trim();
-          break;
-        }
-      }
-      
-      // 가격 추출
-      let price = '';
-      const priceSelectors = [
-        '.price_price__1WUXk .price_num',
-        '.price_num',
-        '.adProduct_price',
-        '.list_price'
-      ];
-      
-      for (const selector of priceSelectors) {
-        const priceElement = element.querySelector(selector);
-        if (priceElement) {
-          price = priceElement.textContent.trim();
-          break;
-        }
-      }
-      
-      // 링크 추출
-      const linkElement = element.querySelector('a');
-      const link = linkElement ? linkElement.href : '';
-      
-      if (title && thumbnailUrl) {
-        products.push({
-          index: index + 1,
-          title,
-          price: price || 'N/A',
-          thumbnail: thumbnailUrl,
-          link,
-          extractedAt: new Date().toISOString()
-        });
-        
-        console.log(`✅ ${index + 1}번째 상품: ${title.substring(0, 30)}...`);
       }
     } catch (error) {
       console.error(`❌ 상품 ${index + 1} 추출 오류:`, error);
@@ -151,6 +104,10 @@ window.sendThumbnailsToPredvia = async function() {
   
   try {
     console.log('📡 Predvia로 데이터 전송 시작...');
+    console.log('요청 URL: http://localhost:8080/api/thumbnails/save');
+    console.log('📦 전송할 데이터:', JSON.stringify({
+      products: data.products.slice(0, 2) // 처음 2개만 로그로 확인
+    }, null, 2));
     
     const response = await fetch('http://localhost:8080/api/thumbnails/save', {
       method: 'POST',
@@ -172,6 +129,7 @@ window.sendThumbnailsToPredvia = async function() {
     });
     
     console.log('📡 응답 상태:', response.status);
+    console.log('📡 응답 헤더:', response.headers);
     
     if (response.ok) {
       const result = await response.json();
@@ -184,7 +142,9 @@ window.sendThumbnailsToPredvia = async function() {
     }
   } catch (error) {
     console.error('❌ Predvia 통신 오류:', error);
-    console.error('❌ 상세 오류:', error.message);
+    console.error('❌ 오류 타입:', error.name);
+    console.error('❌ 오류 메시지:', error.message);
+    console.error('❌ 스택 트레이스:', error.stack);
     console.log('💡 Predvia 프로그램이 실행 중인지 확인해주세요.');
   }
 };

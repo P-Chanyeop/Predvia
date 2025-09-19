@@ -37,7 +37,7 @@ namespace Gumaedaehang
         private ScrollViewer? _adviceScrollViewer;
         private StackPanel? _adviceContainer;
         private readonly AdviceService _adviceService;
-        private readonly ThumbnailApiService _thumbnailApiService;
+        private readonly ThumbnailWebServer _thumbnailWebServer;
         private DispatcherTimer? _slideTimer;
         
         public MainWindow()
@@ -47,21 +47,27 @@ namespace Gumaedaehang
             
             // 서비스 초기화
             _adviceService = new AdviceService();
-            _thumbnailApiService = new ThumbnailApiService();
+            _thumbnailWebServer = new ThumbnailWebServer();
             
             // LogWindow 인스턴스 미리 생성 (로그 기록을 위해)
             _logWindow = new LogWindow();
             
+            // 프로그램 시작 로그
+            LogWindow.AddLogStatic("Predvia 구매대행 시스템 시작됨");
+            LogWindow.AddLogStatic("시스템 초기화 중...");
+            
             // 썸네일 API 서버 시작
             _ = Task.Run(async () => 
             {
-                await _thumbnailApiService.StartAsync();
+                LogWindow.AddLogStatic("ASP.NET Core 웹서버 시작 중...");
+                await _thumbnailWebServer.StartAsync();
                 
                 // 로그 창에 API 서버 시작 메시지 추가
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    LogWindow.AddLogStatic("🚀 썸네일 API 서버 시작됨: http://localhost:8080");
-                    LogWindow.AddLogStatic("📡 Chrome 확장프로그램 연동 준비 완료");
+                    LogWindow.AddLogStatic("썸네일 API 서버 시작 완료: http://localhost:8080");
+                    LogWindow.AddLogStatic("Chrome 확장프로그램 연동 준비 완료");
+                    LogWindow.AddLogStatic("네이버 쇼핑 데이터 수신 대기 중...");
                 });
             });
             

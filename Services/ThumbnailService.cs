@@ -5,6 +5,8 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Linq;
 
 namespace Gumaedaehang.Services
 {
@@ -21,7 +23,7 @@ namespace Gumaedaehang.Services
         }
 
         // 썸네일 다운로드 및 로컬 저장
-        public async Task<string> DownloadThumbnailAsync(string imageUrl, string productId)
+        public async Task<string?> DownloadThumbnailAsync(string imageUrl, string productId)
         {
             try
             {
@@ -51,81 +53,137 @@ namespace Gumaedaehang.Services
             {
                 Debug.WriteLine($"썸네일 다운로드 오류: {ex.Message}");
             }
-
+            
             return null;
         }
 
-        // 여러 썸네일 일괄 다운로드
-        public async Task<List<ThumbnailInfo>> DownloadThumbnailsAsync(List<ProductData> products)
-        {
-            var thumbnails = new List<ThumbnailInfo>();
-
-            foreach (var product in products)
-            {
-                var localPath = await DownloadThumbnailAsync(product.ThumbnailUrl, product.Id);
-                if (!string.IsNullOrEmpty(localPath))
-                {
-                    thumbnails.Add(new ThumbnailInfo
-                    {
-                        ProductId = product.Id,
-                        ProductTitle = product.Title,
-                        OriginalUrl = product.ThumbnailUrl,
-                        LocalPath = localPath,
-                        DownloadedAt = DateTime.Now
-                    });
-                }
-            }
-
-            // 썸네일 정보를 JSON으로 저장
-            await SaveThumbnailInfoAsync(thumbnails);
-            return thumbnails;
-        }
-
-        // 썸네일 정보 저장
-        private async Task SaveThumbnailInfoAsync(List<ThumbnailInfo> thumbnails)
+        // 썸네일 저장 (웹서버용)
+        public async Task SaveThumbnailAsync(string id, string title, string thumbnailUrl, string price, string link)
         {
             try
             {
-                var jsonPath = Path.Combine(_thumbnailDirectory, "thumbnails.json");
-                var json = JsonSerializer.Serialize(thumbnails, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(jsonPath, json);
+                var filePath = await DownloadThumbnailAsync(thumbnailUrl, id);
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                    // 메타데이터 저장
+                    var metadata = new ProductData
+                    {
+                        Id = id,
+                        Title = title,
+                        ThumbnailUrl = thumbnailUrl,
+                        Price = price,
+                        Link = link,
+                        LocalPath = filePath,
+                        SavedAt = DateTime.Now
+                    };
+                    
+                    await SaveMetadataAsync(metadata);
+                    LogWindow.AddLogStatic($"✅ 썸네일 저장: {title}");
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"썸네일 정보 저장 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 썸네일 저장 실패: {title} - {ex.Message}");
             }
         }
 
-        // 저장된 썸네일 정보 로드
+        // 썸네일 목록 조회 (웹서버용)
+        public async Task<List<ProductData>> GetThumbnailsAsync()
+        {
+            try
+            {
+                return await LoadMetadataAsync();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 썸네일 목록 조회 실패: {ex.Message}");
+                return new List<ProductData>();
+            }
+        }
+
+        // 메타데이터 저장
+        private async Task SaveMetadataAsync(ProductData product)
+        {
+            try
+            {
+                var metadataFile = Path.Combine(_thumbnailDirectory, "thumbnails.json");
+                var products = await LoadMetadataAsync();
+                
+                // 기존 데이터 업데이트 또는 새로 추가
+                var existing = products.FirstOrDefault(p => p.Id == product.Id);
+                if (existing != null)
+                {
+                    products.Remove(existing);
+                }
+                products.Add(product);
+                
+                var json = JsonSerializer.Serialize(products, new JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(metadataFile, json);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"메타데이터 저장 오류: {ex.Message}");
+            }
+        }
+
+        // 메타데이터 로드
+        private async Task<List<ProductData>> LoadMetadataAsync()
+        {
+            try
+            {
+                var metadataFile = Path.Combine(_thumbnailDirectory, "thumbnails.json");
+                if (!File.Exists(metadataFile))
+                    return new List<ProductData>();
+                
+                var json = await File.ReadAllTextAsync(metadataFile);
+                return JsonSerializer.Deserialize<List<ProductData>>(json) ?? new List<ProductData>();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"메타데이터 로드 오류: {ex.Message}");
+                return new List<ProductData>();
+            }
+        }
+
+        // 썸네일 정보 로드 (ThumbnailInfo 형태로)
         public async Task<List<ThumbnailInfo>> LoadThumbnailInfoAsync()
         {
             try
             {
-                var jsonPath = Path.Combine(_thumbnailDirectory, "thumbnails.json");
-                if (File.Exists(jsonPath))
+                var products = await LoadMetadataAsync();
+                return products.Select(p => new ThumbnailInfo
                 {
-                    var json = await File.ReadAllTextAsync(jsonPath);
-                    return JsonSerializer.Deserialize<List<ThumbnailInfo>>(json) ?? new List<ThumbnailInfo>();
-                }
+                    ProductId = p.Id,
+                    ProductTitle = p.Title,
+                    OriginalUrl = p.ThumbnailUrl,
+                    LocalPath = p.LocalPath,
+                    DownloadedAt = p.SavedAt
+                }).ToList();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"썸네일 정보 로드 오류: {ex.Message}");
+                return new List<ThumbnailInfo>();
             }
-
-            return new List<ThumbnailInfo>();
         }
 
-        // 특정 상품의 썸네일 경로 가져오기
-        public async Task<string> GetThumbnailPathAsync(string productId)
+        // 여러 썸네일 다운로드
+        public async Task<int> DownloadThumbnailsAsync(List<ProductData> products)
         {
-            var thumbnails = await LoadThumbnailInfoAsync();
-            var thumbnail = thumbnails.Find(t => t.ProductId == productId);
-            
-            if (thumbnail != null && File.Exists(thumbnail.LocalPath))
-                return thumbnail.LocalPath;
-
-            return null;
+            int successCount = 0;
+            foreach (var product in products)
+            {
+                try
+                {
+                    await SaveThumbnailAsync(product.Id, product.Title, product.ThumbnailUrl, product.Price, product.Link);
+                    successCount++;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"썸네일 다운로드 실패: {product.Title} - {ex.Message}");
+                }
+            }
+            return successCount;
         }
 
         // 썸네일 폴더 열기
@@ -149,11 +207,23 @@ namespace Gumaedaehang.Services
     // 상품 데이터 클래스
     public class ProductData
     {
+        [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
+        
+        [JsonPropertyName("title")]
         public string Title { get; set; } = string.Empty;
+        
+        [JsonPropertyName("thumbnailUrl")]
         public string ThumbnailUrl { get; set; } = string.Empty;
+        
+        [JsonPropertyName("price")]
         public string Price { get; set; } = string.Empty;
+        
+        [JsonPropertyName("link")]
         public string Link { get; set; } = string.Empty;
+        
+        public string LocalPath { get; set; } = string.Empty;
+        public DateTime SavedAt { get; set; }
     }
 
     // 썸네일 정보 클래스

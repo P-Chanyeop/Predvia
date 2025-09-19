@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Diagnostics;
 
@@ -12,7 +13,7 @@ namespace Gumaedaehang.Services
 {
     public class ThumbnailApiService
     {
-        private HttpListener _listener;
+        private HttpListener? _listener;
         private readonly ThumbnailService _thumbnailService;
         private bool _isRunning = false;
 
@@ -29,11 +30,13 @@ namespace Gumaedaehang.Services
             try
             {
                 _listener = new HttpListener();
-                _listener.Prefixes.Add("http://localhost:8080/");
+                _listener.Prefixes.Add("http://127.0.0.1:8888/");
                 _listener.Start();
                 _isRunning = true;
 
                 Debug.WriteLine("🚀 썸네일 API 서버 시작됨: http://localhost:8080");
+                LogWindow.AddLogStatic("🚀 썸네일 API 서버 시작됨: http://localhost:8080");
+                LogWindow.AddLogStatic("⏳ 요청 대기 중...");
 
                 // 요청 처리 루프
                 _ = Task.Run(async () =>
@@ -42,13 +45,18 @@ namespace Gumaedaehang.Services
                     {
                         try
                         {
+                            LogWindow.AddLogStatic("🔄 GetContextAsync 대기 중...");
                             var context = await _listener.GetContextAsync();
+                            LogWindow.AddLogStatic($"📨 요청 수신됨: {context.Request.HttpMethod} {context.Request.Url}");
                             _ = Task.Run(() => HandleRequestAsync(context));
                         }
                         catch (Exception ex)
                         {
                             if (_isRunning)
+                            {
                                 Debug.WriteLine($"API 서버 오류: {ex.Message}");
+                                LogWindow.AddLogStatic($"❌ API 서버 오류: {ex.Message}");
+                            }
                         }
                     }
                 });
@@ -117,18 +125,21 @@ namespace Gumaedaehang.Services
                 using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
                 var json = await reader.ReadToEndAsync();
                 
+                LogWindow.AddLogStatic($"수신된 JSON 데이터: {json.Substring(0, Math.Min(200, json.Length))}...");
+                
                 var requestData = JsonSerializer.Deserialize<ThumbnailSaveRequest>(json);
                 if (requestData?.Products == null)
                 {
+                    LogWindow.AddLogStatic("잘못된 요청 데이터");
                     response.StatusCode = 400;
                     await WriteResponseAsync(response, "Invalid request data");
                     return;
                 }
 
-                Debug.WriteLine($"📥 {requestData.Products.Count}개 상품 썸네일 저장 요청");
+                LogWindow.AddLogStatic($"{requestData.Products.Count}개 상품 썸네일 저장 요청");
 
                 // 썸네일 다운로드 및 저장
-                var savedThumbnails = await _thumbnailService.DownloadThumbnailsAsync(requestData.Products);
+                var savedCount = await _thumbnailService.DownloadThumbnailsAsync(requestData.Products);
 
                 // 로그 창에 결과 표시
                 try
@@ -136,18 +147,21 @@ namespace Gumaedaehang.Services
                     // LogWindow에 정적 메서드로 로그 추가
                     await Task.Run(() =>
                     {
-                        LogWindow.AddLogStatic($"📥 Chrome 확장프로그램에서 {requestData.Products.Count}개 상품 데이터 수신");
-                        LogWindow.AddLogStatic($"💾 {savedThumbnails.Count}개 썸네일 이미지 다운로드 및 저장 완료");
-                        LogWindow.AddLogStatic($"📁 저장 위치: %APPDATA%\\Predvia\\Thumbnails\\");
+                        LogWindow.AddLogStatic($"Chrome 확장프로그램에서 {requestData.Products.Count}개 상품 데이터 수신");
+                        LogWindow.AddLogStatic($"{savedCount}개 썸네일 이미지 다운로드 및 저장 완료");
+                        LogWindow.AddLogStatic($"저장 위치: %APPDATA%\\Predvia\\Thumbnails\\");
                         
-                        foreach (var thumb in savedThumbnails.Take(3)) // 처음 3개만 표시
+                        // 처음 3개 상품만 표시
+                        for (int i = 0; i < Math.Min(3, requestData.Products.Count); i++)
                         {
-                            LogWindow.AddLogStatic($"   🖼️ {thumb.ProductTitle.Substring(0, Math.Min(30, thumb.ProductTitle.Length))}...");
+                            var product = requestData.Products[i];
+                            var title = product.Title.Length > 30 ? product.Title.Substring(0, 30) + "..." : product.Title;
+                            LogWindow.AddLogStatic($"   {title}");
                         }
                         
-                        if (savedThumbnails.Count > 3)
+                        if (requestData.Products.Count > 3)
                         {
-                            LogWindow.AddLogStatic($"   ... 외 {savedThumbnails.Count - 3}개 더");
+                            LogWindow.AddLogStatic($"   ... 외 {requestData.Products.Count - 3}개 더");
                         }
                     });
                 }
@@ -159,9 +173,8 @@ namespace Gumaedaehang.Services
                 var result = new
                 {
                     success = true,
-                    savedCount = savedThumbnails.Count,
-                    thumbnails = savedThumbnails,
-                    message = $"{savedThumbnails.Count}개 썸네일 저장 완료"
+                    savedCount = savedCount,
+                    message = $"{savedCount}개 썸네일 저장 완료"
                 };
 
                 response.StatusCode = 200;
@@ -243,8 +256,13 @@ namespace Gumaedaehang.Services
     // 썸네일 저장 요청 클래스
     public class ThumbnailSaveRequest
     {
+        [JsonPropertyName("products")]
         public List<ProductData> Products { get; set; } = new();
+        
+        [JsonPropertyName("source")]
         public string Source { get; set; } = string.Empty;
+        
+        [JsonPropertyName("timestamp")]
         public string Timestamp { get; set; } = string.Empty;
     }
 }
