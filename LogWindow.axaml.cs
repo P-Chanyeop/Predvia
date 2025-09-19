@@ -29,7 +29,14 @@ namespace Gumaedaehang
         // 정적 메서드로 어디서든 로그 추가 가능
         public static void AddLogStatic(string message)
         {
-            _instance?.AddLog(message);
+            if (_instance != null)
+            {
+                // UI 스레드에서 실행
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    _instance.AddLog(message);
+                });
+            }
         }
         
         private async void CopyButton_Click(object? sender, RoutedEventArgs e)
