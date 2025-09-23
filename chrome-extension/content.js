@@ -22,11 +22,30 @@ function initializeExtension() {
 async function scrollAndCollectLinks() {
   console.log('📜 페이지 끝까지 스크롤 - 스마트스토어 링크 수집');
   
-  // 한번에 페이지 끝까지 스크롤
-  window.scrollTo(0, document.body.scrollHeight);
+  let previousHeight = 0;
+  let currentHeight = document.body.scrollHeight;
+  let scrollAttempts = 0;
+  const maxScrollAttempts = 10;
   
-  // 페이지 로딩 완료 대기
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  // 페이지 끝까지 반복 스크롤
+  while (previousHeight !== currentHeight && scrollAttempts < maxScrollAttempts) {
+    previousHeight = currentHeight;
+    
+    // 페이지 끝까지 스크롤
+    window.scrollTo(0, document.body.scrollHeight);
+    console.log(`📍 스크롤 ${scrollAttempts + 1}회 - 높이: ${currentHeight}px`);
+    
+    // 최소 대기 시간 (500ms)
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    currentHeight = document.body.scrollHeight;
+    scrollAttempts++;
+  }
+  
+  console.log(`📜 스크롤 완료 - 총 ${scrollAttempts}회 스크롤`);
+  
+  // 최종 대기 후 링크 수집
+  await new Promise(resolve => setTimeout(resolve, 1000));
   
   // 스마트스토어 링크 수집
   const smartStoreLinks = extractSmartStoreLinks();
@@ -205,35 +224,164 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
   }
 }
 
-// 스마트스토어 링크들을 순차적으로 방문
+// 스마트스토어 링크들을 순차적으로 방문 (공구탭으로 변환)
 async function visitSmartStoreLinksSequentially(smartStoreLinks) {
-  console.log(`🚀 ${smartStoreLinks.length}개 스마트스토어 링크 순차 접속 시작`);
+  console.log(`🚀 ${smartStoreLinks.length}개 스마트스토어 공구탭 순차 접속 시작`);
   
   for (let i = 0; i < smartStoreLinks.length; i++) {
     const link = smartStoreLinks[i];
     
     try {
-      console.log(`📍 [${i + 1}/${smartStoreLinks.length}] 접속 중: ${link.title}`);
-      console.log(`🔗 URL: ${link.url}`);
+      // 스마트스토어 ID 추출
+      const storeId = extractStoreId(link.url);
       
-      // 새 탭에서 링크 열기
-      window.open(link.url, '_blank');
-      
-      // 서버에 접속 상태 알림
-      await notifyServerLinkVisited(link, i + 1, smartStoreLinks.length);
-      
-      // 다음 링크 접속 전 대기 (2초)
-      if (i < smartStoreLinks.length - 1) {
-        console.log('⏳ 2초 대기 중...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!storeId) {
+        console.log(`❌ [${i + 1}/${smartStoreLinks.length}] 스토어 ID 추출 실패: ${link.title}`);
+        continue;
       }
       
+      // 공구탭 URL 생성
+      const gongguUrl = `https://smartstore.naver.com/${storeId}/category/50000165?cp=1`;
+      
+      console.log(`📍 [${i + 1}/${smartStoreLinks.length}] 공구탭 접속: ${link.title}`);
+      console.log(`🔗 스토어 ID: ${storeId}`);
+      console.log(`🔗 공구탭 URL: ${gongguUrl}`);
+      
+      // 새 탭에서 공구탭 열기
+      const newTab = window.open(gongguUrl, '_blank');
+      
+      // 서버에 접속 상태 알림
+      await notifyServerLinkVisited({
+        ...link,
+        storeId: storeId,
+        gongguUrl: gongguUrl
+      }, i + 1, smartStoreLinks.length);
+      
+      // 작업 완료까지 대기 (현재는 5초 후 탭 닫기)
+      await waitForTaskCompletion(newTab, storeId);
+      
+      console.log(`✅ [${i + 1}/${smartStoreLinks.length}] 작업 완료: ${link.title}`);
+      
     } catch (error) {
-      console.error(`❌ 링크 접속 오류 [${i + 1}]: ${link.title}`, error);
+      console.error(`❌ 링크 처리 오류 [${i + 1}]: ${link.title}`, error);
     }
   }
   
-  console.log('✅ 모든 스마트스토어 링크 접속 완료');
+  console.log('✅ 모든 스마트스토어 공구탭 작업 완료');
+}
+
+// 스마트스토어 ID 추출 함수
+function extractStoreId(url) {
+  try {
+    console.log('원본 URL:', url);
+    
+    // URL 디코딩
+    const decodedUrl = decodeURIComponent(url);
+    console.log('디코딩된 URL:', decodedUrl);
+    
+    // url= 파라미터에서 실제 스마트스토어 URL 추출
+    const urlMatch = decodedUrl.match(/url=([^&]+)/);
+    
+    if (urlMatch && urlMatch[1]) {
+      const actualStoreUrl = urlMatch[1];
+      console.log('실제 스토어 URL:', actualStoreUrl);
+      
+      // 실제 스토어 URL에서 ID 추출
+      const storeIdMatch = actualStoreUrl.match(/smartstore\.naver\.com\/([^&\/\?]+)/);
+      console.log('매칭 결과:', storeIdMatch);
+      
+      if (storeIdMatch && storeIdMatch[1]) {
+        console.log('추출된 스토어 ID:', storeIdMatch[1]);
+        return storeIdMatch[1];
+      }
+    }
+    
+    console.log('스토어 ID 추출 실패');
+    return null;
+  } catch (error) {
+    console.error('스토어 ID 추출 오류:', error);
+    return null;
+  }
+}
+
+// 작업 완료까지 대기 (공구탭 로딩 대기)
+async function waitForTaskCompletion(tabWindow, storeId) {
+  console.log(`⏳ ${storeId} 공구탭 로딩 대기 중...`);
+  
+  try {
+    // 5초 대기 (공구탭에서 gonggu-checker.js가 실행될 시간)
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    // 탭이 닫혔으면 스킵
+    if (!tabWindow || tabWindow.closed) {
+      console.log(`❌ ${storeId} 탭이 닫혔습니다`);
+      return;
+    }
+    
+    console.log(`✅ ${storeId} 공구탭 처리 완료 (gonggu-checker.js에서 개수 확인)`);
+    
+  } catch (error) {
+    console.error(`❌ ${storeId} 처리 중 오류:`, error);
+  }
+  
+  // 탭 닫기
+  if (tabWindow && !tabWindow.closed) {
+    tabWindow.close();
+    console.log(`🗂️ ${storeId} 탭 닫기 완료`);
+  }
+}
+
+// 다른 탭에서 스크립트 실행 (제한적)
+async function executeScriptInTab(tabWindow, scriptCode) {
+  return new Promise((resolve) => {
+    try {
+      // 간단한 방법: postMessage 사용
+      const messageId = 'gonggu-check-' + Date.now();
+      
+      // 응답 리스너
+      const responseHandler = (event) => {
+        if (event.data && event.data.messageId === messageId) {
+          window.removeEventListener('message', responseHandler);
+          resolve(event.data.result || 0);
+        }
+      };
+      
+      window.addEventListener('message', responseHandler);
+      
+      // 다른 탭에 메시지 전송 (제한적이므로 기본값 반환)
+      setTimeout(() => {
+        window.removeEventListener('message', responseHandler);
+        resolve(0); // 확인 불가시 0 반환
+      }, 2000);
+      
+    } catch (error) {
+      resolve(0);
+    }
+  });
+}
+
+// 서버에 공구 개수 결과 알림
+async function notifyServerGongguCount(storeId, gongguCount, isValid) {
+  try {
+    const data = {
+      storeId: storeId,
+      gongguCount: gongguCount,
+      isValid: isValid,
+      timestamp: new Date().toISOString()
+    };
+    
+    await fetch('http://localhost:8080/api/smartstore/gonggu-check', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'chrome-extension'
+      },
+      body: JSON.stringify(data)
+    });
+    
+  } catch (error) {
+    console.error('공구 개수 알림 오류:', error);
+  }
 }
 
 // 서버에 링크 방문 상태 알림
@@ -242,6 +390,8 @@ async function notifyServerLinkVisited(link, currentIndex, totalCount) {
     const visitData = {
       url: link.url,
       title: link.title,
+      storeId: link.storeId || '',
+      gongguUrl: link.gongguUrl || '',
       currentIndex: currentIndex,
       totalCount: totalCount,
       timestamp: new Date().toISOString()

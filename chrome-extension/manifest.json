@@ -22,6 +22,11 @@
       "matches": ["*://search.shopping.naver.com/*"],
       "js": ["content.js"],
       "run_at": "document_end"
+    },
+    {
+      "matches": ["*://smartstore.naver.com/*/category/50000165*"],
+      "js": ["gonggu-checker.js"],
+      "run_at": "document_end"
     }
   ],
   "action": {

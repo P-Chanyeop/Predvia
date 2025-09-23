@@ -49,6 +49,7 @@ namespace Gumaedaehang.Services
                 _app.MapGet("/api/thumbnails/list", HandleGetThumbnails);
                 _app.MapPost("/api/smartstore/links", HandleSmartStoreLinks);
                 _app.MapPost("/api/smartstore/visit", HandleSmartStoreVisit);
+                _app.MapPost("/api/smartstore/gonggu-check", HandleGongguCheck);
 
                 _isRunning = true;
                 
@@ -254,8 +255,21 @@ namespace Gumaedaehang.Services
                 
                 if (visitData != null)
                 {
-                    LogWindow.AddLogStatic($"[{visitData.CurrentIndex}/{visitData.TotalCount}] 스마트스토어 접속: {visitData.Title}");
-                    LogWindow.AddLogStatic($"  URL: {visitData.Url}");
+                    LogWindow.AddLogStatic($"[{visitData.CurrentIndex}/{visitData.TotalCount}] 스마트스토어 공구탭 접속: {visitData.Title}");
+                    
+                    if (!string.IsNullOrEmpty(visitData.StoreId))
+                    {
+                        LogWindow.AddLogStatic($"  스토어 ID: {visitData.StoreId}");
+                    }
+                    
+                    if (!string.IsNullOrEmpty(visitData.GongguUrl))
+                    {
+                        LogWindow.AddLogStatic($"  공구탭 URL: {visitData.GongguUrl}");
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic($"  원본 URL: {visitData.Url}");
+                    }
                 }
 
                 return Results.Json(new { 
@@ -266,6 +280,43 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"방문 상태 처리 오류: {ex.Message}");
+                return Results.Json(new { 
+                    success = false, 
+                    error = ex.Message 
+                }, statusCode: 500);
+            }
+        }
+
+        // 공구 개수 확인 결과 API
+        private async Task<IResult> HandleGongguCheck(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var json = await reader.ReadToEndAsync();
+                
+                var gongguData = JsonSerializer.Deserialize<GongguCheckRequest>(json);
+                
+                if (gongguData != null)
+                {
+                    if (gongguData.IsValid)
+                    {
+                        LogWindow.AddLogStatic($"✅ {gongguData.StoreId}: 공구 {gongguData.GongguCount}개 (≥1000개) - 진행");
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic($"❌ {gongguData.StoreId}: 공구 {gongguData.GongguCount}개 (<1000개) - 스킵");
+                    }
+                }
+
+                return Results.Json(new { 
+                    success = true,
+                    message = "공구 개수 확인 완료"
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"공구 개수 확인 오류: {ex.Message}");
                 return Results.Json(new { 
                     success = false, 
                     error = ex.Message 
@@ -322,11 +373,33 @@ namespace Gumaedaehang.Services
         [JsonPropertyName("title")]
         public string Title { get; set; } = string.Empty;
         
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("gongguUrl")]
+        public string GongguUrl { get; set; } = string.Empty;
+        
         [JsonPropertyName("currentIndex")]
         public int CurrentIndex { get; set; }
         
         [JsonPropertyName("totalCount")]
         public int TotalCount { get; set; }
+        
+        [JsonPropertyName("timestamp")]
+        public string Timestamp { get; set; } = string.Empty;
+    }
+
+    // 공구 개수 확인 요청 데이터 모델
+    public class GongguCheckRequest
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("gongguCount")]
+        public int GongguCount { get; set; }
+        
+        [JsonPropertyName("isValid")]
+        public bool IsValid { get; set; }
         
         [JsonPropertyName("timestamp")]
         public string Timestamp { get; set; } = string.Empty;
