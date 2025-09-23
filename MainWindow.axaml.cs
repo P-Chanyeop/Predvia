@@ -300,11 +300,14 @@ namespace Gumaedaehang
         
         private void LogButton_Click(object? sender, RoutedEventArgs e)
         {
-            if (_logWindow != null)
+            // LogWindow가 없거나 닫혔으면 새로 생성
+            if (_logWindow == null || !_logWindow.IsVisible)
             {
-                _logWindow.Show();
-                _logWindow.Activate();
+                _logWindow = new LogWindow();
             }
+            
+            _logWindow.Show();
+            _logWindow.Activate();
         }        
         // 탭 전환 메서드들
         public void SourcingTab_Click(object? sender, RoutedEventArgs e)
