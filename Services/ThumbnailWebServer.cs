@@ -51,6 +51,8 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/visit", HandleSmartStoreVisit);
                 _app.MapPost("/api/smartstore/gonggu-check", HandleGongguCheck);
                 _app.MapPost("/api/smartstore/all-products", HandleAllProductsPage);
+                _app.MapPost("/api/smartstore/product-data", HandleProductData);
+                _app.MapPost("/api/smartstore/log", HandleExtensionLog);
 
                 _isRunning = true;
                 
@@ -356,6 +358,90 @@ namespace Gumaedaehang.Services
             }
         }
 
+        // 상품 데이터 수집 결과 API
+        private async Task<IResult> HandleProductData(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var json = await reader.ReadToEndAsync();
+                
+                var productData = JsonSerializer.Deserialize<ProductDataRequest>(json);
+                
+                if (productData != null)
+                {
+                    // 리뷰가 있는 상품 개수 확인
+                    var reviewProducts = productData.Products.Where(p => !string.IsNullOrEmpty(p.ReviewCount) && p.ReviewCount != "리뷰 없음").ToList();
+                    
+                    if (reviewProducts.Any())
+                    {
+                        var lastReviewProduct = reviewProducts.Last();
+                        LogWindow.AddLogStatic($"🎯 {productData.StoreId}: 40개 상품 중 {lastReviewProduct.Index}번째에 마지막 리뷰 발견");
+                        LogWindow.AddLogStatic($"✅ {productData.StoreId}: 1~{lastReviewProduct.Index}번째 상품 {productData.ProductCount}개 수집 완료");
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic($"📦 {productData.StoreId}: {productData.ProductCount}개 상품 데이터 수집 완료");
+                        LogWindow.AddLogStatic($"  리뷰 상품: 0개");
+                    }
+                    
+                    // 상품 정보 로그 (처음 3개만)
+                    for (int i = 0; i < Math.Min(3, productData.Products.Count); i++)
+                    {
+                        var product = productData.Products[i];
+                        LogWindow.AddLogStatic($"  [{i + 1}] {product.Name} - {product.Price}");
+                    }
+                    
+                    if (productData.Products.Count > 3)
+                    {
+                        LogWindow.AddLogStatic($"  ... 외 {productData.Products.Count - 3}개 상품");
+                    }
+                }
+
+                return Results.Json(new { 
+                    success = true,
+                    message = "상품 데이터 수집 완료"
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"상품 데이터 처리 오류: {ex.Message}");
+                return Results.Json(new { 
+                    success = false, 
+                    error = ex.Message 
+                }, statusCode: 500);
+            }
+        }
+
+        // Chrome 확장프로그램 로그 API
+        private async Task<IResult> HandleExtensionLog(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var json = await reader.ReadToEndAsync();
+                
+                var logData = JsonSerializer.Deserialize<ExtensionLogRequest>(json);
+                
+                if (logData != null && !string.IsNullOrEmpty(logData.Message))
+                {
+                    LogWindow.AddLogStatic(logData.Message);
+                }
+
+                return Results.Json(new { 
+                    success = true,
+                    message = "로그 수신 완료"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { 
+                    success = false, 
+                    error = ex.Message 
+                }, statusCode: 500);
+            }
+        }
+
         public async Task StopAsync()
         {
             if (_app != null && _isRunning)
@@ -451,5 +537,59 @@ namespace Gumaedaehang.Services
         
         [JsonPropertyName("timestamp")]
         public string Timestamp { get; set; } = string.Empty;
+    }
+
+    // 상품 데이터 요청 모델
+    public class ProductDataRequest
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productCount")]
+        public int ProductCount { get; set; }
+        
+        [JsonPropertyName("reviewProductCount")]
+        public int ReviewProductCount { get; set; }
+        
+        [JsonPropertyName("products")]
+        public List<ProductInfo> Products { get; set; } = new();
+        
+        [JsonPropertyName("pageUrl")]
+        public string PageUrl { get; set; } = string.Empty;
+        
+        [JsonPropertyName("timestamp")]
+        public string Timestamp { get; set; } = string.Empty;
+    }
+
+    // Chrome 확장프로그램 로그 요청 데이터 모델
+    public class ExtensionLogRequest
+    {
+        [JsonPropertyName("message")]
+        public string Message { get; set; } = string.Empty;
+        
+        [JsonPropertyName("timestamp")]
+        public string Timestamp { get; set; } = string.Empty;
+    }
+
+    // 상품 정보 모델
+    public class ProductInfo
+    {
+        [JsonPropertyName("index")]
+        public int Index { get; set; }
+        
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+        
+        [JsonPropertyName("price")]
+        public string Price { get; set; } = string.Empty;
+        
+        [JsonPropertyName("imageUrl")]
+        public string ImageUrl { get; set; } = string.Empty;
+        
+        [JsonPropertyName("reviewCount")]
+        public string ReviewCount { get; set; } = string.Empty;
+        
+        [JsonPropertyName("element")]
+        public string Element { get; set; } = string.Empty;
     }
 }
