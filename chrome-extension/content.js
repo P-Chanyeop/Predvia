@@ -309,8 +309,8 @@ async function waitForTaskCompletion(tabWindow, storeId) {
   console.log(`⏳ ${storeId} 공구탭 로딩 대기 중...`);
   
   try {
-    // 5초 대기 (공구탭에서 gonggu-checker.js가 실행될 시간)
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // 10초 대기 (공구탭에서 gonggu-checker.js가 실행되고 페이지 이동할 시간)
+    await new Promise(resolve => setTimeout(resolve, 10000));
     
     // 탭이 닫혔으면 스킵
     if (!tabWindow || tabWindow.closed) {
@@ -324,7 +324,7 @@ async function waitForTaskCompletion(tabWindow, storeId) {
     console.error(`❌ ${storeId} 처리 중 오류:`, error);
   }
   
-  // 탭 닫기
+  // 탭 닫기 (1000개 이상이면 이미 다른 페이지로 이동했을 것)
   if (tabWindow && !tabWindow.closed) {
     tabWindow.close();
     console.log(`🗂️ ${storeId} 탭 닫기 완료`);

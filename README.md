@@ -243,6 +243,16 @@ dotnet run --project Gumaedaehang.csproj
   - **완벽한 오류 처리** - JSON 역직렬화, 네트워크 통신, 파일 저장 모든 단계 오류 대응
   - **빌드 오류 해결** - 클래스 중복 정의, 속성 타입 불일치 등 모든 컴파일 오류 수정
 
+### 🔄 최신 업데이트 (v1.7)
+- [x] **🛍️ 전체상품 페이지 자동 이동 시스템 구현**
+  - **공구 개수 기반 자동 이동** - 1000개 이상인 스토어만 전체상품 판매많은순 페이지로 자동 이동
+  - **all-products-handler.js** - 전체상품 페이지 전용 content script 추가
+  - **페이지 이동 최적화** - `window.location.replace()` 사용으로 즉시 페이지 전환
+  - **탭 관리 시간 조정** - 10초 대기로 페이지 이동 충분한 시간 확보
+  - **전체상품 페이지 API** - `/api/smartstore/all-products` 엔드포인트 추가
+  - **실시간 페이지 전환 로그** - 전체상품 페이지 접속 상황을 작업로그에 실시간 표시
+  - **URL 패턴 자동 생성** - `https://smartstore.naver.com/{storeId}/category/ALL?st=TOTALSALE` 형식
+
 ### 🔄 최신 업데이트 (v1.6)
 - [x] **🎯 공구 개수 기반 스마트스토어 필터링 시스템 구현**
   - **스마트스토어 ID 추출** - URL에서 정확한 스토어 ID 추출 및 공구탭 URL 생성
