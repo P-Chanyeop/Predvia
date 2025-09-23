@@ -106,6 +106,23 @@ async function sendGongguResult(gongguCount) {
     
     if (response.ok) {
       console.log('✅ 공구 개수 결과 전송 완료');
+      
+      // 1000개 이상이면 전체상품 판매많은순 페이지로 이동
+      if (gongguCount >= 1000) {
+        console.log(`🎯 ${storeId}: 공구 ${gongguCount}개 ≥ 1000개 - 전체상품 페이지로 이동`);
+        
+        // 전체상품 판매많은순 URL 생성
+        const allProductsUrl = `https://smartstore.naver.com/${storeId}/category/ALL?st=TOTALSALE`;
+        console.log(`🔗 전체상품 URL: ${allProductsUrl}`);
+        
+        // 즉시 페이지 이동 (setTimeout 제거)
+        console.log('🚀 전체상품 페이지로 이동 중...');
+        window.location.replace(allProductsUrl);
+        
+      } else {
+        console.log(`❌ ${storeId}: 공구 ${gongguCount}개 < 1000개 - 페이지 유지 (곧 닫힐 예정)`);
+      }
+      
     } else {
       console.error('❌ 서버 응답 오류:', response.status);
     }

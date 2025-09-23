@@ -50,6 +50,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/links", HandleSmartStoreLinks);
                 _app.MapPost("/api/smartstore/visit", HandleSmartStoreVisit);
                 _app.MapPost("/api/smartstore/gonggu-check", HandleGongguCheck);
+                _app.MapPost("/api/smartstore/all-products", HandleAllProductsPage);
 
                 _isRunning = true;
                 
@@ -324,6 +325,37 @@ namespace Gumaedaehang.Services
             }
         }
 
+        // 전체상품 페이지 접속 알림 API
+        private async Task<IResult> HandleAllProductsPage(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var json = await reader.ReadToEndAsync();
+                
+                var pageData = JsonSerializer.Deserialize<AllProductsPageRequest>(json);
+                
+                if (pageData != null)
+                {
+                    LogWindow.AddLogStatic($"🛍️ {pageData.StoreId}: 전체상품 페이지 접속 완료");
+                    LogWindow.AddLogStatic($"  URL: {pageData.PageUrl}");
+                }
+
+                return Results.Json(new { 
+                    success = true,
+                    message = "전체상품 페이지 접속 확인"
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"전체상품 페이지 처리 오류: {ex.Message}");
+                return Results.Json(new { 
+                    success = false, 
+                    error = ex.Message 
+                }, statusCode: 500);
+            }
+        }
+
         public async Task StopAsync()
         {
             if (_app != null && _isRunning)
@@ -400,6 +432,22 @@ namespace Gumaedaehang.Services
         
         [JsonPropertyName("isValid")]
         public bool IsValid { get; set; }
+        
+        [JsonPropertyName("timestamp")]
+        public string Timestamp { get; set; } = string.Empty;
+    }
+
+    // 전체상품 페이지 요청 데이터 모델
+    public class AllProductsPageRequest
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("pageType")]
+        public string PageType { get; set; } = string.Empty;
+        
+        [JsonPropertyName("pageUrl")]
+        public string PageUrl { get; set; } = string.Empty;
         
         [JsonPropertyName("timestamp")]
         public string Timestamp { get; set; } = string.Empty;
