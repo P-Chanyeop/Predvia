@@ -7,8 +7,7 @@ console.log('🛍️ 전체상품 페이지 핸들러 실행 시작');
     await fetch('http://localhost:8080/api/smartstore/log', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Origin': 'chrome-extension'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         message: `🚀 전체상품 핸들러 실행: ${window.location.href}`,
@@ -56,7 +55,6 @@ function sendLogToServer(message) {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', 'http://localhost:8080/api/smartstore/log', false); // false = 동기식
     xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.setRequestHeader('Origin', 'chrome-extension');
     
     const data = JSON.stringify({
       message: message,
@@ -89,22 +87,58 @@ function collectProductData(storeId) {
       return [];
     }
     
-    // 마지막 리뷰 span (40개 상품 중 마지막)
-    const lastReviewSpan = reviewSpans.snapshotItem(Math.min(39, reviewSpans.snapshotLength - 1));
+    // 1단계: 모든 상품 링크 가져오기
+    const allProducts = document.querySelectorAll('a[data-shp-contents-rank]');
     
-    const lastMsg = `✅ ${storeId}: 마지막 리뷰 span 선택 (${Math.min(40, reviewSpans.snapshotLength)}개 중 마지막)`;
-    sendLogToServer(lastMsg);
+    // 2단계: 각 상품에서 리뷰가 있는지 확인하여 마지막 리뷰 rank 찾기
+    let lastReviewRank = -1;
     
-    // 해당 span에서 상품 ID 찾기
-    const productUrl = findProductIdFromSpan(lastReviewSpan, storeId);
-    
-    if (productUrl) {
-      return [{ url: productUrl, storeId: storeId }];
+    for (let i = 0; i < allProducts.length; i++) {
+      const productLink = allProducts[i];
+      const rank = parseInt(productLink.getAttribute('data-shp-contents-rank'));
+      
+      // 상품 주변에서 리뷰 span 찾기
+      const parent = productLink.parentElement;
+      if (parent && parent.textContent.includes('리뷰')) {
+        lastReviewRank = Math.max(lastReviewRank, rank);
+        const reviewMsg = `🔢 ${storeId}: ${rank}번 상품에 리뷰 발견`;
+        sendLogToServer(reviewMsg);
+      }
     }
     
-    const noUrlMsg = `❌ ${storeId}: 상품 ID 없음`;
-    sendLogToServer(noUrlMsg);
-    return [];
+    if (lastReviewRank === -1) {
+      const noRankMsg = `❌ ${storeId}: 리뷰 상품 없음`;
+      sendLogToServer(noRankMsg);
+      return [];
+    }
+    
+    const rangeMsg = `✅ ${storeId}: 1번부터 ${lastReviewRank}번째 상품까지 수집 (총 ${lastReviewRank}개)`;
+    sendLogToServer(rangeMsg);
+    
+    // 3단계: 1번부터 lastReviewRank까지 모든 상품 수집
+    const allProductUrls = [];
+    
+    for (let i = 0; i < allProducts.length; i++) {
+      const productLink = allProducts[i];
+      const rank = parseInt(productLink.getAttribute('data-shp-contents-rank'));
+      
+      if (rank <= lastReviewRank) {
+        const productId = productLink.getAttribute('data-shp-contents-id');
+        
+        if (productId && /^\d{8,}$/.test(productId)) {
+          const productUrl = `https://smartstore.naver.com/${storeId}/products/${productId}`;
+          allProductUrls.push({ url: productUrl, storeId: storeId, index: rank });
+          
+          const idMsg = `🆔 ${storeId}: [${rank}번] 상품 ID ${productId} 발견`;
+          sendLogToServer(idMsg);
+        }
+      }
+    }
+    
+    // rank 순서로 정렬
+    allProductUrls.sort((a, b) => a.index - b.index);
+    
+    return allProductUrls;
     
   } catch (error) {
     const errorMsg = `❌ ${storeId}: 오류 - ${error.message}`;
@@ -384,8 +418,7 @@ async function sendProductDataToServer(storeId, productData, reviewCount) {
     const response = await fetch('http://localhost:8080/api/smartstore/product-data', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Origin': 'chrome-extension'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(data)
     });
@@ -412,8 +445,7 @@ async function notifyAllProductsPageLoaded(storeId) {
     const response = await fetch('http://localhost:8080/api/smartstore/all-products', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Origin': 'chrome-extension'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(data)
     });
