@@ -382,7 +382,7 @@ namespace Gumaedaehang.Services
                     else
                     {
                         LogWindow.AddLogStatic($"📦 {productData.StoreId}: {productData.ProductCount}개 상품 데이터 수집 완료");
-                        LogWindow.AddLogStatic($"  리뷰 상품: 0개");
+                        LogWindow.AddLogStatic($"  리뷰 상품: {productData.ReviewProductCount}개");
                     }
                     
                     // 상품 정보 로그 (처음 3개만)

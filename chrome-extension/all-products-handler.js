@@ -1,35 +1,9 @@
 // 전체상품 판매많은순 페이지에서 실행되는 스크립트
-console.log('🛍️ 전체상품 페이지 핸들러 실행');
+console.log('🛍️ 전체상품 페이지 핸들러 실행 시작');
 
-// 페이지 로딩 완료 후 실행
-setTimeout(() => {
-  handleAllProductsPage();
-}, 3000);
-
-function handleAllProductsPage() {
+// 즉시 서버에 실행 알림
+(async function() {
   try {
-    const storeId = extractStoreIdFromUrl(window.location.href);
-    console.log(`🛍️ ${storeId} 전체상품 페이지 로딩 완료`);
-    
-    // 서버에 전체상품 페이지 접속 알림
-    notifyAllProductsPageLoaded(storeId);
-    
-    // 즉시 처리 (추가 로딩 방지)
-    setTimeout(() => {
-      findReviewProductsAndCollectData(storeId);
-    }, 1000); // 1초로 단축
-    
-  } catch (error) {
-    console.error('전체상품 페이지 처리 오류:', error);
-  }
-}
-
-// 로그를 서버로 전송하는 함수 (타임아웃 추가)
-async function sendLogToServer(message) {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1000); // 1초 타임아웃
-    
     await fetch('http://localhost:8080/api/smartstore/log', {
       method: 'POST',
       headers: {
@@ -37,196 +11,353 @@ async function sendLogToServer(message) {
         'Origin': 'chrome-extension'
       },
       body: JSON.stringify({
-        message: message,
+        message: `🚀 전체상품 핸들러 실행: ${window.location.href}`,
         timestamp: new Date().toISOString()
-      }),
-      signal: controller.signal
+      })
+    });
+  } catch (e) {
+    console.log('초기 로그 전송 실패:', e);
+  }
+})();
+
+// 페이지 로딩 완료 후 실행
+setTimeout(() => {
+  handleAllProductsPage();
+}, 3000); // 3초로 단축
+
+function handleAllProductsPage() {
+  try {
+    const storeId = extractStoreIdFromUrl(window.location.href);
+    
+    sendLogToServer(`🚀 ${storeId}: 핸들러 시작`);
+    
+    // 서버에 전체상품 페이지 접속 알림
+    notifyAllProductsPageLoaded(storeId);
+    
+    // 바로 리뷰 검색 실행
+    setTimeout(() => {
+      sendLogToServer(`🔍 ${storeId}: 리뷰 검색 시작`);
+      
+      const productData = collectProductData(storeId);
+      sendProductDataToServer(storeId, productData, 1);
+      
+    }, 2000); // 2초만 대기
+    
+  } catch (error) {
+    const errorMsg = `❌ ${storeId}: 핸들러 오류 - ${error.message}`;
+    sendLogToServer(errorMsg);
+  }
+}
+
+// 로그를 서버로 전송하는 함수 (동기식으로 변경)
+function sendLogToServer(message) {
+  try {
+    // 동기식 요청으로 변경
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://localhost:8080/api/smartstore/log', false); // false = 동기식
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('Origin', 'chrome-extension');
+    
+    const data = JSON.stringify({
+      message: message,
+      timestamp: new Date().toISOString()
     });
     
-    clearTimeout(timeoutId);
+    xhr.send(data);
+    console.log('로그 전송:', message);
+    
   } catch (error) {
-    // 서버 전송 실패해도 콘솔 로그는 유지, 에러는 무시
+    console.log('로그 전송 실패:', error);
   }
 }
 
-// 리뷰 상품 찾기 및 데이터 수집
-function findReviewProductsAndCollectData(storeId) {
-  try {
-    const logMsg = `🔍 ${storeId}: 40개 상품 내에서 마지막 리뷰 찾기 시작`;
-    console.log(logMsg);
-    sendLogToServer(logMsg); // await 제거
-    
-    // 1페이지 상품만 처리하기 위해 스크롤 방지
-    window.scrollTo(0, 0);
-    
-    // 상품 정보 수집 (40개 제한 후 리뷰 찾기)
-    const productData = collectProductData(storeId);
-    
-    const completeMsg = `✅ ${storeId}: 상품 데이터 수집 완료 - ${productData.length}개`;
-    console.log(completeMsg);
-    sendLogToServer(completeMsg); // await 제거
-    
-    // 서버로 상품 데이터 전송
-    sendProductDataToServer(storeId, productData, 1);
-    
-  } catch (error) {
-    const errorMsg = `❌ ${storeId}: 리뷰 상품 탐지 오류: ${error.message}`;
-    console.error(errorMsg);
-    sendLogToServer(errorMsg); // await 제거
-  }
-}
-
-// 상품 데이터 수집 (40개 상품 내에서 마지막 리뷰 찾기)
+// 상품 데이터 수집 (40개 상품 중 마지막 리뷰 상품 찾기)
 function collectProductData(storeId) {
   try {
-    const startMsg = `📊 ${storeId}: 마지막 리뷰 상품 찾기 시작`;
-    console.log(startMsg);
-    sendLogToServer(startMsg); // await 제거
+    const debugMsg = `🔍 ${storeId}: 리뷰 span 검색 시작`;
+    sendLogToServer(debugMsg);
     
-    // 스크롤 차단
-    document.body.style.overflow = 'hidden';
-    window.scrollTo(0, 0);
+    // 정확히 "리뷰" 텍스트를 가진 span 찾기
+    const reviewSpans = document.evaluate("//span[normalize-space(text())='리뷰']", document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
     
-    // XPath로 리뷰 텍스트 찾기
-    const xpath = "//text()[contains(., '리뷰')]";
-    const result = document.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    const spanMsg = `📝 ${storeId}: ${reviewSpans.snapshotLength}개 "리뷰" span 발견`;
+    sendLogToServer(spanMsg);
     
-    const xpathMsg = `🔍 ${storeId}: XPath로 ${result.snapshotLength}개 리뷰 텍스트 발견`;
-    console.log(xpathMsg);
-    sendLogToServer(xpathMsg); // await 제거
-    
-    if (result.snapshotLength === 0) {
-      const noReviewMsg = `❌ ${storeId}: 리뷰 텍스트를 찾을 수 없습니다`;
-      console.log(noReviewMsg);
-      sendLogToServer(noReviewMsg); // await 제거
+    if (reviewSpans.snapshotLength === 0) {
+      const noSpanMsg = `❌ ${storeId}: "리뷰" span 없음`;
+      sendLogToServer(noSpanMsg);
       return [];
     }
     
-    // 마지막 리뷰 텍스트 노드 가져오기
-    const lastReviewNode = result.snapshotItem(result.snapshotLength - 1);
-    const reviewText = lastReviewNode.textContent.trim();
+    // 마지막 리뷰 span (40개 상품 중 마지막)
+    const lastReviewSpan = reviewSpans.snapshotItem(Math.min(39, reviewSpans.snapshotLength - 1));
     
-    const foundMsg = `🎯 ${storeId}: 마지막 리뷰 발견 - "${reviewText}"`;
-    console.log(foundMsg);
-    sendLogToServer(foundMsg); // await 제거
+    const lastMsg = `✅ ${storeId}: 마지막 리뷰 span 선택 (${Math.min(40, reviewSpans.snapshotLength)}개 중 마지막)`;
+    sendLogToServer(lastMsg);
     
-    // 리뷰 텍스트 노드의 부모 상품 요소 찾기
-    let productElement = lastReviewNode.parentElement;
-    while (productElement && !isProductElement(productElement)) {
-      productElement = productElement.parentElement;
+    // 해당 span에서 상품 ID 찾기
+    const productUrl = findProductIdFromSpan(lastReviewSpan, storeId);
+    
+    if (productUrl) {
+      return [{ url: productUrl, storeId: storeId }];
     }
     
-    if (!productElement) {
-      const noProductMsg = `❌ ${storeId}: 리뷰의 상품 요소를 찾을 수 없습니다`;
-      console.log(noProductMsg);
-      sendLogToServer(noProductMsg); // await 제거
-      return [];
-    }
-    
-    // 상품 링크 찾기
-    const productLink = productElement.querySelector('a[href*="/product/"]');
-    if (!productLink) {
-      const noLinkMsg = `❌ ${storeId}: 상품 링크를 찾을 수 없습니다`;
-      console.log(noLinkMsg);
-      sendLogToServer(noLinkMsg); // await 제거
-      return [];
-    }
-    
-    const productUrl = productLink.href;
-    const linkMsg = `🔗 ${storeId}: 마지막 리뷰 상품 URL - ${productUrl}`;
-    console.log(linkMsg);
-    sendLogToServer(linkMsg); // await 제거
-    
-    // 상품 URL을 서버로 전송 (페이지 이동하지 않음)
-    const completeMsg = `✅ ${storeId}: 마지막 리뷰 상품 URL 찾기 완료`;
-    console.log(completeMsg);
-    sendLogToServer(completeMsg); // await 제거
-    
-    // 스크롤 복원
-    document.body.style.overflow = '';
-    
-    return [{ url: productUrl, storeId: storeId }];
+    const noUrlMsg = `❌ ${storeId}: 상품 ID 없음`;
+    sendLogToServer(noUrlMsg);
+    return [];
     
   } catch (error) {
-    const errorMsg = `${storeId} 마지막 리뷰 찾기 오류: ${error.message}`;
-    console.error(errorMsg);
-    sendLogToServer(errorMsg); // await 제거
-    document.body.style.overflow = '';
+    const errorMsg = `❌ ${storeId}: 오류 - ${error.message}`;
+    sendLogToServer(errorMsg);
     return [];
   }
 }
 
-// 상품 요소인지 확인하는 함수
-function isProductElement(element) {
-  const tagName = element.tagName.toLowerCase();
-  const className = element.className || '';
-  
-  return (tagName === 'li' || tagName === 'div') && 
-         (className.includes('product') || 
-          className.includes('item') || 
-          className.includes('card') ||
-          element.querySelector('a[href*="/product/"]'));
-}
-
-// 개별 상품 정보 추출
-function extractProductInfo(element, index) {
+// 리뷰 span에서 상품 ID 찾아서 URL 생성
+function findProductIdFromSpan(reviewSpan, storeId) {
   try {
-    // 상품명 추출
-    const nameSelectors = ['h3', 'h4', 'h5', '[class*="title"]', '[class*="name"]', 'strong', 'span'];
-    let name = '';
+    let container = reviewSpan;
     
-    for (let selector of nameSelectors) {
-      const nameElement = element.querySelector(selector);
-      if (nameElement && nameElement.textContent.trim().length > 5) {
-        name = nameElement.textContent.trim();
-        break;
-      }
-    }
-    
-    // 가격 추출
-    const priceSelectors = ['[class*="price"]', '[class*="cost"]', 'strong', 'span'];
-    let price = '';
-    
-    for (let selector of priceSelectors) {
-      const priceElements = element.querySelectorAll(selector);
-      for (let priceElement of priceElements) {
-        const text = priceElement.textContent.trim();
-        if (text.includes('원') || text.includes(',')) {
-          price = text;
-          break;
+    // 부모 요소들을 올라가면서 data-shp-contents-id 찾기
+    for (let level = 0; level < 10 && container; level++) {
+      
+      // 1순위: data-shp-contents-id 속성 찾기
+      if (container.getAttribute && container.getAttribute('data-shp-contents-id')) {
+        const productId = container.getAttribute('data-shp-contents-id');
+        if (productId && /^\d{8,}$/.test(productId)) {
+          const url = `https://smartstore.naver.com/${storeId}/products/${productId}`;
+          
+          const idMsg = `🆔 ${storeId}: data-shp-contents-id에서 상품 ID ${productId} 발견`;
+          sendLogToServer(idMsg);
+          
+          const urlMsg = `🔗 ${storeId}: URL 생성 - ${url}`;
+          sendLogToServer(urlMsg);
+          
+          return url;
         }
       }
-      if (price) break;
+      
+      // 2순위: 자식 요소들에서 data-shp-contents-id 찾기
+      if (container.querySelectorAll) {
+        const elementsWithId = container.querySelectorAll('[data-shp-contents-id]');
+        
+        for (let element of elementsWithId) {
+          const productId = element.getAttribute('data-shp-contents-id');
+          if (productId && /^\d{8,}$/.test(productId)) {
+            const url = `https://smartstore.naver.com/${storeId}/products/${productId}`;
+            
+            const childMsg = `🆔 ${storeId}: 자식 data-shp-contents-id에서 상품 ID ${productId} 발견`;
+            sendLogToServer(childMsg);
+            
+            const urlMsg = `🔗 ${storeId}: URL 생성 - ${url}`;
+            sendLogToServer(urlMsg);
+            
+            return url;
+          }
+        }
+      }
+      
+      container = container.parentElement;
     }
     
-    // 이미지 URL 추출
-    const imgElement = element.querySelector('img');
-    const imageUrl = imgElement ? imgElement.src : '';
+    // 3순위: href에서 products ID 추출
+    const productLinks = document.querySelectorAll('a[href*="/products/"]');
     
-    // 리뷰 정보 추출
-    const reviewSpans = element.querySelectorAll('span');
-    let reviewCount = '';
-    
-    for (let span of reviewSpans) {
-      const text = span.textContent.trim();
-      if (text.includes('리뷰')) {
-        reviewCount = text;
-        break;
+    for (let link of productLinks) {
+      // 리뷰 span과 연관된 링크인지 확인
+      if (link.contains(reviewSpan) || reviewSpan.contains(link) || 
+          (link.parentElement && link.parentElement.contains(reviewSpan))) {
+        
+        const productIdMatch = link.href.match(/\/products\/(\d+)/);
+        if (productIdMatch) {
+          const productId = productIdMatch[1];
+          const url = `https://smartstore.naver.com/${storeId}/products/${productId}`;
+          
+          const linkMsg = `🔗 ${storeId}: href에서 상품 ID ${productId} 발견`;
+          sendLogToServer(linkMsg);
+          
+          const urlMsg = `🔗 ${storeId}: URL 생성 - ${url}`;
+          sendLogToServer(urlMsg);
+          
+          return url;
+        }
       }
     }
     
-    return {
-      index: index,
-      name: name || `상품 ${index}`,
-      price: price || '가격 정보 없음',
-      imageUrl: imageUrl,
-      reviewCount: reviewCount || '리뷰 없음',
-      element: element.outerHTML.substring(0, 200) + '...' // 디버깅용
-    };
+    return null;
     
   } catch (error) {
-    console.error(`상품 ${index} 정보 추출 오류:`, error);
+    console.log('상품 ID 찾기 오류:', error);
     return null;
+  }
+}
+
+// 상품 요소에서 리뷰 정보 추출
+function extractReviewInfo(productElement) {
+  try {
+    // 리뷰 관련 텍스트 패턴들
+    const reviewPatterns = [
+      /(\d+)개?\s*리뷰/i,
+      /(\d+)개?\s*후기/i,
+      /리뷰\s*(\d+)/i,
+      /후기\s*(\d+)/i,
+      /(\d+)\s*리뷰/i,
+      /(\d+)\s*후기/i,
+      /평점.*?(\d+)/i
+    ];
+    
+    const textContent = productElement.textContent || '';
+    
+    for (let pattern of reviewPatterns) {
+      const match = textContent.match(pattern);
+      if (match) {
+        const count = parseInt(match[1]);
+        if (count > 0) {
+          return {
+            count: count,
+            text: match[0]
+          };
+        }
+      }
+    }
+    
+    return null;
+    
+  } catch (error) {
+    return null;
+  }
+}
+
+// 상품 ID 추출 및 URL 생성
+function findProductIdAndGenerateUrl(element, storeId) {
+  try {
+    let container = element;
+    
+    // 최대 10단계까지 부모 요소 탐색
+    for (let level = 0; level < 10 && container; level++) {
+      
+      // 1순위: data-shp-contents-id 속성들에서 상품 ID 찾기
+      if (container.querySelectorAll) {
+        const allElements = container.querySelectorAll('*[data-shp-contents-id]');
+        
+        for (let element of allElements) {
+          const allAttributes = element.attributes;
+          for (let attr of allAttributes) {
+            // 숫자로만 이루어진 긴 값 찾기 (상품 ID 패턴)
+            if (attr.value && /^\d{8,}$/.test(attr.value)) {
+              const productId = attr.value;
+              const generatedUrl = `https://smartstore.naver.com/${storeId}/products/${productId}`;
+              
+              const idMsg = `🆔 ${storeId}: 상품 ID ${productId} 발견 (${attr.name})`;
+              sendLogToServer(idMsg);
+              
+              const urlMsg = `🔗 ${storeId}: 생성된 URL - ${generatedUrl}`;
+              sendLogToServer(urlMsg);
+              
+              return generatedUrl;
+            }
+          }
+        }
+      }
+      
+      // 2순위: 기존 링크에서 상품 ID 추출
+      const links = container.querySelectorAll ? container.querySelectorAll('a[href]') : [];
+      
+      for (let link of links) {
+        const href = link.href;
+        
+        // 로그인 링크 제외
+        if (href.includes('login') || href.includes('auth')) {
+          continue;
+        }
+        
+        // URL에서 상품 ID 추출
+        const productIdMatch = href.match(/\/products\/(\d+)|\/product\/(\d+)|\/item\/(\d+)|productNo=(\d+)/);
+        if (productIdMatch) {
+          const productId = productIdMatch[1] || productIdMatch[2] || productIdMatch[3] || productIdMatch[4];
+          const generatedUrl = `https://smartstore.naver.com/${storeId}/products/${productId}`;
+          
+          const idMsg = `🆔 ${storeId}: URL에서 상품 ID ${productId} 추출`;
+          sendLogToServer(idMsg);
+          
+          const urlMsg = `🔗 ${storeId}: 생성된 URL - ${generatedUrl}`;
+          sendLogToServer(urlMsg);
+          
+          return generatedUrl;
+        }
+      }
+      
+      // 부모로 이동
+      container = container.parentElement;
+    }
+    
+    return null;
+    
+  } catch (error) {
+    console.log('상품 ID 찾기 오류:', error);
+    return null;
+  }
+}
+
+// 전체 페이지에서 리뷰 찾기 (폴백 방법)
+function findReviewsInWholePage(storeId) {
+  try {
+    const fallbackMsg = `🔄 ${storeId}: 전체 페이지 리뷰 검색`;
+    sendLogToServer(fallbackMsg);
+    
+    // 1단계: 정확한 "리뷰" span 찾기
+    const exactReviewSpans = document.evaluate("//span[normalize-space(text())='리뷰']", document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    
+    const exactMsg = `📝 ${storeId}: 정확한 "리뷰" span ${exactReviewSpans.snapshotLength}개 발견`;
+    sendLogToServer(exactMsg);
+    
+    // 2단계: 모든 리뷰 관련 텍스트 찾기
+    const allReviewTexts = document.evaluate("//text()[contains(., '리뷰')]", document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    
+    const allMsg = `📝 ${storeId}: 모든 리뷰 텍스트 ${allReviewTexts.snapshotLength}개 발견`;
+    sendLogToServer(allMsg);
+    
+    // 3단계: 페이지의 모든 텍스트 확인
+    const pageText = document.body.textContent || '';
+    const reviewMatches = pageText.match(/\d+\s*리뷰|\d+개\s*리뷰|리뷰\s*\d+/g);
+    
+    if (reviewMatches) {
+      const textMsg = `📝 ${storeId}: 텍스트에서 ${reviewMatches.length}개 리뷰 패턴: ${reviewMatches.slice(0, 5).join(', ')}`;
+      sendLogToServer(textMsg);
+    }
+    
+    // 4단계: DOM 요소들 직접 검색
+    const allSpans = document.querySelectorAll('span');
+    let reviewSpans = [];
+    
+    for (let span of allSpans) {
+      const text = span.textContent.trim();
+      if (text === '리뷰' || /^\d+\s*리뷰$/.test(text) || /^리뷰\s*\d+$/.test(text)) {
+        reviewSpans.push(span);
+        const spanMsg = `✅ ${storeId}: span 리뷰 발견 - "${text}"`;
+        sendLogToServer(spanMsg);
+      }
+    }
+    
+    const spanMsg = `🔍 ${storeId}: ${reviewSpans.length}개 리뷰 span 발견`;
+    sendLogToServer(spanMsg);
+    
+    // 5단계: 첫 번째 상품 링크라도 찾기 (임시)
+    const firstProductLink = document.querySelector('a[href*="/products/"], a[href*="/product/"]');
+    if (firstProductLink && !firstProductLink.href.includes('login')) {
+      const tempMsg = `🔗 ${storeId}: 임시 첫 번째 상품 링크 - ${firstProductLink.href}`;
+      sendLogToServer(tempMsg);
+      return [{ url: firstProductLink.href, storeId: storeId }];
+    }
+    
+    const noLinkMsg = `❌ ${storeId}: 상품 링크 없음`;
+    sendLogToServer(noLinkMsg);
+    return [];
+    
+  } catch (error) {
+    const errorMsg = `❌ ${storeId}: 리뷰 검색 오류 - ${error.message}`;
+    sendLogToServer(errorMsg);
+    return [];
   }
 }
 
@@ -242,10 +373,12 @@ async function sendProductDataToServer(storeId, productData, reviewCount) {
       timestamp: new Date().toISOString()
     };
     
-    console.log('📡 서버로 상품 데이터 전송:', {
-      storeId: storeId,
-      productCount: productData.length,
-      reviewProductCount: reviewCount
+    // 디버깅: 전송할 데이터 확인
+    console.log('📡 전송 데이터:', {
+      storeId: data.storeId,
+      productCount: data.productCount,
+      reviewProductCount: data.reviewProductCount,
+      products: data.products
     });
     
     const response = await fetch('http://localhost:8080/api/smartstore/product-data', {
@@ -257,9 +390,7 @@ async function sendProductDataToServer(storeId, productData, reviewCount) {
       body: JSON.stringify(data)
     });
     
-    if (response.ok) {
-      console.log('✅ 상품 데이터 전송 완료');
-    } else {
+    if (!response.ok) {
       console.error('❌ 서버 응답 오류:', response.status);
     }
     
@@ -278,8 +409,6 @@ async function notifyAllProductsPageLoaded(storeId) {
       timestamp: new Date().toISOString()
     };
     
-    console.log('📡 서버에 전체상품 페이지 접속 알림:', data);
-    
     const response = await fetch('http://localhost:8080/api/smartstore/all-products', {
       method: 'POST',
       headers: {
@@ -289,9 +418,7 @@ async function notifyAllProductsPageLoaded(storeId) {
       body: JSON.stringify(data)
     });
     
-    if (response.ok) {
-      console.log('✅ 전체상품 페이지 접속 알림 완료');
-    } else {
+    if (!response.ok) {
       console.error('❌ 서버 응답 오류:', response.status);
     }
     
