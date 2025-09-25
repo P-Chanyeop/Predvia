@@ -34,10 +34,10 @@ function handleAllProductsPage() {
     notifyAllProductsPageLoaded(storeId);
     
     // 바로 리뷰 검색 실행
-    setTimeout(() => {
+    setTimeout(async () => {
       sendLogToServer(`🔍 ${storeId}: 리뷰 검색 시작`);
       
-      const productData = collectProductData(storeId);
+      const productData = await collectProductData(storeId);
       sendProductDataToServer(storeId, productData, 1);
       
     }, 2000); // 2초만 대기
@@ -70,7 +70,7 @@ function sendLogToServer(message) {
 }
 
 // 상품 데이터 수집 (40개 상품 중 마지막 리뷰 상품 찾기)
-function collectProductData(storeId) {
+async function collectProductData(storeId) {
   try {
     const debugMsg = `🔍 ${storeId}: 리뷰 span 검색 시작`;
     sendLogToServer(debugMsg);
@@ -90,12 +90,15 @@ function collectProductData(storeId) {
     // 1단계: 모든 상품 링크 가져오기
     const allProducts = document.querySelectorAll('a[data-shp-contents-rank]');
     
-    // 2단계: 각 상품에서 리뷰가 있는지 확인하여 마지막 리뷰 rank 찾기
+    // 2단계: 처음 40개 상품에서 리뷰가 있는지 확인하여 마지막 리뷰 rank 찾기
     let lastReviewRank = -1;
     
     for (let i = 0; i < allProducts.length; i++) {
       const productLink = allProducts[i];
       const rank = parseInt(productLink.getAttribute('data-shp-contents-rank'));
+      
+      // 40개까지만 확인
+      if (rank > 40) continue;
       
       // 상품 주변에서 리뷰 span 찾기
       const parent = productLink.parentElement;
@@ -115,8 +118,9 @@ function collectProductData(storeId) {
     const rangeMsg = `✅ ${storeId}: 1번부터 ${lastReviewRank}번째 상품까지 수집 (총 ${lastReviewRank}개)`;
     sendLogToServer(rangeMsg);
     
-    // 3단계: 1번부터 lastReviewRank까지 모든 상품 수집
+    // 3단계: 1번부터 lastReviewRank까지 모든 상품 수집 (중복 제거)
     const allProductUrls = [];
+    const seenIds = new Set();
     
     for (let i = 0; i < allProducts.length; i++) {
       const productLink = allProducts[i];
@@ -125,7 +129,8 @@ function collectProductData(storeId) {
       if (rank <= lastReviewRank) {
         const productId = productLink.getAttribute('data-shp-contents-id');
         
-        if (productId && /^\d{8,}$/.test(productId)) {
+        if (productId && /^\d{8,}$/.test(productId) && !seenIds.has(productId)) {
+          seenIds.add(productId);
           const productUrl = `https://smartstore.naver.com/${storeId}/products/${productId}`;
           allProductUrls.push({ url: productUrl, storeId: storeId, index: rank });
           
@@ -137,6 +142,17 @@ function collectProductData(storeId) {
     
     // rank 순서로 정렬
     allProductUrls.sort((a, b) => a.index - b.index);
+    
+    // 4단계: 실제 상품 접속 시작
+    if (allProductUrls.length > 0) {
+      const waitMsg = `⏳ ${storeId}: ${allProductUrls.length}개 상품 순차 접속 시작`;
+      sendLogToServer(waitMsg);
+      
+      await visitProductsSequentially(storeId, allProductUrls);
+    } else {
+      // 상품이 없으면 바로 완료 신호
+      sendProductDataToServer(storeId, [], 0);
+    }
     
     return allProductUrls;
     
@@ -466,5 +482,53 @@ function extractStoreIdFromUrl(url) {
     return match ? match[1] : 'unknown';
   } catch (error) {
     return 'unknown';
+  }
+}
+
+// 상품들에 순차적으로 접속
+async function visitProductsSequentially(storeId, productUrls) {
+  try {
+    const startMsg = `🚀 ${storeId}: ${productUrls.length}개 상품에 순차 접속 시작`;
+    sendLogToServer(startMsg);
+    
+    for (let i = 0; i < productUrls.length; i++) {
+      const product = productUrls[i];
+      
+      try {
+        const visitMsg = `🔗 ${storeId}: [${i + 1}/${productUrls.length}] ${product.url} 접속`;
+        sendLogToServer(visitMsg);
+        
+        // 새 탭에서 상품 페이지 열기
+        const productTab = window.open(product.url, '_blank');
+        
+        // 2초 대기
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // 탭 닫기
+        if (productTab && !productTab.closed) {
+          productTab.close();
+        }
+        
+        const completeMsg = `✅ ${storeId}: [${i + 1}/${productUrls.length}] 접속 완료`;
+        sendLogToServer(completeMsg);
+        
+      } catch (error) {
+        const errorMsg = `❌ ${storeId}: [${i + 1}/${productUrls.length}] 접속 오류 - ${error.message}`;
+        sendLogToServer(errorMsg);
+      }
+    }
+    
+    // 모든 상품 접속 완료 후 서버에 완료 신호
+    sendProductDataToServer(storeId, productUrls, productUrls.length);
+    
+    const finalMsg = `🎉 ${storeId}: 모든 상품 접속 완료 (${productUrls.length}개)`;
+    sendLogToServer(finalMsg);
+    
+  } catch (error) {
+    const errorMsg = `❌ ${storeId}: 순차 접속 오류 - ${error.message}`;
+    sendLogToServer(errorMsg);
+    
+    // 오류 발생 시에도 완료 신호 전송
+    sendProductDataToServer(storeId, productUrls, productUrls.length);
   }
 }
