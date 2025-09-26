@@ -607,16 +607,18 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
         const visitMsg = `🔗 ${storeId}: [${i + 1}/${productUrls.length}] ${product.url} 접속`;
         sendLogToServer(visitMsg);
         
-        // 새 탭에서 상품 페이지 열기
-        const productTab = window.open(product.url, '_blank');
-        
-        // 2초 대기
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // 탭 닫기
-        if (productTab && !productTab.closed) {
-          productTab.close();
-        }
+        // ⭐ 5초 타임아웃으로 상품 페이지 접속
+        await Promise.race([
+          new Promise(async (resolve) => {
+            const productTab = window.open(product.url, '_blank');
+            await new Promise(r => setTimeout(r, 2000));
+            if (productTab && !productTab.closed) {
+              productTab.close();
+            }
+            resolve();
+          }),
+          new Promise(resolve => setTimeout(resolve, 5000)) // 5초 타임아웃
+        ]);
         
         const completeMsg = `✅ ${storeId}: [${i + 1}/${productUrls.length}] 접속 완료`;
         sendLogToServer(completeMsg);
@@ -624,6 +626,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
       } catch (error) {
         const errorMsg = `❌ ${storeId}: [${i + 1}/${productUrls.length}] 접속 오류 - ${error.message}`;
         sendLogToServer(errorMsg);
+        // 오류가 발생해도 계속 진행
       }
     }
     
@@ -635,6 +638,21 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
     
     const afterSendMsg = `📡 ${storeId}: 완료 신호 전송 완료`;
     await sendLogToServer(afterSendMsg);
+    
+    // ⭐ 강제로 완료 상태 설정 (무한 대기 방지)
+    await setStoreStateFromHandler(storeId, runId, 'done', false, productUrls.length, productUrls.length);
+    
+    const finalMsg = `🎉 ${storeId}: 모든 상품 접속 완료 (${productUrls.length}개)`;
+    await sendLogToServer(finalMsg);
+    
+  } catch (error) {
+    const errorMsg = `❌ ${storeId}: 순차 접속 오류 - ${error.message}`;
+    await sendLogToServer(errorMsg);
+    
+    // ⭐ 오류 발생 시에도 완료 처리 (무한 대기 방지)
+    await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
+  }
+}
     
     // ⭐ 서버에 완료 상태 설정
     try {
