@@ -1,3 +1,39 @@
+console.log('🔥 all-products-handler.js 파일 로드됨!');
+console.log('🔥 현재 URL:', window.location.href);
+
+// ⭐ 즉시 실행 (페이지 로드 완료 후)
+window.addEventListener('load', function() {
+  console.log('🔥 페이지 로드 완료 - 핸들러 시작!');
+  
+  setTimeout(() => {
+    console.log('🔥 handleAllProductsPage 호출!');
+    
+    const storeId = extractStoreIdFromUrl(window.location.href);
+    const urlParams = new URLSearchParams(window.location.search);
+    const runId = urlParams.get('runId') || 'unknown';
+    
+    console.log(`🚀 ${storeId}: 핸들러 시작 (runId: ${runId})`);
+    
+    // 2초 후 리뷰 검색 시작
+    setTimeout(async () => {
+      await sendLogToServer(`🔍 ${storeId}: 리뷰 검색 시작`);
+      
+      const productData = await collectProductData(storeId, runId);
+      await sendProductDataToServer(storeId, productData, 1);
+      
+    }, 2000);
+    
+  }, 2000);
+});
+
+// ⭐ 중복 실행 방지 가드 (즉시 실행)
+if (window.__ALL_PRODUCTS_HANDLER_RUNNING__) {
+  console.log('🚫 all-products-handler 이미 실행 중 - 중복 실행 방지');
+} else {
+  window.__ALL_PRODUCTS_HANDLER_RUNNING__ = true;
+  console.log('✅ all-products-handler 실행 시작 - 가드 설정 완료');
+}
+
 // 전체상품 판매많은순 페이지에서 실행되는 스크립트
 console.log('🛍️ 전체상품 페이지 핸들러 실행 시작');
 
@@ -24,20 +60,43 @@ setTimeout(() => {
   handleAllProductsPage();
 }, 3000); // 3초로 단축
 
-function handleAllProductsPage() {
+async function handleAllProductsPage() {
+  // ⭐ 중복 실행 체크
+  if (window.__ALL_PRODUCTS_HANDLER_RUNNING__) {
+    console.log('🚫 handleAllProductsPage 이미 실행 중 - 중복 실행 방지');
+    return;
+  }
+  
   try {
     const storeId = extractStoreIdFromUrl(window.location.href);
     
-    sendLogToServer(`🚀 ${storeId}: 핸들러 시작`);
+    // ⭐ URL에서 runId 추출
+    const urlParams = new URLSearchParams(window.location.search);
+    const runId = urlParams.get('runId') || 'unknown';
+    
+    console.log(`🚀 ${storeId}: 핸들러 시작 (runId: ${runId})`);
+    console.log(`🔗 현재 URL: ${window.location.href}`);
+    
+    // 즉시 로그 전송
+    fetch('http://localhost:8080/api/smartstore/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `🚀 ${storeId}: 핸들러 시작 (runId: ${runId})`,
+        timestamp: new Date().toISOString()
+      })
+    }).catch(e => console.log('로그 전송 실패:', e));
+    
+    await sendLogToServer(`🚀 ${storeId}: 핸들러 시작 (runId: ${runId})`);
     
     // 서버에 전체상품 페이지 접속 알림
     notifyAllProductsPageLoaded(storeId);
     
     // 바로 리뷰 검색 실행
     setTimeout(async () => {
-      sendLogToServer(`🔍 ${storeId}: 리뷰 검색 시작`);
+      await sendLogToServer(`🔍 ${storeId}: 리뷰 검색 시작`);
       
-      const productData = await collectProductData(storeId);
+      const productData = await collectProductData(storeId, runId);
       sendProductDataToServer(storeId, productData, 1);
       
     }, 2000); // 2초만 대기
@@ -49,19 +108,19 @@ function handleAllProductsPage() {
 }
 
 // 로그를 서버로 전송하는 함수 (동기식으로 변경)
-function sendLogToServer(message) {
+async function sendLogToServer(message) {
   try {
-    // 동기식 요청으로 변경
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'http://localhost:8080/api/smartstore/log', false); // false = 동기식
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    
-    const data = JSON.stringify({
-      message: message,
-      timestamp: new Date().toISOString()
+    const response = await fetch('http://localhost:8080/api/smartstore/log', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: message,
+        timestamp: new Date().toISOString()
+      })
     });
     
-    xhr.send(data);
     console.log('로그 전송:', message);
     
   } catch (error) {
@@ -69,8 +128,46 @@ function sendLogToServer(message) {
   }
 }
 
+// ⭐ 상태 설정 함수
+async function setStoreStateFromHandler(storeId, runId, state, lock, expected = 0, progress = 0) {
+  try {
+    const response = await fetch('http://localhost:8080/api/smartstore/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        storeId,
+        runId,
+        state,
+        lock,
+        expected,
+        progress,
+        timestamp: new Date().toISOString()
+      })
+    });
+    
+    if (response.ok) {
+      console.log(`🔧 ${storeId}: 상태 설정 - ${state} (lock: ${lock}, ${progress}/${expected})`);
+    }
+  } catch (error) {
+    console.log(`❌ ${storeId}: 상태 설정 오류 - ${error.message}`);
+  }
+}
+
+// ⭐ 진행률 업데이트 함수
+async function updateProgress(storeId, runId, inc = 1) {
+  try {
+    await fetch('http://localhost:8080/api/smartstore/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storeId, runId, inc })
+    });
+  } catch (error) {
+    console.log(`❌ ${storeId}: 진행률 업데이트 오류 - ${error.message}`);
+  }
+}
+
 // 상품 데이터 수집 (40개 상품 중 마지막 리뷰 상품 찾기)
-async function collectProductData(storeId) {
+async function collectProductData(storeId, runId) {
   try {
     const debugMsg = `🔍 ${storeId}: 리뷰 span 검색 시작`;
     sendLogToServer(debugMsg);
@@ -82,8 +179,13 @@ async function collectProductData(storeId) {
     sendLogToServer(spanMsg);
     
     if (reviewSpans.snapshotLength === 0) {
-      const noSpanMsg = `❌ ${storeId}: "리뷰" span 없음`;
-      sendLogToServer(noSpanMsg);
+      const noSpanMsg = `❌ ${storeId}: "리뷰" span 없음 - 즉시 완료 처리`;
+      await sendLogToServer(noSpanMsg);
+      
+      // ⭐ 즉시 완료 상태로 설정
+      await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
+      await sendLogToServer(`✅ ${storeId}: 리뷰 없음으로 완료 처리됨`);
+      
       return [];
     }
     
@@ -146,12 +248,19 @@ async function collectProductData(storeId) {
     // 4단계: 실제 상품 접속 시작
     if (allProductUrls.length > 0) {
       const waitMsg = `⏳ ${storeId}: ${allProductUrls.length}개 상품 순차 접속 시작`;
-      sendLogToServer(waitMsg);
+      await sendLogToServer(waitMsg);
       
-      await visitProductsSequentially(storeId, allProductUrls);
+      // ⭐ visiting 상태로 변경
+      await setStoreStateFromHandler(storeId, runId, 'visiting', true, allProductUrls.length, 0);
+      
+      await visitProductsSequentially(storeId, runId, allProductUrls);
     } else {
-      // 상품이 없으면 바로 완료 신호
-      sendProductDataToServer(storeId, [], 0);
+      // ⭐ 리뷰 없으면 즉시 완료 처리
+      await sendLogToServer(`❌ ${storeId}: 리뷰 없음 - 즉시 완료 처리`);
+      await sendProductDataToServer(storeId, [], 0);
+      
+      // ⭐ 완료 상태로 설정
+      await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
     }
     
     return allProductUrls;
@@ -486,7 +595,7 @@ function extractStoreIdFromUrl(url) {
 }
 
 // 상품들에 순차적으로 접속
-async function visitProductsSequentially(storeId, productUrls) {
+async function visitProductsSequentially(storeId, runId, productUrls) {
   try {
     const startMsg = `🚀 ${storeId}: ${productUrls.length}개 상품에 순차 접속 시작`;
     sendLogToServer(startMsg);
@@ -519,16 +628,65 @@ async function visitProductsSequentially(storeId, productUrls) {
     }
     
     // 모든 상품 접속 완료 후 서버에 완료 신호
-    sendProductDataToServer(storeId, productUrls, productUrls.length);
+    const beforeSendMsg = `📡 ${storeId}: 완료 신호 전송 시작`;
+    await sendLogToServer(beforeSendMsg);
+    
+    await sendProductDataToServer(storeId, productUrls, productUrls.length);
+    
+    const afterSendMsg = `📡 ${storeId}: 완료 신호 전송 완료`;
+    await sendLogToServer(afterSendMsg);
+    
+    // ⭐ 서버에 완료 상태 설정
+    try {
+      const response = await fetch('http://localhost:8080/api/smartstore/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          storeId: storeId,
+          completed: true,
+          timestamp: new Date().toISOString()
+        })
+      });
+      
+      if (response.ok) {
+        await sendLogToServer(`✅ ${storeId}: 서버 완료 상태 설정 성공`);
+      } else {
+        await sendLogToServer(`❌ ${storeId}: 서버 완료 상태 설정 실패 - ${response.status}`);
+      }
+    } catch (error) {
+      await sendLogToServer(`❌ ${storeId}: 서버 완료 상태 설정 오류 - ${error.message}`);
+    }
+    
+    // ⭐ 완료 상태로 설정 (done + unlock)
+    await setStoreStateFromHandler(storeId, runId, 'done', false, productUrls.length, productUrls.length);
     
     const finalMsg = `🎉 ${storeId}: 모든 상품 접속 완료 (${productUrls.length}개)`;
-    sendLogToServer(finalMsg);
+    await sendLogToServer(finalMsg);
     
   } catch (error) {
     const errorMsg = `❌ ${storeId}: 순차 접속 오류 - ${error.message}`;
-    sendLogToServer(errorMsg);
+    await sendLogToServer(errorMsg);
     
     // 오류 발생 시에도 완료 신호 전송
-    sendProductDataToServer(storeId, productUrls, productUrls.length);
+    await sendProductDataToServer(storeId, productUrls, productUrls.length);
+    
+    // ⭐ 오류 시에도 서버 완료 상태 설정
+    try {
+      await fetch('http://localhost:8080/api/smartstore/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId: storeId,
+          completed: true,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        })
+      });
+      await sendLogToServer(`✅ ${storeId}: 오류 완료 상태 설정 성공`);
+    } catch (e) {
+      await sendLogToServer(`❌ ${storeId}: 오류 완료 상태 설정 실패`);
+    }
   }
 }

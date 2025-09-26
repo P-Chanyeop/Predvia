@@ -1,4 +1,42 @@
 // 백그라운드 서비스 워커
+
+// ⭐ 탭 업데이트 감지 (전체상품 페이지 강제 주입)
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url) {
+    console.log('🔍 탭 업데이트 감지:', tab.url);
+    
+    // 전체상품 페이지 감지
+    if (tab.url.includes('smartstore.naver.com') && tab.url.includes('/category/ALL')) {
+      console.log('🎯 전체상품 페이지 감지 - 스크립트 강제 주입');
+      
+      // 강제 스크립트 주입
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ['all-products-handler.js']
+      }).then(() => {
+        console.log('✅ all-products-handler.js 강제 주입 완료');
+      }).catch((error) => {
+        console.log('❌ 스크립트 주입 실패:', error);
+      });
+    }
+    
+    // 공구탭 페이지 감지
+    if (tab.url.includes('smartstore.naver.com') && tab.url.includes('/category/50000165')) {
+      console.log('🎯 공구탭 페이지 감지 - 스크립트 강제 주입');
+      
+      // 강제 스크립트 주입
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ['gonggu-checker.js']
+      }).then(() => {
+        console.log('✅ gonggu-checker.js 강제 주입 완료');
+      }).catch((error) => {
+        console.log('❌ 스크립트 주입 실패:', error);
+      });
+    }
+  }
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'searchNaver') {
     searchNaverShopping(request.keyword)
