@@ -521,6 +521,25 @@ namespace Gumaedaehang.Services
                     return Results.NotFound(new { error = "State not found", storeId, runId });
                 }
                 
+                // ⭐ 타임아웃 체크 (5분 이상 visiting 상태면 강제 완료)
+                if (storeState.State == "visiting" && 
+                    DateTime.Now - storeState.UpdatedAt > TimeSpan.FromMinutes(5))
+                {
+                    LogWindow.AddLogStatic($"⏰ {storeId}: 5분 타임아웃 - 강제 완료 처리");
+                    
+                    lock (_statesLock)
+                    {
+                        var key = $"{storeId}:{runId}";
+                        if (_storeStates.ContainsKey(key))
+                        {
+                            _storeStates[key].State = "done";
+                            _storeStates[key].Lock = false;
+                            _storeStates[key].UpdatedAt = DateTime.Now;
+                            storeState = _storeStates[key];
+                        }
+                    }
+                }
+                
                 LogWindow.AddLogStatic($"🔍 {storeId}: 상태 확인 - {storeState.State} (lock: {storeState.Lock}, {storeState.Progress}/{storeState.Expected})");
                 
                 return Results.Ok(storeState);
