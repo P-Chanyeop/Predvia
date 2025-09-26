@@ -19,6 +19,10 @@ namespace Gumaedaehang.Services
         private WebApplication? _app;
         private readonly ThumbnailService _thumbnailService;
         private bool _isRunning = false;
+        
+        // ⭐ 상태 관리 시스템
+        private readonly Dictionary<string, StoreState> _storeStates = new();
+        private readonly object _statesLock = new object();
 
         public ThumbnailWebServer()
         {
@@ -53,6 +57,11 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/all-products", HandleAllProductsPage);
                 _app.MapPost("/api/smartstore/product-data", HandleProductData);
                 _app.MapPost("/api/smartstore/log", HandleExtensionLog);
+                
+                // ⭐ 상태 관리 API 추가
+                _app.MapPost("/api/smartstore/state", HandleStoreState);
+                _app.MapGet("/api/smartstore/state", HandleGetStoreState);
+                _app.MapPost("/api/smartstore/progress", HandleStoreProgress);
 
                 _isRunning = true;
                 
@@ -442,6 +451,120 @@ namespace Gumaedaehang.Services
             }
         }
 
+        // ⭐ 스토어 상태 설정
+        private async Task<IResult> HandleStoreState(HttpRequest request)
+        {
+            try
+            {
+                using var reader = new StreamReader(request.Body);
+                var json = await reader.ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<JsonElement>(json);
+                
+                var storeId = data.GetProperty("storeId").GetString();
+                var runId = data.GetProperty("runId").GetString();
+                var state = data.GetProperty("state").GetString();
+                var lockValue = data.GetProperty("lock").GetBoolean();
+                var expected = data.TryGetProperty("expected", out var exp) ? exp.GetInt32() : 0;
+                var progress = data.TryGetProperty("progress", out var prog) ? prog.GetInt32() : 0;
+                
+                var storeState = new StoreState
+                {
+                    StoreId = storeId,
+                    RunId = runId,
+                    State = state,
+                    Lock = lockValue,
+                    Expected = expected,
+                    Progress = progress,
+                    UpdatedAt = DateTime.Now
+                };
+                
+                lock (_statesLock)
+                {
+                    var key = $"{storeId}:{runId}";
+                    _storeStates[key] = storeState;
+                }
+                
+                LogWindow.AddLogStatic($"🔧 {storeId}: 상태 설정 - {state} (lock: {lockValue}, {progress}/{expected})");
+                
+                return Results.Ok(new { success = true, storeId, runId, state });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 상태 설정 오류: {ex.Message}");
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // ⭐ 스토어 상태 확인
+        private IResult HandleGetStoreState(HttpContext context)
+        {
+            try
+            {
+                var storeId = context.Request.Query["storeId"].ToString();
+                var runId = context.Request.Query["runId"].ToString();
+                
+                if (string.IsNullOrEmpty(storeId) || string.IsNullOrEmpty(runId))
+                {
+                    return Results.BadRequest(new { error = "storeId and runId required" });
+                }
+                
+                StoreState storeState;
+                lock (_statesLock)
+                {
+                    var key = $"{storeId}:{runId}";
+                    _storeStates.TryGetValue(key, out storeState);
+                }
+                
+                if (storeState == null)
+                {
+                    LogWindow.AddLogStatic($"🔍 {storeId}: 상태 없음 (runId: {runId})");
+                    return Results.NotFound(new { error = "State not found", storeId, runId });
+                }
+                
+                LogWindow.AddLogStatic($"🔍 {storeId}: 상태 확인 - {storeState.State} (lock: {storeState.Lock}, {storeState.Progress}/{storeState.Expected})");
+                
+                return Results.Ok(storeState);
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 상태 확인 오류: {ex.Message}");
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // ⭐ 진행률 업데이트
+        private async Task<IResult> HandleStoreProgress(HttpRequest request)
+        {
+            try
+            {
+                using var reader = new StreamReader(request.Body);
+                var json = await reader.ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<JsonElement>(json);
+                
+                var storeId = data.GetProperty("storeId").GetString();
+                var runId = data.GetProperty("runId").GetString();
+                var inc = data.TryGetProperty("inc", out var incValue) ? incValue.GetInt32() : 1;
+                
+                lock (_statesLock)
+                {
+                    var key = $"{storeId}:{runId}";
+                    if (_storeStates.TryGetValue(key, out var state))
+                    {
+                        state.Progress += inc;
+                        state.UpdatedAt = DateTime.Now;
+                        LogWindow.AddLogStatic($"📊 {storeId}: 진행률 업데이트 - {state.Progress}/{state.Expected}");
+                    }
+                }
+                
+                return Results.Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 진행률 업데이트 오류: {ex.Message}");
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+
         public async Task StopAsync()
         {
             if (_app != null && _isRunning)
@@ -591,5 +714,30 @@ namespace Gumaedaehang.Services
         
         [JsonPropertyName("element")]
         public string Element { get; set; } = string.Empty;
+    }
+
+    // ⭐ 스토어 상태 모델
+    public class StoreState
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("runId")]
+        public string RunId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("state")]
+        public string State { get; set; } = string.Empty; // collecting, visiting, done
+        
+        [JsonPropertyName("lock")]
+        public bool Lock { get; set; } = false;
+        
+        [JsonPropertyName("expected")]
+        public int Expected { get; set; } = 0;
+        
+        [JsonPropertyName("progress")]
+        public int Progress { get; set; } = 0;
+        
+        [JsonPropertyName("updatedAt")]
+        public DateTime UpdatedAt { get; set; } = DateTime.Now;
     }
 }

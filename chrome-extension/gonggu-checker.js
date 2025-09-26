@@ -1,4 +1,6 @@
 // 공구탭에서 실행되는 스크립트 - 공구 개수 확인
+console.log('🔥 gonggu-checker.js 파일 로드됨!');
+console.log('🔥 현재 URL:', window.location.href);
 console.log('🔍 공구 개수 확인 스크립트 실행');
 
 // 페이지 로딩 완료 후 실행
@@ -111,8 +113,10 @@ async function sendGongguResult(gongguCount) {
       if (gongguCount >= 1000) {
         console.log(`🎯 ${storeId}: 공구 ${gongguCount}개 ≥ 1000개 - 전체상품 페이지로 이동`);
         
-        // 전체상품 판매많은순 URL 생성
-        const allProductsUrl = `https://smartstore.naver.com/${storeId}/category/ALL?st=TOTALSALE`;
+        // 전체상품 판매많은순 URL 생성 (runId 포함)
+        const urlParams = new URLSearchParams(window.location.search);
+        const runId = urlParams.get('runId') || 'unknown';
+        const allProductsUrl = `https://smartstore.naver.com/${storeId}/category/ALL?st=TOTALSALE&runId=${runId}`;
         console.log(`🔗 전체상품 URL: ${allProductsUrl}`);
         
         // 서버에 전체상품 페이지 이동 알림
@@ -145,6 +149,48 @@ async function sendGongguResult(gongguCount) {
         
       } else {
         console.log(`❌ ${storeId}: 공구 ${gongguCount}개 < 1000개 - 페이지 유지 (곧 닫힐 예정)`);
+        
+        // ⭐ 1000개 이하면 즉시 완료 상태로 설정
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const runId = urlParams.get('runId') || 'unknown';
+          
+          console.log(`🔧 ${storeId}: 완료 상태 설정 시도 (runId: ${runId})`);
+          
+          // ⭐ 즉시 done + unlock 상태로 설정
+          const response = await fetch('http://localhost:8080/api/smartstore/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              storeId: storeId,
+              runId: runId,
+              state: 'done',
+              lock: false,
+              expected: 0,
+              progress: 0,
+              reason: 'below-threshold',
+              timestamp: new Date().toISOString()
+            })
+          });
+          
+          if (response.ok) {
+            console.log(`✅ ${storeId}: 완료 상태 설정 성공 (공구 ${gongguCount}개 < 1000개)`);
+            
+            // 서버에 로그 전송
+            await fetch('http://localhost:8080/api/smartstore/log', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                message: `🔧 ${storeId}: 완료 상태 설정 성공 (공구 ${gongguCount}개 < 1000개)`,
+                timestamp: new Date().toISOString()
+              })
+            });
+          } else {
+            console.log(`❌ ${storeId}: 완료 상태 설정 실패 - ${response.status}`);
+          }
+        } catch (e) {
+          console.log(`❌ ${storeId}: 완료 상태 설정 오류 - ${e.message}`);
+        }
       }
       
     } else {

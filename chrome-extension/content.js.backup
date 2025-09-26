@@ -241,7 +241,7 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
       }
 
       // ⭐ 스토어별 고유 runId 생성
-      const runId = `${storeId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+      const runId = makeRunId(storeId);
       console.log(`🆔 ${storeId}: 고유 runId 생성 - ${runId}`);
 
       // 공구탭 URL 생성 (runId 포함)
@@ -252,22 +252,16 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
       console.log(`🔗 공구탭 URL: ${gongguUrl}`);
       
       // ⭐ 즉시 서버에 "진행중" 상태 기록
+      console.log(`🔧 ${storeId}: 상태 설정 시작 (runId: ${runId})`);
       await setStoreState(storeId, runId, 'collecting', true);
+      
+      // ⭐ 상태 설정 확인
+      console.log(`🔍 ${storeId}: 상태 설정 후 확인 시작`);
+      const checkState = await getStoreState(storeId, runId);
+      console.log(`🔍 ${storeId}: 설정 후 상태 확인 -`, checkState);
       
       // 새 탭에서 공구탭 열기
       const newTab = window.open(gongguUrl, '_blank');
-      
-      // ⭐ 1000개 이하 스토어만 3초 후 즉시 완료, 1000개 이상은 대기
-      const smallStores = ['jikjikgu', 'unkleboboo', 'whmallcom', 'wdcafe', 'allcans', 'globalselectok', 'jtemshop', 'jndco'];
-      
-      if (smallStores.includes(storeId)) {
-        // 1000개 이하: 3초 후 즉시 완료
-        setTimeout(async () => {
-          await setStoreState(storeId, runId, 'done', false, 0, 0);
-          console.log(`✅ ${storeId}: 1000개 이하 즉시 완료`);
-        }, 3000);
-      }
-      // 1000개 이상은 all-products-handler.js가 완료 신호 보낼 때까지 대기
       
       // 서버에 접속 상태 알림 (runId 포함)
       await notifyServerLinkVisited({
@@ -278,18 +272,23 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
       }, i + 1, smartStoreLinks.length);
       
       // ⭐ runId 기반 완료 대기 (진짜 막는 지점)
-      console.log(`🔍 ${storeId}: 완료 대기 시작 (runId: ${runId})`);
-      await waitForTaskCompletion(storeId, runId);
-      console.log(`✅ ${storeId}: 완료 대기 끝`);
+      console.log(`🔥 ${storeId}: waitForTaskCompletion 호출 직전!`);
       
-      // 탭 닫기 (안전하게)
       try {
-        if (newTab && typeof newTab.close === 'function' && !newTab.closed) {
-          newTab.close();
-          console.log(`🗂️ ${storeId}: 탭 닫기 완료`);
+        console.log(`🔥 ${storeId}: try 블록 진입!`);
+        await waitForTaskCompletion(storeId, runId);
+        console.log(`🔥 ${storeId}: waitForTaskCompletion 완료!`);
+      } finally {
+        console.log(`🔥 ${storeId}: finally 블록 진입!`);
+        // 탭 닫기 (안전하게)
+        try {
+          if (newTab && typeof newTab.close === 'function' && !newTab.closed) {
+            newTab.close();
+            console.log(`🗂️ ${storeId}: 탭 닫기 완료`);
+          }
+        } catch (e) {
+          console.log(`⚠️ ${storeId}: 탭 닫기 실패 - ${e.message}`);
         }
-      } catch (e) {
-        console.log(`⚠️ ${storeId}: 탭 닫기 실패 - ${e.message}`);
       }
       
       console.log(`✅ [${i + 1}/${smartStoreLinks.length}] 작업 완료: ${link.title}`);
@@ -302,58 +301,120 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
   console.log('✅ 모든 스마트스토어 공구탭 작업 완료');
 }
 
+// ⭐ 스토어별 고유 runId 생성
+function makeRunId(storeId) {
+  return `${storeId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+}
+
 // ⭐ 서버 상태 설정 함수
 async function setStoreState(storeId, runId, state, lock, expected = 0, progress = 0) {
   try {
+    console.log(`🔧 ${storeId}: 상태 설정 시도 - ${state} (lock: ${lock})`);
+    
     const response = await fetch('http://localhost:8080/api/smartstore/state', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        storeId, runId, state, lock, expected, progress,
+        storeId,
+        runId,
+        state,
+        lock,
+        expected,
+        progress,
         timestamp: new Date().toISOString()
       })
     });
     
     if (response.ok) {
-      console.log(`🔧 ${storeId}: 상태 설정 성공 - ${state} (lock: ${lock})`);
+      console.log(`✅ ${storeId}: 상태 설정 성공 - ${state} (lock: ${lock})`);
+    } else {
+      console.log(`❌ ${storeId}: 상태 설정 실패 - ${response.status}`);
     }
   } catch (error) {
     console.log(`❌ ${storeId}: 상태 설정 오류 - ${error.message}`);
   }
 }
 
-// ⭐ runId 기반 완료 대기 함수
-async function waitForTaskCompletion(storeId, runId) {
+// ⭐ 서버 상태 확인 함수
+async function getStoreState(storeId, runId) {
+  try {
+    console.log(`🔍 ${storeId}: 상태 확인 요청 (runId: ${runId})`);
+    
+    const response = await fetch(`http://localhost:8080/api/smartstore/state?storeId=${storeId}&runId=${runId}`);
+    
+    console.log(`🔍 ${storeId}: 응답 상태 - ${response.status}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`🔍 ${storeId}: 상태 데이터 -`, data);
+      return data;
+    } else if (response.status === 404) {
+      console.log(`🔍 ${storeId}: 상태 없음 (404)`);
+      return null; // 상태 없음
+    }
+  } catch (error) {
+    console.log(`❌ ${storeId}: 상태 확인 오류 - ${error.message}`);
+  }
+  return null;
+}
+
+// ⭐ runId 기반 완료 대기 함수 (강화된 3종 체크)
+async function waitForTaskCompletion(storeId, runId, options = {}) {
+  const { pollMs = 1500, hardTimeoutMs = 30 * 60 * 1000 } = options;
   const startTime = Date.now();
-  const timeout = 5 * 60 * 1000; // 5분
   
-  // 5초 초기 대기
+  console.log(`🔍 ${storeId}: 완료 대기 시작 (runId: ${runId})`);
+  console.log(`🔍 ${storeId}: 대기 설정 - poll: ${pollMs}ms, timeout: ${hardTimeoutMs}ms`);
+  
+  // 5초 초기 대기 (페이지 이동 시간)
+  console.log(`⏳ ${storeId}: 5초 초기 대기 시작`);
   await new Promise(resolve => setTimeout(resolve, 5000));
+  console.log(`✅ ${storeId}: 5초 초기 대기 완료`);
   
+  let loopCount = 0;
   while (true) {
+    loopCount++;
+    console.log(`🔄 ${storeId}: 상태 확인 루프 ${loopCount}번째`);
+    
     try {
       const response = await fetch(`http://localhost:8080/api/smartstore/state?storeId=${storeId}&runId=${runId}`);
       const state = response.ok ? await response.json() : { state: 'unknown', lock: false };
       
-      console.log(`🔍 ${storeId}: 상태 확인 - ${state.state} (lock: ${state.lock})`);
+      console.log(`🔍 ${storeId}: 상태 확인 결과 -`, state);
       
-      // ⭐ 완료 조건: runId 일치 + done + unlock
+      // ⭐ 오직 이 조합만 통과 (3종 체크)
       if (state.runId === runId && state.state === 'done' && state.lock === false) {
-        console.log(`✅ ${storeId}: 완료 확인됨!`);
+        console.log(`✅ ${storeId}: 완료 확인됨! (runId 일치: ${state.runId === runId})`);
         return true;
       }
       
-      // 타임아웃 체크
-      if (Date.now() - startTime > timeout) {
-        console.log(`⏰ ${storeId}: 타임아웃`);
-        return false;
+      // 에러면 실패 처리
+      if (state.state === 'error' && state.runId === runId) {
+        const errorMsg = `server-error: ${state.reason || '알 수 없는 오류'}`;
+        console.log(`❌ ${storeId}: 서버 오류 - ${errorMsg}`);
+        throw new Error(errorMsg);
       }
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // 타임아웃 체크
+      const elapsed = Date.now() - startTime;
+      if (elapsed > hardTimeoutMs) {
+        console.log(`⏰ ${storeId}: 하드 타임아웃! (${elapsed}ms > ${hardTimeoutMs}ms)`);
+        throw new Error('timeout');
+      }
+      
+      // 진행 상황 로그 (5초마다)
+      if (elapsed > 0 && Math.floor(elapsed / 5000) !== Math.floor((elapsed - pollMs) / 5000)) {
+        const progressInfo = state ? `${state.state} (${state.progress || 0}/${state.expected || 0})` : '상태 없음';
+        console.log(`⏳ ${storeId}: 대기 중... ${Math.floor(elapsed/1000)}초 (${progressInfo})`);
+      }
+      
+      console.log(`⏳ ${storeId}: ${pollMs}ms 대기 후 재시도`);
+      await new Promise(resolve => setTimeout(resolve, pollMs));
       
     } catch (error) {
-      console.log(`❌ ${storeId}: 상태 확인 오류 - ${error.message}`);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (error.message === 'timeout') throw error;
+      console.log(`❌ ${storeId}: 완료 대기 오류 - ${error.message}`);
+      await new Promise(resolve => setTimeout(resolve, pollMs));
     }
   }
 }
@@ -389,6 +450,37 @@ function extractStoreId(url) {
   } catch (error) {
     console.error('스토어 ID 추출 오류:', error);
     return null;
+  }
+}
+
+// 작업 완료까지 대기 (공구탭 로딩 대기)
+async function waitForTaskCompletion(tabWindow, storeId) {
+  console.log(`⏳ ${storeId} 공구탭 로딩 대기 중...`);
+  
+  try {
+    // 10초 대기 (공구탭에서 gonggu-checker.js가 실행되고 페이지 이동할 시간)
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    
+    // 탭이 닫혔으면 스킵
+    if (!tabWindow || tabWindow.closed) {
+      console.log(`❌ ${storeId} 탭이 닫혔습니다`);
+      return;
+    }
+    
+    console.log(`✅ ${storeId} 공구탭 처리 완료 (gonggu-checker.js에서 개수 확인)`);
+    
+  } catch (error) {
+    console.error(`❌ ${storeId} 처리 중 오류:`, error);
+  }
+  
+  // 탭 닫기 (1000개 이상이면 이미 다른 페이지로 이동했을 것)
+  try {
+    if (tabWindow && typeof tabWindow.close === 'function' && !tabWindow.closed) {
+      tabWindow.close();
+      console.log(`🗂️ ${storeId} 탭 닫기 완료`);
+    }
+  } catch (e) {
+    console.log(`⚠️ ${storeId}: 탭 닫기 실패 - ${e.message}`);
   }
 }
 
