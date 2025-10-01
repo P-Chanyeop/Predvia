@@ -521,11 +521,41 @@ namespace Gumaedaehang.Services
                     return Results.NotFound(new { error = "State not found", storeId, runId });
                 }
                 
-                // ⭐ 타임아웃 체크 (5분 이상 visiting 상태면 강제 완료)
-                if (storeState.State == "visiting" && 
-                    DateTime.Now - storeState.UpdatedAt > TimeSpan.FromMinutes(5))
+                // ⭐ 진행률 정체 감지 (같은 진행률이 5번 반복되면 강제 진행)
+                if (storeState.State == "visiting")
                 {
-                    LogWindow.AddLogStatic($"⏰ {storeId}: 5분 타임아웃 - 강제 완료 처리");
+                    if (storeState.LastProgress == storeState.Progress)
+                    {
+                        storeState.StuckCount++;
+                        if (storeState.StuckCount >= 5)
+                        {
+                            LogWindow.AddLogStatic($"🚨 {storeId}: 진행률 정체 감지 ({storeState.Progress}/{storeState.Expected}) - 강제 진행");
+                            
+                            lock (_statesLock)
+                            {
+                                var key = $"{storeId}:{runId}";
+                                if (_storeStates.ContainsKey(key))
+                                {
+                                    _storeStates[key].Progress++;
+                                    _storeStates[key].StuckCount = 0;
+                                    _storeStates[key].UpdatedAt = DateTime.Now;
+                                    storeState = _storeStates[key];
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        storeState.LastProgress = storeState.Progress;
+                        storeState.StuckCount = 0;
+                    }
+                }
+                
+                // ⭐ 타임아웃 체크 (2분 이상 visiting 상태면 강제 완료)
+                if (storeState.State == "visiting" && 
+                    DateTime.Now - storeState.UpdatedAt > TimeSpan.FromMinutes(2))
+                {
+                    LogWindow.AddLogStatic($"⏰ {storeId}: 2분 타임아웃 - 강제 완료 처리");
                     
                     lock (_statesLock)
                     {
@@ -758,5 +788,12 @@ namespace Gumaedaehang.Services
         
         [JsonPropertyName("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        
+        // ⭐ 진행률 정체 감지용
+        [JsonPropertyName("lastProgress")]
+        public int LastProgress { get; set; } = -1;
+        
+        [JsonPropertyName("stuckCount")]
+        public int StuckCount { get; set; } = 0;
     }
 }
