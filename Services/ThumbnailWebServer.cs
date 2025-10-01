@@ -58,6 +58,9 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/product-data", HandleProductData);
                 _app.MapPost("/api/smartstore/log", HandleExtensionLog);
                 
+                // ⭐ Chrome 재시작 API 추가
+                _app.MapPost("/api/smartstore/restart-chrome", HandleChromeRestart);
+                
                 // ⭐ 상태 관리 API 추가
                 _app.MapPost("/api/smartstore/state", HandleStoreState);
                 _app.MapGet("/api/smartstore/state", HandleGetStoreState);
@@ -76,7 +79,7 @@ namespace Gumaedaehang.Services
                     }
                     catch (Exception ex)
                     {
-                        LogWindow.AddLogStatic($"❌ 웹서버 실행 오류: {ex.Message}");
+                        LogWindow.AddLogStatic($"웹서버 실행 오류: {ex.Message}");
                     }
                 });
 
@@ -85,7 +88,7 @@ namespace Gumaedaehang.Services
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 웹서버 시작 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"웹서버 시작 오류: {ex.Message}");
                 Debug.WriteLine($"웹서버 시작 오류: {ex.Message}");
             }
         }
@@ -95,7 +98,7 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                LogWindow.AddLogStatic("📡 API 요청 수신: POST /api/thumbnails/save");
+                LogWindow.AddLogStatic("API 요청 수신: POST /api/thumbnails/save");
 
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
@@ -138,7 +141,7 @@ namespace Gumaedaehang.Services
                     }
                     catch (Exception ex)
                     {
-                        LogWindow.AddLogStatic($"❌ 썸네일 저장 실패: {product.Title} - {ex.Message}");
+                        LogWindow.AddLogStatic($"썸네일 저장 실패: {product.Title} - {ex.Message}");
                     }
                 }
 
@@ -171,14 +174,14 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                LogWindow.AddLogStatic("📡 API 요청 수신: GET /api/thumbnails/list");
+                LogWindow.AddLogStatic("API 요청 수신: GET /api/thumbnails/list");
                 
                 var thumbnails = await _thumbnailService.GetThumbnailsAsync();
                 return Results.Ok(thumbnails);
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ API 처리 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"API 처리 오류: {ex.Message}");
                 return Results.StatusCode(500);
             }
         }
@@ -313,11 +316,11 @@ namespace Gumaedaehang.Services
                 {
                     if (gongguData.IsValid)
                     {
-                        LogWindow.AddLogStatic($"✅ {gongguData.StoreId}: 공구 {gongguData.GongguCount}개 (≥1000개) - 진행");
+                        LogWindow.AddLogStatic($"{gongguData.StoreId}: 공구 {gongguData.GongguCount}개 (≥1000개) - 진행");
                     }
                     else
                     {
-                        LogWindow.AddLogStatic($"❌ {gongguData.StoreId}: 공구 {gongguData.GongguCount}개 (<1000개) - 스킵");
+                        LogWindow.AddLogStatic($"{gongguData.StoreId}: 공구 {gongguData.GongguCount}개 (<1000개) - 스킵");
                     }
                 }
 
@@ -348,7 +351,7 @@ namespace Gumaedaehang.Services
                 
                 if (pageData != null)
                 {
-                    LogWindow.AddLogStatic($"🛍️ {pageData.StoreId}: 전체상품 페이지 접속 완료");
+                    LogWindow.AddLogStatic($"{pageData.StoreId}: 전체상품 페이지 접속 완료");
                     LogWindow.AddLogStatic($"  URL: {pageData.PageUrl}");
                 }
 
@@ -385,12 +388,12 @@ namespace Gumaedaehang.Services
                     if (reviewProducts.Any())
                     {
                         var lastReviewProduct = reviewProducts.Last();
-                        LogWindow.AddLogStatic($"🎯 {productData.StoreId}: 40개 상품 중 {lastReviewProduct.Index}번째에 마지막 리뷰 발견");
-                        LogWindow.AddLogStatic($"✅ {productData.StoreId}: 1~{lastReviewProduct.Index}번째 상품 {productData.ProductCount}개 수집 완료");
+                        LogWindow.AddLogStatic($"{productData.StoreId}: 40개 상품 중 {lastReviewProduct.Index}번째에 마지막 리뷰 발견");
+                        LogWindow.AddLogStatic($"{productData.StoreId}: 1~{lastReviewProduct.Index}번째 상품 {productData.ProductCount}개 수집 완료");
                     }
                     else
                     {
-                        LogWindow.AddLogStatic($"📦 {productData.StoreId}: {productData.ProductCount}개 상품 데이터 수집 완료");
+                        LogWindow.AddLogStatic($"{productData.StoreId}: {productData.ProductCount}개 상품 데이터 수집 완료");
                         LogWindow.AddLogStatic($"  리뷰 상품: {productData.ReviewProductCount}개");
                     }
                     
@@ -484,13 +487,13 @@ namespace Gumaedaehang.Services
                     _storeStates[key] = storeState;
                 }
                 
-                LogWindow.AddLogStatic($"🔧 {storeId}: 상태 설정 - {state} (lock: {lockValue}, {progress}/{expected})");
+                LogWindow.AddLogStatic($"{storeId}: 상태 설정 - {state} (lock: {lockValue}, {progress}/{expected})");
                 
                 return Results.Ok(new { success = true, storeId, runId, state });
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 상태 설정 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"상태 설정 오류: {ex.Message}");
                 return Results.BadRequest(new { error = ex.Message });
             }
         }
@@ -517,7 +520,7 @@ namespace Gumaedaehang.Services
                 
                 if (storeState == null)
                 {
-                    LogWindow.AddLogStatic($"🔍 {storeId}: 상태 없음 (runId: {runId})");
+                    LogWindow.AddLogStatic($"{storeId}: 상태 없음 (runId: {runId})");
                     return Results.NotFound(new { error = "State not found", storeId, runId });
                 }
                 
@@ -529,7 +532,7 @@ namespace Gumaedaehang.Services
                         storeState.StuckCount++;
                         if (storeState.StuckCount >= 5)
                         {
-                            LogWindow.AddLogStatic($"🚨 {storeId}: 진행률 정체 감지 ({storeState.Progress}/{storeState.Expected}) - 강제 진행");
+                            LogWindow.AddLogStatic($"{storeId}: 진행률 정체 감지 ({storeState.Progress}/{storeState.Expected}) - 강제 진행");
                             
                             lock (_statesLock)
                             {
@@ -555,7 +558,7 @@ namespace Gumaedaehang.Services
                 if (storeState.State == "visiting" && 
                     DateTime.Now - storeState.UpdatedAt > TimeSpan.FromMinutes(2))
                 {
-                    LogWindow.AddLogStatic($"⏰ {storeId}: 2분 타임아웃 - 강제 완료 처리");
+                    LogWindow.AddLogStatic($"{storeId}: 2분 타임아웃 - 강제 완료 처리");
                     
                     lock (_statesLock)
                     {
@@ -570,13 +573,13 @@ namespace Gumaedaehang.Services
                     }
                 }
                 
-                LogWindow.AddLogStatic($"🔍 {storeId}: 상태 확인 - {storeState.State} (lock: {storeState.Lock}, {storeState.Progress}/{storeState.Expected})");
+                LogWindow.AddLogStatic($"{storeId}: 상태 확인 - {storeState.State} (lock: {storeState.Lock}, {storeState.Progress}/{storeState.Expected})");
                 
                 return Results.Ok(storeState);
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 상태 확인 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"상태 확인 오류: {ex.Message}");
                 return Results.BadRequest(new { error = ex.Message });
             }
         }
@@ -601,7 +604,7 @@ namespace Gumaedaehang.Services
                     {
                         state.Progress += inc;
                         state.UpdatedAt = DateTime.Now;
-                        LogWindow.AddLogStatic($"📊 {storeId}: 진행률 업데이트 - {state.Progress}/{state.Expected}");
+                        LogWindow.AddLogStatic($"{storeId}: 진행률 업데이트 - {state.Progress}/{state.Expected}");
                     }
                 }
                 
@@ -609,8 +612,128 @@ namespace Gumaedaehang.Services
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 진행률 업데이트 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"진행률 업데이트 오류: {ex.Message}");
                 return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // ⭐ Chrome 재시작 핸들러
+        private async Task<IResult> HandleChromeRestart(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var json = await reader.ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<JsonElement>(json);
+
+                var storeId = data.GetProperty("storeId").GetString() ?? "";
+                var blockedInfo = data.GetProperty("blockedInfo");
+
+                LogWindow.AddLogStatic($"{storeId}: Chrome 재시작 요청 수신");
+                LogWindow.AddLogStatic($"{storeId}: {blockedInfo.GetProperty("currentIndex").GetInt32()}번째 상품에서 차단됨");
+
+                // Chrome 재시작 실행
+                _ = Task.Run(async () =>
+                {
+                    await RestartChrome(storeId, blockedInfo);
+                });
+
+                return Results.Ok(new { success = true, message = "Chrome 재시작 요청 접수" });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"Chrome 재시작 요청 오류: {ex.Message}");
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // ⭐ Chrome 재시작 실행 메서드
+        private async Task RestartChrome(string storeId, JsonElement blockedInfo)
+        {
+            try
+            {
+                LogWindow.AddLogStatic($"{storeId}: Chrome 완전 재시작 프로세스 시작");
+
+                // 1단계: 모든 Chrome 프로세스 완전 종료
+                LogWindow.AddLogStatic($"{storeId}: Chrome 프로세스 종료 시작");
+                var chromeProcesses = Process.GetProcessesByName("chrome");
+                foreach (var process in chromeProcesses)
+                {
+                    try
+                    {
+                        process.Kill();
+                        process.WaitForExit(3000);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"Chrome 프로세스 종료 실패: {ex.Message}");
+                    }
+                }
+                LogWindow.AddLogStatic($"{storeId}: Chrome 프로세스 종료 완료");
+
+                // 2단계: 1분 대기 (차단 해제 및 프로세스 완전 정리)
+                await Task.Delay(60000);
+                
+                LogWindow.AddLogStatic($"{storeId}: Chrome 재시작 중... (1분 대기)");
+
+                // 3단계: Chrome 경로 자동 탐지
+                var chromePaths = new[]
+                {
+                    @"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                    Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+                    Environment.ExpandEnvironmentVariables(@"%PROGRAMFILES%\Google\Chrome\Application\chrome.exe"),
+                    Environment.ExpandEnvironmentVariables(@"%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe")
+                };
+
+                string? chromeExePath = null;
+                foreach (var path in chromePaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        chromeExePath = path;
+                        break;
+                    }
+                }
+
+                if (chromeExePath == null)
+                {
+                    LogWindow.AddLogStatic($"{storeId}: Chrome 실행 파일을 찾을 수 없습니다");
+                    return;
+                }
+
+                // 4단계: Chrome 완전 재시작 (네이버 가격비교 페이지 자동 열기)
+                var naverShoppingUrl = "https://search.shopping.naver.com/search/all?query=무선이어폰";
+                
+                // 실행 파일과 같은 폴더의 chrome-extension 경로 (배포용)
+                var exeDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                var extensionPath = Path.Combine(exeDirectory, "chrome-extension");
+                
+                LogWindow.AddLogStatic($"{storeId}: 확장프로그램 경로: {extensionPath}");
+                
+                // 확장프로그램 폴더 존재 확인
+                if (!Directory.Exists(extensionPath))
+                {
+                    LogWindow.AddLogStatic($"{storeId}: 확장프로그램 폴더를 찾을 수 없습니다: {extensionPath}");
+                    return;
+                }
+                
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = chromeExePath,
+                    Arguments = $"--user-data-dir=\"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}\\Google\\Chrome\\User Data\" \"{naverShoppingUrl}\"",
+                    UseShellExecute = true
+                };
+
+                Process.Start(startInfo);
+                
+                LogWindow.AddLogStatic($"{storeId}: Chrome 완전 재시작 완료 - 네이버 가격비교 페이지 자동 열기");
+                LogWindow.AddLogStatic($"{storeId}: 확장프로그램이 자동으로 차단된 지점부터 재개합니다");
+
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"{storeId}: Chrome 재시작 실패 - {ex.Message}");
             }
         }
 
@@ -795,5 +918,27 @@ namespace Gumaedaehang.Services
         
         [JsonPropertyName("stuckCount")]
         public int StuckCount { get; set; } = 0;
+    }
+
+    // ⭐ 차단 정보 모델
+    public class BlockedStoreInfo
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("runId")]
+        public string RunId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("currentIndex")]
+        public int CurrentIndex { get; set; }
+        
+        [JsonPropertyName("totalProducts")]
+        public int TotalProducts { get; set; }
+        
+        [JsonPropertyName("productUrls")]
+        public List<string> ProductUrls { get; set; } = new();
+        
+        [JsonPropertyName("timestamp")]
+        public long Timestamp { get; set; }
     }
 }
