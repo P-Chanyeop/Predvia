@@ -607,19 +607,49 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
         const visitMsg = `🔗 ${storeId}: [${i + 1}/${productUrls.length}] ${product.url} 접속`;
         sendLogToServer(visitMsg);
         
+        // ⭐ 차단 감지 체크
+        if (await checkForBlocking(storeId)) {
+          const blockMsg = `🚫 ${storeId}: 네이버 차단 감지 - 작업 중단`;
+          await sendLogToServer(blockMsg);
+          break;
+        }
+        
         // ⭐ 5-8초 랜덤 대기 (차단 방지)
         const delay = 5000 + Math.random() * 3000;
         const timeoutPromise = new Promise(resolve => setTimeout(resolve, delay));
-        const accessPromise = new Promise(async (resolve) => {
+        const accessPromise = new Promise(async (resolve, reject) => {
           try {
             const productTab = window.open(product.url, '_blank');
             await new Promise(r => setTimeout(r, 1000)); // 1초만 대기
+            
+            // ⭐ 새 탭에서 차단 메시지 확인
             if (productTab && !productTab.closed) {
+              try {
+                const tabContent = productTab.document.body.textContent || '';
+                if (tabContent.includes('현재 서비스 접속이 불가합니다') || 
+                    tabContent.includes('동시에 접속하는 이용자 수가 많거나') ||
+                    tabContent.includes('서비스 접속 불가')) {
+                  
+                  const blockMsg = `🚫 ${storeId}: 상품 페이지에서 차단 감지`;
+                  await sendLogToServer(blockMsg);
+                  
+                  productTab.close();
+                  reject(new Error('BLOCKED')); // reject로 변경하여 확실히 오류 발생
+                  return;
+                }
+              } catch (e) {
+                // 크로스 오리진 오류는 무시
+              }
+              
               productTab.close();
             }
             resolve();
           } catch (e) {
-            resolve(); // 오류 발생해도 완료 처리
+            if (e.message === 'BLOCKED') {
+              reject(e); // 차단 오류는 다시 던지기
+            } else {
+              resolve(); // 다른 오류는 완료 처리
+            }
           }
         });
         
@@ -632,9 +662,16 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
         await updateProgress(storeId, runId, 1);
         
       } catch (error) {
+        // ⭐ 차단 감지 시 루프 중단
+        if (error.message === 'BLOCKED') {
+          const blockMsg = `🚫 ${storeId}: 차단으로 인한 작업 중단`;
+          await sendLogToServer(blockMsg);
+          break; // 루프 중단
+        }
+        
         const errorMsg = `❌ ${storeId}: [${i + 1}/${productUrls.length}] 접속 오류 - ${error.message}`;
         sendLogToServer(errorMsg);
-        // 오류가 발생해도 계속 진행
+        // 다른 오류는 계속 진행
       }
     }
     
@@ -659,5 +696,62 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
     
     // ⭐ 오류 발생 시에도 완료 처리 (무한 대기 방지)
     await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
+  }
+}
+
+// ⭐ 네이버 차단 감지 함수
+async function checkForBlocking(storeId) {
+  try {
+    // 현재 페이지에서 차단 메시지 확인
+    const blockingMessages = [
+      '현재 서비스 접속이 불가합니다',
+      '동시에 접속하는 이용자 수가 많거나',
+      '인터넷 네트워크 상태가 불안정하여',
+      '잠시 후 다시 접속해 주시기 바랍니다',
+      '서비스 접속 불가',
+      '일시적으로 접속이 제한'
+    ];
+    
+    const pageText = document.body.textContent || '';
+    
+    for (let message of blockingMessages) {
+      if (pageText.includes(message)) {
+        const blockMsg = `🚫 ${storeId}: 차단 메시지 감지 - "${message}"`;
+        await sendLogToServer(blockMsg);
+        
+        // 서버에 차단 상태 알림
+        await notifyBlockingDetected(storeId, message);
+        
+        return true;
+      }
+    }
+    
+    return false;
+    
+  } catch (error) {
+    console.log('차단 감지 오류:', error);
+    return false;
+  }
+}
+
+// ⭐ 서버에 차단 감지 알림
+async function notifyBlockingDetected(storeId, message) {
+  try {
+    const data = {
+      storeId: storeId,
+      blockingMessage: message,
+      pageUrl: window.location.href,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent
+    };
+    
+    await fetch('http://localhost:8080/api/smartstore/blocking-detected', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+  } catch (error) {
+    console.log('차단 알림 전송 실패:', error);
   }
 }
