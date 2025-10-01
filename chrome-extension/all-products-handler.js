@@ -607,21 +607,29 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
         const visitMsg = `🔗 ${storeId}: [${i + 1}/${productUrls.length}] ${product.url} 접속`;
         sendLogToServer(visitMsg);
         
-        // ⭐ 5초 타임아웃으로 상품 페이지 접속
-        await Promise.race([
-          new Promise(async (resolve) => {
+        // ⭐ 5-8초 랜덤 대기 (차단 방지)
+        const delay = 5000 + Math.random() * 3000;
+        const timeoutPromise = new Promise(resolve => setTimeout(resolve, delay));
+        const accessPromise = new Promise(async (resolve) => {
+          try {
             const productTab = window.open(product.url, '_blank');
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise(r => setTimeout(r, 1000)); // 1초만 대기
             if (productTab && !productTab.closed) {
               productTab.close();
             }
             resolve();
-          }),
-          new Promise(resolve => setTimeout(resolve, 5000)) // 5초 타임아웃
-        ]);
+          } catch (e) {
+            resolve(); // 오류 발생해도 완료 처리
+          }
+        });
+        
+        await Promise.race([accessPromise, timeoutPromise]);
         
         const completeMsg = `✅ ${storeId}: [${i + 1}/${productUrls.length}] 접속 완료`;
         sendLogToServer(completeMsg);
+        
+        // ⭐ 진행률 업데이트
+        await updateProgress(storeId, runId, 1);
         
       } catch (error) {
         const errorMsg = `❌ ${storeId}: [${i + 1}/${productUrls.length}] 접속 오류 - ${error.message}`;
@@ -651,60 +659,5 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
     
     // ⭐ 오류 발생 시에도 완료 처리 (무한 대기 방지)
     await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
-  }
-}
-    
-    // ⭐ 서버에 완료 상태 설정
-    try {
-      const response = await fetch('http://localhost:8080/api/smartstore/complete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          storeId: storeId,
-          completed: true,
-          timestamp: new Date().toISOString()
-        })
-      });
-      
-      if (response.ok) {
-        await sendLogToServer(`✅ ${storeId}: 서버 완료 상태 설정 성공`);
-      } else {
-        await sendLogToServer(`❌ ${storeId}: 서버 완료 상태 설정 실패 - ${response.status}`);
-      }
-    } catch (error) {
-      await sendLogToServer(`❌ ${storeId}: 서버 완료 상태 설정 오류 - ${error.message}`);
-    }
-    
-    // ⭐ 완료 상태로 설정 (done + unlock)
-    await setStoreStateFromHandler(storeId, runId, 'done', false, productUrls.length, productUrls.length);
-    
-    const finalMsg = `🎉 ${storeId}: 모든 상품 접속 완료 (${productUrls.length}개)`;
-    await sendLogToServer(finalMsg);
-    
-  } catch (error) {
-    const errorMsg = `❌ ${storeId}: 순차 접속 오류 - ${error.message}`;
-    await sendLogToServer(errorMsg);
-    
-    // 오류 발생 시에도 완료 신호 전송
-    await sendProductDataToServer(storeId, productUrls, productUrls.length);
-    
-    // ⭐ 오류 시에도 서버 완료 상태 설정
-    try {
-      await fetch('http://localhost:8080/api/smartstore/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          storeId: storeId,
-          completed: true,
-          error: error.message,
-          timestamp: new Date().toISOString()
-        })
-      });
-      await sendLogToServer(`✅ ${storeId}: 오류 완료 상태 설정 성공`);
-    } catch (e) {
-      await sendLogToServer(`❌ ${storeId}: 오류 완료 상태 설정 실패`);
-    }
   }
 }

@@ -1,4 +1,6 @@
 // 백그라운드 서비스 워커
+console.log('Predvia 백그라운드 서비스 워커 시작됨');
+
 
 // ⭐ 탭 업데이트 감지 (전체상품 페이지 강제 주입)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
