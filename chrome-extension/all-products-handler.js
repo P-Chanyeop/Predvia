@@ -1,48 +1,14 @@
 console.log('🔥 all-products-handler.js 파일 로드됨!');
 console.log('🔥 현재 URL:', window.location.href);
 
-// ⭐ 재시작 후 차단된 스토어부터 재개 함수
-async function resumeFromBlocked() {
-  try {
-    const blockedData = localStorage.getItem('blockedStore');
-    if (!blockedData) {
-      return false; // 차단된 스토어 없음
-    }
 
-    const blocked = JSON.parse(blockedData);
-    const resumeMsg = `🔄 ${blocked.storeId}: 차단된 지점부터 재개 (${blocked.currentIndex}/${blocked.totalProducts}번째 상품부터)`;
-    await sendLogToServer(resumeMsg);
-
-    // 차단된 지점부터 상품 접속 재개
-    const remainingProducts = blocked.productUrls.slice(blocked.currentIndex - 1);
-    await visitProductsSequentially(blocked.storeId, blocked.runId, remainingProducts);
-
-    // 완료 후 차단 정보 삭제
-    localStorage.removeItem('blockedStore');
-
-    const completeMsg = `✅ ${blocked.storeId}: 차단 복구 완료`;
-    await sendLogToServer(completeMsg);
-
-    return true; // 복구 완료
-
-  } catch (error) {
-    console.log('차단 복구 오류:', error);
-    return false;
-  }
-}
 
 // ⭐ 즉시 실행 (페이지 로드 완료 후)
 window.addEventListener('load', function() {
   console.log('🔥 페이지 로드 완료 - 핸들러 시작!');
   
-  // ⭐ 먼저 차단 복구 체크
+  // 정상 플로우 진행
   setTimeout(async () => {
-    const resumed = await resumeFromBlocked();
-    if (resumed) {
-      return; // 차단 복구 완료, 정상 플로우 건너뛰기
-    }
-    
-    // 정상 플로우 진행
     console.log('🔥 handleAllProductsPage 호출!');
     
     const storeId = extractStoreIdFromUrl(window.location.href);
@@ -114,34 +80,17 @@ async function handleAllProductsPage() {
     console.log(`🚀 ${storeId}: 핸들러 시작 (runId: ${runId})`);
     console.log(`🔗 현재 URL: ${window.location.href}`);
     
-    // ⭐ 차단 복구 모드 체크
-    const blockedData = localStorage.getItem('blockedStore');
-    let startFromIndex = 1; // 기본값: 1번째 상품부터
-    
-    if (blockedData) {
-      const blocked = JSON.parse(blockedData);
-      if (blocked.storeId === storeId && blocked.runId === runId) {
-        startFromIndex = blocked.currentIndex; // 차단된 상품 번호부터 시작
-        console.log(`🔄 차단 복구 모드: ${startFromIndex}번째 상품부터 재시작`);
-        
-        // 차단 정보 삭제 (한 번만 사용)
-        localStorage.removeItem('blockedStore');
-        
-        await sendLogToServer(`🔄 ${storeId}: 차단 복구 - ${startFromIndex}번째 상품부터 재개`);
-      }
-    }
-    
     // 즉시 로그 전송
     fetch('http://localhost:8080/api/smartstore/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: `🚀 ${storeId}: 핸들러 시작 (runId: ${runId}) - ${startFromIndex}번째부터`,
+        message: `🚀 ${storeId}: 핸들러 시작 (runId: ${runId})`,
         timestamp: new Date().toISOString()
       })
     }).catch(e => console.log('로그 전송 실패:', e));
     
-    await sendLogToServer(`🚀 ${storeId}: 핸들러 시작 (runId: ${runId}) - ${startFromIndex}번째부터`);
+    await sendLogToServer(`🚀 ${storeId}: 핸들러 시작 (runId: ${runId})`);
     
     // 서버에 전체상품 페이지 접속 알림
     notifyAllProductsPageLoaded(storeId);
@@ -150,7 +99,7 @@ async function handleAllProductsPage() {
     setTimeout(async () => {
       await sendLogToServer(`🔍 ${storeId}: 리뷰 검색 시작`);
       
-      const productData = await collectProductData(storeId, runId, startFromIndex);
+      const productData = await collectProductData(storeId, runId, 1);
       sendProductDataToServer(storeId, productData, 1);
       
     }, 2000); // 2초만 대기
@@ -221,7 +170,7 @@ async function updateProgress(storeId, runId, inc = 1) {
 }
 
 // 상품 데이터 수집 (40개 상품 중 마지막 리뷰 상품 찾기)
-async function collectProductData(storeId, runId, startFromIndex = 1) {
+async function collectProductData(storeId, runId) {
   try {
     const debugMsg = `🔍 ${storeId}: 리뷰 span 검색 시작`;
     sendLogToServer(debugMsg);
@@ -301,20 +250,13 @@ async function collectProductData(storeId, runId, startFromIndex = 1) {
     
     // 4단계: 실제 상품 접속 시작
     if (allProductUrls.length > 0) {
-      // ⭐ 차단 복구 모드인 경우 해당 상품부터 시작
-      let productsToVisit = allProductUrls;
-      if (startFromIndex > 1) {
-        productsToVisit = allProductUrls.slice(startFromIndex - 1); // startFromIndex번째부터
-        console.log(`🔄 ${storeId}: ${startFromIndex}번째 상품부터 ${allProductUrls.length}번째까지 ${productsToVisit.length}개 상품 접속`);
-      }
-      
-      const waitMsg = `⏳ ${storeId}: ${productsToVisit.length}개 상품 순차 접속 시작`;
+      const waitMsg = `⏳ ${storeId}: ${allProductUrls.length}개 상품 순차 접속 시작`;
       await sendLogToServer(waitMsg);
       
       // ⭐ visiting 상태로 변경
-      await setStoreStateFromHandler(storeId, runId, 'visiting', true, productsToVisit.length, 0);
+      await setStoreStateFromHandler(storeId, runId, 'visiting', true, allProductUrls.length, 0);
       
-      await visitProductsSequentially(storeId, runId, productsToVisit, startFromIndex);
+      await visitProductsSequentially(storeId, runId, allProductUrls);
     } else {
       // ⭐ 리뷰 없으면 즉시 완료 처리
       await sendLogToServer(`❌ ${storeId}: 리뷰 없음 - 즉시 완료 처리`);
@@ -665,52 +607,31 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
       const product = productUrls[i];
       
       try {
-        const visitMsg = `🔗 ${storeId}: [${i + 1}/${productUrls.length}] ${product.url} 접속`;
-        sendLogToServer(visitMsg);
-        
-        // ⭐ 차단 감지 체크
-        if (await checkForBlocking(storeId)) {
-          const blockMsg = `🚫 ${storeId}: 네이버 차단 감지 - 작업 중단`;
-          await sendLogToServer(blockMsg);
+        // ⭐ 서버에서 중단 신호 확인
+        const shouldStop = await checkShouldStop();
+        if (shouldStop) {
+          const stopMsg = `🛑 ${storeId}: 목표 달성으로 상품 접속 중단 (${i + 1}/${productUrls.length}번째에서 중단)`;
+          await sendLogToServer(stopMsg);
           break;
         }
+        
+        const visitMsg = `🔗 ${storeId}: [${i + 1}/${productUrls.length}] ${product.url} 접속`;
+        sendLogToServer(visitMsg);
         
         // ⭐ 5-8초 랜덤 대기 (차단 방지)
         const delay = 5000 + Math.random() * 3000;
         const timeoutPromise = new Promise(resolve => setTimeout(resolve, delay));
-        const accessPromise = new Promise(async (resolve, reject) => {
+        const accessPromise = new Promise(async (resolve) => {
           try {
             const productTab = window.open(product.url, '_blank');
             await new Promise(r => setTimeout(r, 1000)); // 1초만 대기
             
-            // ⭐ 새 탭에서 차단 메시지 확인
             if (productTab && !productTab.closed) {
-              try {
-                const tabContent = productTab.document.body.textContent || '';
-                if (tabContent.includes('현재 서비스 접속이 불가합니다') || 
-                    tabContent.includes('동시에 접속하는 이용자 수가 많거나') ||
-                    tabContent.includes('서비스 접속 불가')) {
-                  
-                  const blockMsg = `🚫 ${storeId}: 상품 페이지에서 차단 감지`;
-                  await sendLogToServer(blockMsg);
-                  
-                  productTab.close();
-                  reject(new Error('BLOCKED')); // reject로 변경하여 확실히 오류 발생
-                  return;
-                }
-              } catch (e) {
-                // 크로스 오리진 오류는 무시
-              }
-              
               productTab.close();
             }
             resolve();
           } catch (e) {
-            if (e.message === 'BLOCKED') {
-              reject(e); // 차단 오류는 다시 던지기
-            } else {
-              resolve(); // 다른 오류는 완료 처리
-            }
+            resolve(); // 모든 오류는 완료 처리
           }
         });
         
@@ -723,32 +644,9 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
         await updateProgress(storeId, runId, 1);
         
       } catch (error) {
-        // ⭐ 차단 감지 시 Chrome 재시작 시스템
-        if (error.message === 'BLOCKED') {
-          const blockedInfo = {
-            storeId: storeId,
-            runId: runId,
-            currentIndex: i + 1, // 차단된 상품 인덱스
-            totalProducts: productUrls.length,
-            productUrls: productUrls,
-            timestamp: Date.now()
-          };
-          
-          // 로컬 스토리지에 차단 정보 저장
-          localStorage.setItem('blockedStore', JSON.stringify(blockedInfo));
-          
-          const blockMsg = `🚫 ${storeId}: 차단으로 인한 Chrome 재시작 요청 (${i + 1}/${productUrls.length}번째 상품에서 차단)`;
-          await sendLogToServer(blockMsg);
-          
-          // 서버에 Chrome 재시작 요청
-          await requestChromeRestart(storeId, blockedInfo);
-          
-          break; // 루프 중단
-        }
-        
         const errorMsg = `❌ ${storeId}: [${i + 1}/${productUrls.length}] 접속 오류 - ${error.message}`;
         sendLogToServer(errorMsg);
-        // 다른 오류는 계속 진행
+        // 오류 발생 시에도 계속 진행
       }
     }
     
@@ -776,61 +674,22 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
   }
 }
 
-// ⭐ 네이버 차단 감지 함수
-async function checkForBlocking(storeId) {
+// ⭐ 서버에서 중단 신호 확인
+async function checkShouldStop() {
   try {
-    // 현재 페이지에서 차단 메시지 확인
-    const blockingMessages = [
-      '현재 서비스 접속이 불가합니다',
-      '동시에 접속하는 이용자 수가 많거나',
-      '인터넷 네트워크 상태가 불안정하여',
-      '잠시 후 다시 접속해 주시기 바랍니다',
-      '서비스 접속 불가',
-      '일시적으로 접속이 제한'
-    ];
-    
-    const pageText = document.body.textContent || '';
-    
-    for (let message of blockingMessages) {
-      if (pageText.includes(message)) {
-        const blockMsg = `🚫 ${storeId}: 차단 메시지 감지 - "${message}"`;
-        await sendLogToServer(blockMsg);
-        
-        // 서버에 차단 상태 알림
-        await notifyBlockingDetected(storeId, message);
-        
-        return true;
-      }
-    }
-    
-    return false;
-    
-  } catch (error) {
-    console.log('차단 감지 오류:', error);
-    return false;
-  }
-}
-
-// ⭐ Chrome 재시작 요청 함수
-async function requestChromeRestart(storeId, blockedInfo) {
-  try {
-    const data = {
-      storeId: storeId,
-      blockedInfo: blockedInfo,
-      action: 'restart-chrome',
-      timestamp: new Date().toISOString()
-    };
-    
-    await fetch('http://localhost:8080/api/smartstore/restart-chrome', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+    const response = await fetch('http://localhost:8080/api/smartstore/status', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
     });
     
-    const restartMsg = `🔄 ${storeId}: Chrome 재시작 요청 전송 완료`;
-    await sendLogToServer(restartMsg);
-    
+    if (response.ok) {
+      const data = await response.json();
+      return data.shouldStop || false;
+    }
   } catch (error) {
-    console.log('Chrome 재시작 요청 실패:', error);
+    console.log('중단 체크 오류:', error);
   }
+  return false;
 }
+
+
