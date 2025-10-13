@@ -131,8 +131,38 @@ async function scrollAndCollectLinks() {
 
 // 유효한 스마트스토어 링크인지 확인
 function isValidSmartStoreLink(url) {
-  // 특정 패턴으로 시작하는 링크만 허용
-  return url.startsWith('https://smartstore.naver.com/inflow/outlink/url?url');
+  // ⭐ 엄격한 필터링 조건
+  if (!url.startsWith('https://smartstore.naver.com/inflow/outlink/url?url')) {
+    return false;
+  }
+  
+  // ⭐ 잘못된 URL 패턴 제외
+  if (url.includes('sell.smartstore.naver.com')) {
+    return false;
+  }
+  
+  if (url.includes('#/home/about')) {
+    return false;
+  }
+  
+  if (url.includes('tipModal=WINDOW_EXPOSURE')) {
+    return false;
+  }
+  
+  // ⭐ 내부 URL에 실제 스토어 ID가 있는지 확인
+  try {
+    const decoded = decodeURIComponent(url);
+    const innerUrlMatch = decoded.match(/url=([^&]+)/);
+    if (innerUrlMatch) {
+      const innerUrl = decodeURIComponent(innerUrlMatch[1]);
+      // 실제 스토어 URL 패턴 확인
+      return /^https:\/\/smartstore\.naver\.com\/[a-zA-Z0-9_-]+$/.test(innerUrl);
+    }
+  } catch (e) {
+    return false;
+  }
+  
+  return false;
 }
 
 // 스마트스토어 링크 추출
@@ -157,8 +187,8 @@ function extractSmartStoreLinks() {
         if (linkElement && linkElement.href) {
           const link = linkElement.href;
           
-          // 스마트스토어 링크인지 확인
-          if (link.includes('smartstore.naver.com') || link.includes('brand.naver.com')) {
+          // ⭐ 유효한 스마트스토어 링크인지 확인
+          if (isValidSmartStoreLink(link)) {
             // 중복 제거
             if (!smartStoreLinks.some(item => item.url === link)) {
               // 상품명 추출 시도
@@ -183,17 +213,20 @@ function extractSmartStoreLinks() {
     allLinks.forEach((linkElement) => {
       const link = linkElement.href;
       
-      // 중복 제거
-      if (!smartStoreLinks.some(item => item.url === link)) {
-        const productTitle = extractProductTitle(linkElement);
-        
-        smartStoreLinks.push({
-          url: link,
-          title: productTitle,
-          seller: '스마트스토어'
-        });
-        
-        console.log(`✅ 스마트스토어 링크 발견 (직접): ${productTitle} - ${link}`);
+      // ⭐ 유효한 스마트스토어 링크인지 확인
+      if (isValidSmartStoreLink(link)) {
+        // 중복 제거
+        if (!smartStoreLinks.some(item => item.url === link)) {
+          const productTitle = extractProductTitle(linkElement);
+          
+          smartStoreLinks.push({
+            url: link,
+            title: productTitle,
+            seller: '스마트스토어'
+          });
+          
+          console.log(`✅ 스마트스토어 링크 발견 (직접): ${productTitle} - ${link}`);
+        }
       }
     });
     
@@ -283,7 +316,17 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
       console.log('✅ 서버 통신 성공 - 응답 확인 중');
       
       try {
-        const responseData = await response.json();
+        // ⭐ 응답 텍스트 먼저 확인
+        const responseText = await response.text();
+        console.log('📡 서버 응답 텍스트:', responseText.substring(0, 200) + '...');
+        
+        if (!responseText.trim()) {
+          console.error('❌ 서버에서 빈 응답 수신');
+          await visitSmartStoreLinksSequentially(smartStoreLinks);
+          return;
+        }
+        
+        const responseData = JSON.parse(responseText);
         console.log('서버 응답:', responseData);
         
         if (responseData.success) {

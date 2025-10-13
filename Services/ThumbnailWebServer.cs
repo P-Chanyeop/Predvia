@@ -230,12 +230,14 @@ namespace Gumaedaehang.Services
 
                 LogWindow.AddLogStatic($"{requestData.SmartStoreLinks.Count}개 스마트스토어 링크 수신");
 
-                // ⭐ 랜덤으로 10개 선택
-                var random = new Random();
+                // ⭐ 진짜 랜덤 선택 (Guid 기반)
                 _selectedStores = requestData.SmartStoreLinks
-                    .OrderBy(x => random.Next())
+                    .OrderBy(x => Guid.NewGuid())
                     .Take(MAX_STORES_TO_VISIT)
                     .ToList();
+                
+                // ⭐ 선택 결과 로그 (디버깅용)
+                LogWindow.AddLogStatic($"🎲 랜덤 선택 완료: {DateTime.Now:HH:mm:ss.fff}");
                 
                 // 상품 카운터 초기화
                 lock (_counterLock)
@@ -258,10 +260,46 @@ namespace Gumaedaehang.Services
                     totalLinks = requestData.SmartStoreLinks.Count,
                     selectedLinks = _selectedStores.Count,
                     targetProducts = TARGET_PRODUCT_COUNT,
-                    selectedStores = _selectedStores.Select(s => new {
-                        title = s.Title,
-                        url = s.Url,
-                        storeId = s.Url.Split('/').LastOrDefault()?.Split('?').FirstOrDefault()?.Replace("inflow/outlink/url?url=https%3A%2F%2Fsmartstore.naver.com%2F", "") ?? ""
+                    selectedStores = _selectedStores.Select(s => {
+                        // ⭐ URL에서 정확한 스토어 ID 추출
+                        var url = s.Url;
+                        var storeId = "";
+                        
+                        if (url.Contains("smartstore.naver.com/"))
+                        {
+                            var decoded = Uri.UnescapeDataString(url);
+                            // ⭐ inflow URL에서 실제 스토어 ID 추출
+                            if (decoded.Contains("inflow/outlink/url?url="))
+                            {
+                                var innerUrlMatch = System.Text.RegularExpressions.Regex.Match(decoded, @"url=([^&]+)");
+                                if (innerUrlMatch.Success)
+                                {
+                                    var innerUrl = Uri.UnescapeDataString(innerUrlMatch.Groups[1].Value);
+                                    var storeMatch = System.Text.RegularExpressions.Regex.Match(innerUrl, @"smartstore\.naver\.com/([^/&?]+)");
+                                    if (storeMatch.Success)
+                                    {
+                                        storeId = storeMatch.Groups[1].Value;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // 일반 smartstore URL
+                                var match = System.Text.RegularExpressions.Regex.Match(decoded, @"smartstore\.naver\.com/([^/&?]+)");
+                                if (match.Success)
+                                {
+                                    storeId = match.Groups[1].Value;
+                                }
+                            }
+                        }
+                        
+                        LogWindow.AddLogStatic($"🔍 URL 파싱: {url} -> {storeId}");
+                        
+                        return new {
+                            title = s.Title,
+                            url = s.Url,
+                            storeId = storeId
+                        };
                     }).ToList(),
                     message = $"{requestData.SmartStoreLinks.Count}개 중 {_selectedStores.Count}개 스토어 선택 완료"
                 };
@@ -430,16 +468,38 @@ namespace Gumaedaehang.Services
                 if (productData != null)
                 {
                     // ⭐ 선택된 스토어인지 엄격하게 확인
-                    var selectedStoreIds = _selectedStores.Select(s => {
-                        var url = s.Url;
-                        if (url.Contains("inflow/outlink/url?url="))
+                    var selectedStoreIds = new List<string>();
+                    foreach (var store in _selectedStores)
+                    {
+                        var url = store.Url;
+                        if (url.Contains("smartstore.naver.com/"))
                         {
                             var decoded = Uri.UnescapeDataString(url);
-                            var match = System.Text.RegularExpressions.Regex.Match(decoded, @"smartstore\.naver\.com/([^/&?]+)");
-                            return match.Success ? match.Groups[1].Value : "";
+                            // ⭐ inflow URL에서 실제 스토어 ID 추출
+                            if (decoded.Contains("inflow/outlink/url?url="))
+                            {
+                                var innerUrlMatch = System.Text.RegularExpressions.Regex.Match(decoded, @"url=([^&]+)");
+                                if (innerUrlMatch.Success)
+                                {
+                                    var innerUrl = Uri.UnescapeDataString(innerUrlMatch.Groups[1].Value);
+                                    var storeMatch = System.Text.RegularExpressions.Regex.Match(innerUrl, @"smartstore\.naver\.com/([^/&?]+)");
+                                    if (storeMatch.Success)
+                                    {
+                                        selectedStoreIds.Add(storeMatch.Groups[1].Value);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // 일반 smartstore URL
+                                var match = System.Text.RegularExpressions.Regex.Match(decoded, @"smartstore\.naver\.com/([^/&?]+)");
+                                if (match.Success)
+                                {
+                                    selectedStoreIds.Add(match.Groups[1].Value);
+                                }
+                            }
                         }
-                        return "";
-                    }).Where(id => !string.IsNullOrEmpty(id)).ToList();
+                    }
                     
                     var isSelectedStore = selectedStoreIds.Contains(productData.StoreId, StringComparer.OrdinalIgnoreCase);
                     
