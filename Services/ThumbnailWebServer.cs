@@ -77,6 +77,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/product-data", HandleProductData);
                 _app.MapPost("/api/smartstore/log", HandleExtensionLog);
                 _app.MapPost("/api/smartstore/stop", HandleStopCrawling); // ⭐ 크롤링 중단 API 추가
+                _app.MapPost("/api/smartstore/image", HandleProductImage); // ⭐ 상품 이미지 처리 API 추가
                 
                 // ⭐ 상태 관리 API 추가
                 _app.MapPost("/api/smartstore/state", HandleStoreState);
@@ -1093,6 +1094,67 @@ namespace Gumaedaehang.Services
                 LogWindow.AddLogStatic("웹서버 중지됨");
             }
         }
+
+        // ⭐ 상품 이미지 처리 API
+        private async Task<IResult> HandleProductImage(HttpContext context)
+        {
+            try
+            {
+                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                LogWindow.AddLogStatic($"🖼️ 이미지 처리 요청: {body}");
+
+                var imageData = JsonSerializer.Deserialize<ProductImageData>(body);
+                if (imageData == null)
+                {
+                    LogWindow.AddLogStatic("❌ 이미지 데이터 파싱 실패");
+                    return Results.BadRequest("Invalid image data");
+                }
+
+                // 이미지 다운로드 및 저장
+                await DownloadAndSaveImage(imageData);
+
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 이미지 처리 오류: {ex.Message}");
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = ex.Message }));
+                return Results.Ok();
+            }
+        }
+
+        // ⭐ 이미지 다운로드 및 저장
+        private async Task DownloadAndSaveImage(ProductImageData imageData)
+        {
+            try
+            {
+                using var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("User-Agent", 
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+
+                LogWindow.AddLogStatic($"🔽 이미지 다운로드 시작: {imageData.ImageUrl}");
+                
+                var imageBytes = await httpClient.GetByteArrayAsync(imageData.ImageUrl);
+                
+                // 저장 디렉토리 생성
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var imagesDir = Path.Combine(appDataPath, "Predvia", "Images");
+                Directory.CreateDirectory(imagesDir);
+
+                // 파일명 생성: {storeId}_{productId}_main.jpg
+                var fileName = $"{imageData.StoreId}_{imageData.ProductId}_main.jpg";
+                var filePath = Path.Combine(imagesDir, fileName);
+
+                await File.WriteAllBytesAsync(filePath, imageBytes);
+                
+                LogWindow.AddLogStatic($"✅ 이미지 저장 완료: {fileName} ({imageBytes.Length} bytes)");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 이미지 저장 실패: {ex.Message}");
+            }
+        }
     }
 
     // 스마트스토어 링크 요청 데이터 모델
@@ -1266,26 +1328,42 @@ namespace Gumaedaehang.Services
         [JsonPropertyName("stuckCount")]
         public int StuckCount { get; set; } = 0;
     }
+}
 
-    // ⭐ 차단 정보 모델
-    public class BlockedStoreInfo
-    {
-        [JsonPropertyName("storeId")]
-        public string StoreId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("runId")]
-        public string RunId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("currentIndex")]
-        public int CurrentIndex { get; set; }
-        
-        [JsonPropertyName("totalProducts")]
-        public int TotalProducts { get; set; }
-        
-        [JsonPropertyName("productUrls")]
-        public List<string> ProductUrls { get; set; } = new();
-        
-        [JsonPropertyName("timestamp")]
-        public long Timestamp { get; set; }
-    }
+// ⭐ 차단 정보 모델
+public class BlockedStoreInfo
+{
+    [JsonPropertyName("storeId")]
+    public string StoreId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("runId")]
+    public string RunId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("currentIndex")]
+    public int CurrentIndex { get; set; }
+    
+    [JsonPropertyName("totalProducts")]
+    public int TotalProducts { get; set; }
+    
+    [JsonPropertyName("productUrls")]
+    public List<string> ProductUrls { get; set; } = new();
+    
+    [JsonPropertyName("timestamp")]
+    public long Timestamp { get; set; }
+}
+
+// ⭐ 상품 이미지 데이터 모델
+public class ProductImageData
+{
+    [JsonPropertyName("storeId")]
+    public string StoreId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("productId")]
+    public string ProductId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("imageUrl")]
+    public string ImageUrl { get; set; } = string.Empty;
+    
+    [JsonPropertyName("productUrl")]
+    public string ProductUrl { get; set; } = string.Empty;
 }
