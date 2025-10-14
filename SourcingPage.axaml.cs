@@ -21,7 +21,7 @@ namespace Gumaedaehang
 {
     public partial class SourcingPage : UserControl
     {
-        private readonly ThumbnailService _thumbnailService;
+        private readonly ThumbnailService _thumbnailService = new();
         private Grid? _noDataView;
         private Grid? _dataAvailableView;
         private TextBlock? _addMoreLink;
@@ -54,9 +54,6 @@ namespace Gumaedaehang
             try
             {
                 InitializeComponent();
-                
-                // 썸네일 서비스 초기화
-                _thumbnailService = new ThumbnailService();
                 
                 // 한글 입력 처리용 타이머 초기화
                 _inputTimer = new DispatcherTimer
@@ -114,7 +111,7 @@ namespace Gumaedaehang
             {
                 System.Diagnostics.Debug.WriteLine($"SourcingPage 초기화 중 오류: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"스택 트레이스: {ex.StackTrace}");
-                throw; // 예외를 다시 던져서 상위에서 처리하도록 함
+                // 초기화 오류 시에도 계속 진행
             }
         }
 
@@ -1076,7 +1073,7 @@ namespace Gumaedaehang
                 }
                 await Task.Delay(1500);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 button.Content = "연결 실패";
                 await Task.Delay(2000);

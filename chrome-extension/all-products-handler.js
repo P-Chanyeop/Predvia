@@ -1,75 +1,30 @@
 console.log('🔥 all-products-handler.js 파일 로드됨!');
 console.log('🔥 현재 URL:', window.location.href);
 
-
-
-// ⭐ 즉시 실행 (페이지 로드 완료 후)
-window.addEventListener('load', function() {
-  console.log('🔥 페이지 로드 완료 - 핸들러 시작!');
-  
-  // 정상 플로우 진행
-  setTimeout(async () => {
-    console.log('🔥 handleAllProductsPage 호출!');
-    
-    const storeId = extractStoreIdFromUrl(window.location.href);
-    const urlParams = new URLSearchParams(window.location.search);
-    const runId = urlParams.get('runId') || 'unknown';
-    
-    console.log(`🚀 ${storeId}: 핸들러 시작 (runId: ${runId})`);
-    
-    // 2초 후 리뷰 검색 시작
-    setTimeout(async () => {
-      await sendLogToServer(`🔍 ${storeId}: 리뷰 검색 시작`);
-      
-      const productData = await collectProductData(storeId, runId, 1);
-      await sendProductDataToServer(storeId, productData, 1);
-      
-    }, 2000);
-    
-  }, 2000);
-});
-
-// ⭐ 중복 실행 방지 가드 (즉시 실행)
+// ⭐ 중복 실행 방지 가드
 if (window.__ALL_PRODUCTS_HANDLER_RUNNING__) {
   console.log('🚫 all-products-handler 이미 실행 중 - 중복 실행 방지');
 } else {
   window.__ALL_PRODUCTS_HANDLER_RUNNING__ = true;
   console.log('✅ all-products-handler 실행 시작 - 가드 설정 완료');
+  
+  // ⭐ 페이지 로드 완료 후 실행
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHandler);
+  } else {
+    initHandler();
+  }
 }
 
-// 전체상품 판매많은순 페이지에서 실행되는 스크립트
-console.log('🛍️ 전체상품 페이지 핸들러 실행 시작');
-
-// 즉시 서버에 실행 알림
-(async function() {
-  try {
-    await fetch('http://localhost:8080/api/smartstore/log', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: `🚀 전체상품 핸들러 실행: ${window.location.href}`,
-        timestamp: new Date().toISOString()
-      })
-    });
-  } catch (e) {
-    console.log('초기 로그 전송 실패:', e);
-  }
-})();
-
-// 페이지 로딩 완료 후 실행
-setTimeout(() => {
-  handleAllProductsPage();
-}, 3000); // 3초로 단축
+function initHandler() {
+  console.log('🔥 페이지 로드 완료 - 핸들러 초기화');
+  
+  setTimeout(() => {
+    handleAllProductsPage();
+  }, 3000);
+}
 
 async function handleAllProductsPage() {
-  // ⭐ 중복 실행 체크
-  if (window.__ALL_PRODUCTS_HANDLER_RUNNING__) {
-    console.log('🚫 handleAllProductsPage 이미 실행 중 - 중복 실행 방지');
-    return;
-  }
-  
   try {
     const storeId = extractStoreIdFromUrl(window.location.href);
     
@@ -99,8 +54,8 @@ async function handleAllProductsPage() {
     setTimeout(async () => {
       await sendLogToServer(`🔍 ${storeId}: 리뷰 검색 시작`);
       
-      const productData = await collectProductData(storeId, runId, 1);
-      sendProductDataToServer(storeId, productData, 1);
+      const productData = await collectProductData(storeId, runId);
+      await sendProductDataToServer(storeId, productData, productData.length);
       
     }, 2000); // 2초만 대기
     

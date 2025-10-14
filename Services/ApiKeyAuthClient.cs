@@ -45,7 +45,7 @@ namespace Gumaedaehang.Services
                     {
                         var responseContent = await response.Content.ReadAsStringAsync();
                         var authResponse = JsonSerializer.Deserialize<ApiKeyAuthResponse>(responseContent);
-                        return authResponse;
+                        return authResponse ?? new ApiKeyAuthResponse { Success = false, Message = "Invalid response" };
                     }
                     else
                     {

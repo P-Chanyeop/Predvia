@@ -22,6 +22,18 @@ namespace Gumaedaehang
             _logTextBox = this.FindControl<TextBox>("LogTextBox");
             _instance = this;
             
+            // 이벤트 핸들러 등록
+            var copyButton = this.FindControl<Button>("CopyButton");
+            var clearButton = this.FindControl<Button>("ClearButton");
+            var closeButton = this.FindControl<Button>("CloseButton");
+            
+            if (copyButton != null)
+                copyButton.Click += async (s, e) => await CopyButton_Click(s, e);
+            if (clearButton != null)
+                clearButton.Click += ClearButton_Click;
+            if (closeButton != null)
+                closeButton.Click += CloseButton_Click;
+            
             // 100ms마다 로그 큐 처리
             _updateTimer = new Timer(ProcessLogQueue, null, 100, 100);
         }
@@ -79,7 +91,7 @@ namespace Gumaedaehang
             _instance?.AddLog(message);
         }
         
-        private async void CopyButton_Click(object? sender, RoutedEventArgs e)
+        private async Task CopyButton_Click(object? sender, RoutedEventArgs e)
         {
             if (_logTextBox != null && !string.IsNullOrEmpty(_logTextBox.Text))
             {
