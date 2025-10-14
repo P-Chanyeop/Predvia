@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.0-orange)
+![Release](https://img.shields.io/badge/Release-v1.25-orange)
 
 ## 📋 프로젝트 개요
 
@@ -212,7 +212,7 @@ dotnet run --project Gumaedaehang.csproj
 
 ## 📈 개발 진행 상황
 
-### ✅ 완료된 기능 (v1.0)
+### ✅ 완료된 기능 (v1.25)
 - [x] **완전한 프로젝트 구조** 및 아키텍처 설정
 - [x] **API 키 인증 시스템** - 안전한 라이선스 검증
 - [x] **완벽한 다크/라이트 테마** - 모든 UI 요소 테마 지원
@@ -225,6 +225,11 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **완전한 빌드 시스템** - Windows 독립 실행 파일 생성
 - [x] **리소스 오류 해결** - 모든 필수 DLL 포함
 - [x] **사용자 경험 최적화** - 직관적인 인터페이스 및 피드백
+- [x] **⭐ 완전한 데이터 수집 시스템** - 상품 이미지, 상품명, 리뷰 데이터 완벽 수집
+  - **100개 상품 목표 달성**: 정확히 100개 상품 수집 후 자동 중단
+  - **효율적인 스토어 필터링**: 1000개 미만 스토어 자동 스킵
+  - **3종 데이터 완벽 저장**: 이미지(JPG), 상품명(TXT), 리뷰(JSON) 로컬 저장
+  - **실시간 진행률 추적**: 1.0% → 100.0% 완벽한 진행 상황 모니터링
 
 ### 🔧 기술적 성과
 - [x] **XML 구조 오류 해결** - 모든 XAML 파일 구조적 무결성 확보
@@ -466,10 +471,21 @@ dotnet run --project Gumaedaehang.csproj
   - **프로그램 안정성 개선** - 로그 전송 시 await 제거로 메인 로직 차단 방지
   - **완벽한 오류 처리** - XPath 검색 실패, 상품 요소 미발견, 링크 추출 실패 등 모든 예외 상황 대응
 
+### 🔄 최신 업데이트 (v1.25)
+- [x] **⭐ 리뷰 데이터 수집 시스템 완전 구현**
+  - **Chrome 확장프로그램 리뷰 추출**: `em.n6zq2yy0KA` 클래스에서 별점(1-5) 추출, `.vhlVUsCtw3 .K0kwJOXP06` 선택자로 리뷰 내용 추출
+  - **서버 측 리뷰 처리 API**: `/api/smartstore/reviews` 엔드포인트로 리뷰 데이터 수신 및 처리
+  - **JSON 파일 저장**: `%APPDATA%\Predvia\Reviews\` 경로에 `{storeId}_{productId}_reviews.json` 형식으로 저장
+  - **완전한 리뷰 데이터 구조**: 별점, 리뷰 내용, 리뷰 개수, 타임스탬프, 상품 URL 포함
+  - **실시간 로그 시스템**: 리뷰 발견부터 저장 완료까지 모든 과정 실시간 로그 표시
+  - **완벽한 오류 처리**: 리뷰 추출 실패, 파일 저장 오류 등 모든 예외 상황 대응
+  - **ReviewData/ProductReviewsData 모델**: JSON 직렬화를 위한 완전한 데이터 구조 정의
+  - **HandleProductReviews/SaveProductReviews 메서드**: 안정적인 리뷰 처리 및 저장 로직
+
 ### 🚧 향후 계획 (v2.0)
 - [x] **상품 이미지 로컬 저장** - 완료 (v1.23)
 - [x] **상품명 추출** - 완료 (v1.24)
-- [ ] **리뷰 데이터 수집** (별점, 리뷰 내용) - 진행 예정
+- [x] **리뷰 데이터 수집** (별점, 리뷰 내용) - 완료 (v1.25)
 - [ ] **실제 API 서버 연동** - 백엔드 서비스 통합
 - [ ] **데이터 영속성** - 로컬 데이터베이스 구현
 - [ ] **실제 기능 로직** - 비즈니스 로직 구현
@@ -488,9 +504,9 @@ dotnet run --project Gumaedaehang.csproj
 - **그래픽**: DirectX 11 지원 그래픽 카드
 - **.NET**: 내장되어 있어 별도 설치 불필요
 
-### 파일 구성 (v1.0)
+### 파일 구성 (v1.25)
 ```
-📦 Predvia-v1.0-Windows.zip (106MB)
+📦 Predvia-v1.25-Windows.zip (106MB)
 ├── Predvia.exe (91MB)           # 메인 실행 파일
 ├── av_libglesv2.dll (4.2MB)     # OpenGL 그래픽 라이브러리
 ├── libHarfBuzzSharp.dll (1.6MB) # 텍스트 렌더링 라이브러리
@@ -528,9 +544,10 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.0
-  - 모든 GUI: 36px 제목, 20px 라벨, 18px 입력 필드로 사용성 극대화
-  - 완벽한 라이트/다크모드 지원 (라이트: #E67E22 주황색, 다크: #FFDAC4 살구색)
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.25
+  - 완전한 데이터 수집 시스템: 상품 이미지, 상품명, 리뷰 데이터 완벽 수집
+  - 100개 상품 목표 달성: 정확히 100개 상품 수집 후 자동 중단
+  - 효율적인 스토어 필터링: 1000개 미만 스토어 자동 스킵으로 리소스 최적화
 
 #### ⚙️ 설정 (Settings)
 - **완전한 15.png/16.png 구현**: 라이트/다크모드 설정 페이지 완벽 재현
