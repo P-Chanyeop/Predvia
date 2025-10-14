@@ -78,6 +78,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/log", HandleExtensionLog);
                 _app.MapPost("/api/smartstore/stop", HandleStopCrawling); // ⭐ 크롤링 중단 API 추가
                 _app.MapPost("/api/smartstore/image", HandleProductImage); // ⭐ 상품 이미지 처리 API 추가
+                _app.MapPost("/api/smartstore/product-name", HandleProductName); // ⭐ 상품명 처리 API 추가
                 
                 // ⭐ 상태 관리 API 추가
                 _app.MapPost("/api/smartstore/state", HandleStoreState);
@@ -1155,6 +1156,59 @@ namespace Gumaedaehang.Services
                 LogWindow.AddLogStatic($"❌ 이미지 저장 실패: {ex.Message}");
             }
         }
+
+        // ⭐ 상품명 처리 API
+        private async Task<IResult> HandleProductName(HttpContext context)
+        {
+            try
+            {
+                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                LogWindow.AddLogStatic($"📝 상품명 처리 요청: {body}");
+
+                var nameData = JsonSerializer.Deserialize<ProductNameData>(body);
+                if (nameData == null)
+                {
+                    LogWindow.AddLogStatic("❌ 상품명 데이터 파싱 실패");
+                    return Results.BadRequest("Invalid product name data");
+                }
+
+                // 상품명 저장
+                await SaveProductName(nameData);
+
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 상품명 처리 오류: {ex.Message}");
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = ex.Message }));
+                return Results.Ok();
+            }
+        }
+
+        // ⭐ 상품명 저장
+        private async Task SaveProductName(ProductNameData nameData)
+        {
+            try
+            {
+                // 저장 디렉토리 생성
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var dataDir = Path.Combine(appDataPath, "Predvia", "ProductData");
+                Directory.CreateDirectory(dataDir);
+
+                // 파일명 생성: {storeId}_{productId}_name.txt
+                var fileName = $"{nameData.StoreId}_{nameData.ProductId}_name.txt";
+                var filePath = Path.Combine(dataDir, fileName);
+
+                await File.WriteAllTextAsync(filePath, nameData.ProductName, System.Text.Encoding.UTF8);
+                
+                LogWindow.AddLogStatic($"✅ 상품명 저장 완료: {fileName} - {nameData.ProductName}");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 상품명 저장 실패: {ex.Message}");
+            }
+        }
     }
 
     // 스마트스토어 링크 요청 데이터 모델
@@ -1363,6 +1417,22 @@ public class ProductImageData
     
     [JsonPropertyName("imageUrl")]
     public string ImageUrl { get; set; } = string.Empty;
+    
+    [JsonPropertyName("productUrl")]
+    public string ProductUrl { get; set; } = string.Empty;
+}
+
+// ⭐ 상품명 데이터 모델
+public class ProductNameData
+{
+    [JsonPropertyName("storeId")]
+    public string StoreId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("productId")]
+    public string ProductId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("productName")]
+    public string ProductName { get; set; } = string.Empty;
     
     [JsonPropertyName("productUrl")]
     public string ProductUrl { get; set; } = string.Empty;

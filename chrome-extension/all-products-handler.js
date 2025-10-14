@@ -641,6 +641,36 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                   } catch (imageError) {
                     await sendLogToServer(`❌ ${storeId}: 이미지 추출 오류 - ${imageError.message}`);
                   }
+
+                  // ⭐ 상품명 추출
+                  try {
+                    const productNameElement = productTab.document.querySelector('.DCVBehA8ZB') || 
+                                              productTab.document.querySelector('h3._copyable');
+                    
+                    if (productNameElement && productNameElement.textContent) {
+                      const productName = productNameElement.textContent.trim();
+                      const productId = product.url.split('/products/')[1];
+                      
+                      await sendLogToServer(`📝 ${storeId}: 상품명 발견 - ${productName}`);
+                      
+                      // ⭐ 서버로 상품명 전송
+                      await fetch('http://localhost:8080/api/smartstore/product-name', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          storeId: storeId,
+                          productId: productId,
+                          productName: productName,
+                          productUrl: product.url
+                        })
+                      });
+                      
+                    } else {
+                      await sendLogToServer(`❌ ${storeId}: 상품명 없음 - ${product.url}`);
+                    }
+                  } catch (nameError) {
+                    await sendLogToServer(`❌ ${storeId}: 상품명 추출 오류 - ${nameError.message}`);
+                  }
                   
                   productTab.close();
                 }
