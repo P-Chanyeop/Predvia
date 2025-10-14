@@ -185,11 +185,25 @@ async function sendGongguResult(gongguCount) {
                 timestamp: new Date().toISOString()
               })
             });
+            
+            // ⭐ 1000개 미만 스토어 탭 닫기
+            setTimeout(() => {
+              window.close();
+            }, 2000);
+            
           } else {
             console.log(`❌ ${storeId}: 완료 상태 설정 실패 - ${response.status}`);
+            // ⭐ 실패 시에도 탭 닫기
+            setTimeout(() => {
+              window.close();
+            }, 2000);
           }
         } catch (e) {
           console.log(`❌ ${storeId}: 완료 상태 설정 오류 - ${e.message}`);
+          // ⭐ 오류 시에도 탭 닫기
+          setTimeout(() => {
+            window.close();
+          }, 2000);
         }
       }
       
