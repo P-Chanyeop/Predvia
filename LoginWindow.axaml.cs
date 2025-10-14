@@ -44,7 +44,7 @@ namespace Gumaedaehang
             
             // 이벤트 핸들러 등록
             if (_loginButton != null)
-                _loginButton.Click += LoginButton_Click;
+                _loginButton.Click += async (s, e) => await LoginButton_Click(s, e);
             
             if (_signupLink != null)
                 _signupLink.PointerPressed += SignupLink_PointerPressed;
@@ -72,11 +72,11 @@ namespace Gumaedaehang
         {
             if (e.Key == Key.Enter)
             {
-                LoginButton_Click(sender, new RoutedEventArgs());
+                _ = LoginButton_Click(sender, new RoutedEventArgs());
             }
         }
         
-        private async void LoginButton_Click(object? sender, RoutedEventArgs e)
+        private async Task LoginButton_Click(object? sender, RoutedEventArgs e)
         {
             if (_usernameTextBox == null || _passwordTextBox == null || _loginButton == null || _errorMessage == null)
                 return;

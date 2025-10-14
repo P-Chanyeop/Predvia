@@ -4,13 +4,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
-using Gumaedaehang.Services;
 
 namespace Gumaedaehang.Services
 {
@@ -39,14 +39,21 @@ namespace Gumaedaehang.Services
 
         public async Task StartAsync()
         {
-            if (_isRunning) return;
+            if (_isRunning) 
+            {
+                LogWindow.AddLogStatic("⚠️ 웹서버가 이미 실행 중입니다");
+                return;
+            }
 
             try
             {
+                LogWindow.AddLogStatic("🚀 웹서버 시작 중...");
+                
                 var builder = WebApplication.CreateBuilder();
                 
                 // CORS 서비스 추가
                 builder.Services.AddCors();
+                LogWindow.AddLogStatic("✅ CORS 서비스 추가 완료");
                 
                 _app = builder.Build();
                 
@@ -55,6 +62,7 @@ namespace Gumaedaehang.Services
                     .AllowAnyOrigin()
                     .AllowAnyMethod()
                     .AllowAnyHeader());
+                LogWindow.AddLogStatic("✅ CORS 정책 설정 완료");
 
                 // API 엔드포인트 설정
                 _app.MapPost("/api/thumbnails/save", HandleSaveThumbnails);
@@ -71,31 +79,77 @@ namespace Gumaedaehang.Services
                 _app.MapGet("/api/smartstore/state", HandleGetStoreState);
                 _app.MapPost("/api/smartstore/progress", HandleStoreProgress);
                 _app.MapGet("/api/smartstore/status", HandleGetStatus);
+                
+                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (12개)");
+
+                // ⭐ 서버 변수 초기화
+                lock (_counterLock)
+                {
+                    _totalProductCount = 0;
+                    _shouldStop = false;
+                }
+                
+                lock (_statesLock)
+                {
+                    _storeStates.Clear();
+                }
+                
+                _selectedStores.Clear();
+                LogWindow.AddLogStatic("✅ 서버 변수 초기화 완료");
 
                 _isRunning = true;
                 
-                // 로그는 MainWindow에서 처리
+                LogWindow.AddLogStatic("🌐 웹서버를 localhost:8080에서 시작합니다...");
 
                 // 백그라운드에서 서버 실행
                 _ = Task.Run(async () =>
                 {
                     try
                     {
+                        LogWindow.AddLogStatic("🔥🔥🔥 실제 서버 시작 중...");
                         await _app.RunAsync("http://localhost:8080");
+                        LogWindow.AddLogStatic("🔥🔥🔥 서버 실행 완료!");
                     }
                     catch (Exception ex)
                     {
-                        LogWindow.AddLogStatic($"웹서버 실행 오류: {ex.Message}");
+                        LogWindow.AddLogStatic($"❌ 웹서버 실행 오류: {ex.Message}");
+                        LogWindow.AddLogStatic($"🔥 서버 오류 스택: {ex.StackTrace}");
+                        _isRunning = false;
                     }
                 });
 
                 // 서버 시작 대기
-                await Task.Delay(1000);
+                await Task.Delay(3000); // 3초로 늘림
+                
+                if (_isRunning)
+                {
+                    LogWindow.AddLogStatic("✅ 웹서버가 성공적으로 시작되었습니다!");
+                    LogWindow.AddLogStatic("🔗 서버 주소: http://localhost:8080");
+                    LogWindow.AddLogStatic("📡 Chrome 확장프로그램 연결 대기 중...");
+                    
+                    // 서버 테스트 요청
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(1000);
+                        try
+                        {
+                            using var client = new HttpClient();
+                            var testResponse = await client.GetAsync("http://localhost:8080/api/smartstore/status");
+                            LogWindow.AddLogStatic($"🔥 서버 자체 테스트: {testResponse.StatusCode}");
+                        }
+                        catch (Exception testEx)
+                        {
+                            LogWindow.AddLogStatic($"🔥 서버 자체 테스트 실패: {testEx.Message}");
+                        }
+                    });
+                }
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"웹서버 시작 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 웹서버 시작 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 오류 상세: {ex.StackTrace}");
                 Debug.WriteLine($"웹서버 시작 오류: {ex.Message}");
+                _isRunning = false;
             }
         }
 
@@ -195,40 +249,57 @@ namespace Gumaedaehang.Services
         // 스마트스토어 링크 수집 API
         private async Task<IResult> HandleSmartStoreLinks(HttpContext context)
         {
+            LogWindow.AddLogStatic("🔥🔥🔥 HandleSmartStoreLinks 메서드 진입!");
+            LogWindow.AddLogStatic($"🔥 요청 메서드: {context.Request.Method}");
+            LogWindow.AddLogStatic($"🔥 요청 경로: {context.Request.Path}");
+            
             try
             {
-                LogWindow.AddLogStatic("API 요청 수신: POST /api/smartstore/links");
+                LogWindow.AddLogStatic("🔄 API 요청 수신: POST /api/smartstore/links");
 
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
                 
-                LogWindow.AddLogStatic($"수신된 데이터 크기: {json.Length} bytes");
-                LogWindow.AddLogStatic($"JSON 내용: {json.Substring(0, Math.Min(300, json.Length))}");
+                LogWindow.AddLogStatic($"📊 수신된 데이터 크기: {json.Length} bytes");
+                
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    LogWindow.AddLogStatic("❌ 빈 JSON 데이터 수신");
+                    var errorResponse = Results.Json(new { 
+                        success = false, 
+                        error = "Empty JSON data received" 
+                    }, statusCode: 400);
+                    LogWindow.AddLogStatic("🔥 빈 JSON 오류 응답 반환");
+                    return errorResponse;
+                }
+
+                LogWindow.AddLogStatic($"📝 JSON 내용 미리보기: {json.Substring(0, Math.Min(300, json.Length))}...");
 
                 SmartStoreLinkRequest? requestData = null;
                 try
                 {
                     requestData = JsonSerializer.Deserialize<SmartStoreLinkRequest>(json);
+                    LogWindow.AddLogStatic("✅ JSON 역직렬화 성공");
                 }
                 catch (Exception jsonEx)
                 {
-                    LogWindow.AddLogStatic($"JSON 역직렬화 오류: {jsonEx.Message}");
+                    LogWindow.AddLogStatic($"❌ JSON 역직렬화 오류: {jsonEx.Message}");
                     return Results.Json(new { 
                         success = false, 
                         error = $"JSON parsing error: {jsonEx.Message}" 
                     }, statusCode: 400);
                 }
                 
-                if (requestData?.SmartStoreLinks == null)
+                if (requestData?.SmartStoreLinks == null || requestData.SmartStoreLinks.Count == 0)
                 {
-                    LogWindow.AddLogStatic("잘못된 요청 데이터");
+                    LogWindow.AddLogStatic("❌ 잘못된 요청 데이터 또는 빈 스토어 목록");
                     return Results.Json(new { 
                         success = false, 
-                        error = "Invalid request data" 
+                        error = "Invalid request data or empty store list" 
                     }, statusCode: 400);
                 }
 
-                LogWindow.AddLogStatic($"{requestData.SmartStoreLinks.Count}개 스마트스토어 링크 수신");
+                LogWindow.AddLogStatic($"📦 {requestData.SmartStoreLinks.Count}개 스마트스토어 링크 수신");
 
                 // ⭐ 진짜 랜덤 선택 (Guid 기반)
                 _selectedStores = requestData.SmartStoreLinks
@@ -236,86 +307,133 @@ namespace Gumaedaehang.Services
                     .Take(MAX_STORES_TO_VISIT)
                     .ToList();
                 
-                // ⭐ 선택 결과 로그 (디버깅용)
                 LogWindow.AddLogStatic($"🎲 랜덤 선택 완료: {DateTime.Now:HH:mm:ss.fff}");
+                
+                // ⭐ 선택된 스토어 검증
+                if (_selectedStores == null || _selectedStores.Count == 0)
+                {
+                    LogWindow.AddLogStatic("❌ 스토어 선택 실패 - 빈 목록");
+                    return Results.Json(new { 
+                        success = false, 
+                        error = "No stores selected" 
+                    }, statusCode: 400);
+                }
                 
                 // 상품 카운터 초기화
                 lock (_counterLock)
                 {
                     _totalProductCount = 0;
                     _shouldStop = false;
-                    LogWindow.AddLogStatic($"🔄 상품 카운터 초기화: 0/100개");
+                    LogWindow.AddLogStatic($"🔄 상품 카운터 초기화: 0/{TARGET_PRODUCT_COUNT}개");
                 }
 
-                LogWindow.AddLogStatic($"랜덤으로 선택된 {_selectedStores.Count}개 스토어:");
+                LogWindow.AddLogStatic($"🎯 랜덤으로 선택된 {_selectedStores.Count}개 스토어:");
                 foreach (var store in _selectedStores)
                 {
                     LogWindow.AddLogStatic($"  - {store.Title}: {store.Url}");
                 }
 
-                LogWindow.AddLogStatic($"목표: {TARGET_PRODUCT_COUNT}개 상품 수집");
+                LogWindow.AddLogStatic($"🎯 목표: {TARGET_PRODUCT_COUNT}개 상품 수집");
+
+                // ⭐ 응답 데이터 생성 (확실한 구조)
+                var selectedStoresList = new List<object>();
+                
+                foreach (var store in _selectedStores)
+                {
+                    // ⭐ URL에서 정확한 스토어 ID 추출
+                    var url = store.Url ?? "";
+                    var storeId = "";
+                    
+                    if (!string.IsNullOrEmpty(url) && url.Contains("smartstore.naver.com/"))
+                    {
+                        var decoded = Uri.UnescapeDataString(url);
+                        // ⭐ inflow URL에서 실제 스토어 ID 추출
+                        if (decoded.Contains("inflow/outlink/url?url="))
+                        {
+                            var innerUrlMatch = System.Text.RegularExpressions.Regex.Match(decoded, @"url=([^&]+)");
+                            if (innerUrlMatch.Success)
+                            {
+                                var innerUrl = Uri.UnescapeDataString(innerUrlMatch.Groups[1].Value);
+                                var storeMatch = System.Text.RegularExpressions.Regex.Match(innerUrl, @"smartstore\.naver\.com/([^/&?]+)");
+                                if (storeMatch.Success)
+                                {
+                                    storeId = storeMatch.Groups[1].Value;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // 일반 smartstore URL
+                            var match = System.Text.RegularExpressions.Regex.Match(decoded, @"smartstore\.naver\.com/([^/&?]+)");
+                            if (match.Success)
+                            {
+                                storeId = match.Groups[1].Value;
+                            }
+                        }
+                    }
+                    
+                    LogWindow.AddLogStatic($"🔍 URL 파싱: {url} -> {storeId}");
+                    
+                    selectedStoresList.Add(new {
+                        title = store.Title ?? "제목없음",
+                        url = store.Url ?? "",
+                        storeId = storeId ?? "unknown"
+                    });
+                }
+
+                // ⭐ 응답 데이터 검증
+                if (selectedStoresList.Count == 0)
+                {
+                    LogWindow.AddLogStatic("❌ 선택된 스토어 목록이 비어있음");
+                    return Results.Json(new { 
+                        success = false, 
+                        error = "Selected stores list is empty" 
+                    }, statusCode: 400);
+                }
 
                 var response = new { 
                     success = true,
                     totalLinks = requestData.SmartStoreLinks.Count,
                     selectedLinks = _selectedStores.Count,
                     targetProducts = TARGET_PRODUCT_COUNT,
-                    selectedStores = _selectedStores.Select(s => {
-                        // ⭐ URL에서 정확한 스토어 ID 추출
-                        var url = s.Url;
-                        var storeId = "";
-                        
-                        if (url.Contains("smartstore.naver.com/"))
-                        {
-                            var decoded = Uri.UnescapeDataString(url);
-                            // ⭐ inflow URL에서 실제 스토어 ID 추출
-                            if (decoded.Contains("inflow/outlink/url?url="))
-                            {
-                                var innerUrlMatch = System.Text.RegularExpressions.Regex.Match(decoded, @"url=([^&]+)");
-                                if (innerUrlMatch.Success)
-                                {
-                                    var innerUrl = Uri.UnescapeDataString(innerUrlMatch.Groups[1].Value);
-                                    var storeMatch = System.Text.RegularExpressions.Regex.Match(innerUrl, @"smartstore\.naver\.com/([^/&?]+)");
-                                    if (storeMatch.Success)
-                                    {
-                                        storeId = storeMatch.Groups[1].Value;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // 일반 smartstore URL
-                                var match = System.Text.RegularExpressions.Regex.Match(decoded, @"smartstore\.naver\.com/([^/&?]+)");
-                                if (match.Success)
-                                {
-                                    storeId = match.Groups[1].Value;
-                                }
-                            }
-                        }
-                        
-                        LogWindow.AddLogStatic($"🔍 URL 파싱: {url} -> {storeId}");
-                        
-                        return new {
-                            title = s.Title,
-                            url = s.Url,
-                            storeId = storeId
-                        };
-                    }).ToList(),
-                    message = $"{requestData.SmartStoreLinks.Count}개 중 {_selectedStores.Count}개 스토어 선택 완료"
+                    selectedStores = selectedStoresList,
+                    message = $"{requestData.SmartStoreLinks.Count}개 중 {_selectedStores.Count}개 스토어 선택 완료",
+                    timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                 };
                 
-                return Results.Json(response, new JsonSerializerOptions 
+                LogWindow.AddLogStatic($"📡 응답 데이터 생성 완료: {selectedStoresList.Count}개 스토어");
+                
+                // ⭐ 직접 응답 작성 (Results.Json 대신)
+                var jsonString = System.Text.Json.JsonSerializer.Serialize(response, new JsonSerializerOptions 
                 { 
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = false
                 });
+                
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsync(jsonString);
+                
+                LogWindow.AddLogStatic("✅ JSON 응답 직접 작성 완료");
+                LogWindow.AddLogStatic($"🔥🔥🔥 실제 응답 반환: {jsonString}");
+                return Results.Ok();
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"API 처리 오류: {ex.Message}");
-                return Results.Json(new { 
+                LogWindow.AddLogStatic($"❌ API 처리 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"🔥 오류 스택: {ex.StackTrace}");
+                
+                var errorJson = System.Text.Json.JsonSerializer.Serialize(new { 
                     success = false, 
-                    error = ex.Message 
-                }, statusCode: 500);
+                    error = ex.Message ?? "Unknown error" 
+                });
+                
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsync(errorJson);
+                
+                LogWindow.AddLogStatic("🔥 오류 응답 직접 작성 완료");
+                return Results.Ok();
             }
         }
 
@@ -326,7 +444,17 @@ namespace Gumaedaehang.Services
             {
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
-                var visitData = JsonSerializer.Deserialize<SmartStoreVisitRequest>(json);
+                
+                SmartStoreVisitRequest? visitData = null;
+                try
+                {
+                    visitData = JsonSerializer.Deserialize<SmartStoreVisitRequest>(json);
+                }
+                catch (Exception jsonEx)
+                {
+                    LogWindow.AddLogStatic($"❌ 방문 데이터 JSON 파싱 오류: {jsonEx.Message}");
+                    return Results.BadRequest(new { error = "Invalid JSON format" });
+                }
 
                 if (visitData == null)
                 {
@@ -395,7 +523,19 @@ namespace Gumaedaehang.Services
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
                 
-                var gongguData = JsonSerializer.Deserialize<GongguCheckRequest>(json);
+                GongguCheckRequest? gongguData = null;
+                try
+                {
+                    gongguData = JsonSerializer.Deserialize<GongguCheckRequest>(json);
+                }
+                catch (Exception jsonEx)
+                {
+                    LogWindow.AddLogStatic($"❌ 공구 데이터 JSON 파싱 오류: {jsonEx.Message}");
+                    return Results.Json(new { 
+                        success = false, 
+                        error = "Invalid JSON format" 
+                    }, statusCode: 400);
+                }
                 
                 if (gongguData != null)
                 {
@@ -432,7 +572,19 @@ namespace Gumaedaehang.Services
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
                 
-                var pageData = JsonSerializer.Deserialize<AllProductsPageRequest>(json);
+                AllProductsPageRequest? pageData = null;
+                try
+                {
+                    pageData = JsonSerializer.Deserialize<AllProductsPageRequest>(json);
+                }
+                catch (Exception jsonEx)
+                {
+                    LogWindow.AddLogStatic($"❌ 페이지 데이터 JSON 파싱 오류: {jsonEx.Message}");
+                    return Results.Json(new { 
+                        success = false, 
+                        error = "Invalid JSON format" 
+                    }, statusCode: 400);
+                }
                 
                 if (pageData != null)
                 {
@@ -463,7 +615,19 @@ namespace Gumaedaehang.Services
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
                 
-                var productData = JsonSerializer.Deserialize<ProductDataRequest>(json);
+                ProductDataRequest? productData = null;
+                try
+                {
+                    productData = JsonSerializer.Deserialize<ProductDataRequest>(json);
+                }
+                catch (Exception jsonEx)
+                {
+                    LogWindow.AddLogStatic($"❌ 상품 데이터 JSON 파싱 오류: {jsonEx.Message}");
+                    return Results.Json(new { 
+                        success = false, 
+                        error = "Invalid JSON format" 
+                    }, statusCode: 400);
+                }
                 
                 if (productData != null)
                 {
@@ -606,7 +770,19 @@ namespace Gumaedaehang.Services
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
                 
-                var logData = JsonSerializer.Deserialize<ExtensionLogRequest>(json);
+                ExtensionLogRequest? logData = null;
+                try
+                {
+                    logData = JsonSerializer.Deserialize<ExtensionLogRequest>(json);
+                }
+                catch (Exception jsonEx)
+                {
+                    LogWindow.AddLogStatic($"❌ 로그 데이터 JSON 파싱 오류: {jsonEx.Message}");
+                    return Results.Json(new { 
+                        success = false, 
+                        error = "Invalid JSON format" 
+                    }, statusCode: 400);
+                }
                 
                 if (logData != null && !string.IsNullOrEmpty(logData.Message))
                 {
@@ -634,11 +810,21 @@ namespace Gumaedaehang.Services
             {
                 using var reader = new StreamReader(request.Body);
                 var json = await reader.ReadToEndAsync();
-                var data = JsonSerializer.Deserialize<JsonElement>(json);
                 
-                var storeId = data.GetProperty("storeId").GetString();
-                var runId = data.GetProperty("runId").GetString();
-                var state = data.GetProperty("state").GetString();
+                JsonElement data;
+                try
+                {
+                    data = JsonSerializer.Deserialize<JsonElement>(json);
+                }
+                catch (Exception jsonEx)
+                {
+                    LogWindow.AddLogStatic($"❌ 상태 데이터 JSON 파싱 오류: {jsonEx.Message}");
+                    return Results.BadRequest(new { error = "Invalid JSON format" });
+                }
+                
+                var storeId = data.GetProperty("storeId").GetString() ?? "";
+                var runId = data.GetProperty("runId").GetString() ?? "";
+                var state = data.GetProperty("state").GetString() ?? "";
                 var lockValue = data.GetProperty("lock").GetBoolean();
                 var expected = data.TryGetProperty("expected", out var exp) ? exp.GetInt32() : 0;
                 var progress = data.TryGetProperty("progress", out var prog) ? prog.GetInt32() : 0;
@@ -691,7 +877,7 @@ namespace Gumaedaehang.Services
                     LogWindow.AddLogStatic($"상태 조회 시도: {key}");
                     LogWindow.AddLogStatic($"저장된 키들: {string.Join(", ", _storeStates.Keys)}");
                     
-                    if (!_storeStates.TryGetValue(key, out storeState))
+                    if (!_storeStates.TryGetValue(key, out storeState!))
                     {
                         // ⭐ 상태가 없으면 기본 상태 생성
                         storeState = new StoreState
@@ -776,10 +962,20 @@ namespace Gumaedaehang.Services
             {
                 using var reader = new StreamReader(request.Body);
                 var json = await reader.ReadToEndAsync();
-                var data = JsonSerializer.Deserialize<JsonElement>(json);
                 
-                var storeId = data.GetProperty("storeId").GetString();
-                var runId = data.GetProperty("runId").GetString();
+                JsonElement data;
+                try
+                {
+                    data = JsonSerializer.Deserialize<JsonElement>(json);
+                }
+                catch (Exception jsonEx)
+                {
+                    LogWindow.AddLogStatic($"❌ 진행률 데이터 JSON 파싱 오류: {jsonEx.Message}");
+                    return Results.BadRequest(new { error = "Invalid JSON format" });
+                }
+                
+                var storeId = data.GetProperty("storeId").GetString() ?? "";
+                var runId = data.GetProperty("runId").GetString() ?? "";
                 var inc = data.TryGetProperty("inc", out var incValue) ? incValue.GetInt32() : 1;
                 
                 lock (_statesLock)

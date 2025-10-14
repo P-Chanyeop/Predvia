@@ -14,7 +14,7 @@ namespace Gumaedaehang.Services
             _extensionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chrome-extension");
         }
         
-        public async Task<bool> SearchWithExtension(string keyword)
+        public Task<bool> SearchWithExtension(string keyword)
         {
             try
             {
@@ -68,15 +68,15 @@ namespace Gumaedaehang.Services
                         }
                     });
                     
-                    return true;
+                    return Task.FromResult(true);
                 }
                 
-                return false;
+                return Task.FromResult(false);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"확장프로그램 실행 실패: {ex.Message}");
-                return false;
+                return Task.FromResult(false);
             }
         }
         

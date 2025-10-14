@@ -23,9 +23,9 @@ namespace Gumaedaehang.Services
         }
 
         // API 서버 시작
-        public async Task StartAsync()
+        public Task StartAsync()
         {
-            if (_isRunning) return;
+            if (_isRunning) return Task.CompletedTask;
 
             try
             {
@@ -65,6 +65,8 @@ namespace Gumaedaehang.Services
             {
                 Debug.WriteLine($"API 서버 시작 오류: {ex.Message}");
             }
+            
+            return Task.CompletedTask;
         }
 
         // 요청 처리
@@ -87,7 +89,7 @@ namespace Gumaedaehang.Services
                     return;
                 }
 
-                var url = request.Url.AbsolutePath;
+                var url = request.Url?.AbsolutePath ?? "/";
                 Debug.WriteLine($"📡 API 요청: {request.HttpMethod} {url}");
                 
                 // 로그에도 요청 기록

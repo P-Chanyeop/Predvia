@@ -39,7 +39,7 @@ namespace Gumaedaehang
             
             // 이벤트 핸들러 등록
             if (_authenticateButton != null)
-                _authenticateButton.Click += AuthenticateButton_Click;
+                _authenticateButton.Click += async (s, e) => await AuthenticateButton_Click(s, e);
                 
             if (_themeToggleButton != null)
                 _themeToggleButton.Click += ThemeToggleButton_Click;
@@ -64,11 +64,11 @@ namespace Gumaedaehang
         {
             if (e.Key == Avalonia.Input.Key.Enter)
             {
-                AuthenticateButton_Click(sender, new RoutedEventArgs());
+                _ = AuthenticateButton_Click(sender, new RoutedEventArgs());
             }
         }
         
-        private async void AuthenticateButton_Click(object? sender, RoutedEventArgs e)
+        private async Task AuthenticateButton_Click(object? sender, RoutedEventArgs e)
         {
             if (_apiKeyTextBox == null || _authenticateButton == null || _errorMessage == null)
                 return;

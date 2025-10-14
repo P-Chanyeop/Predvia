@@ -21,9 +21,9 @@
         </ScrollViewer>
         
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
-            <Button x:Name="CopyButton" Content="복사" Width="60" Height="30" Margin="5" Click="CopyButton_Click"/>
-            <Button x:Name="ClearButton" Content="지우기" Width="60" Height="30" Margin="5" Click="ClearButton_Click"/>
-            <Button x:Name="CloseButton" Content="닫기" Width="60" Height="30" Margin="5" Click="CloseButton_Click"/>
+            <Button x:Name="CopyButton" Content="복사" Width="60" Height="30" Margin="5"/>
+            <Button x:Name="ClearButton" Content="지우기" Width="60" Height="30" Margin="5"/>
+            <Button x:Name="CloseButton" Content="닫기" Width="60" Height="30" Margin="5"/>
         </StackPanel>
     </Grid>
 </Window>

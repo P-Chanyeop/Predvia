@@ -1,12 +1,22 @@
 // 콘텐츠 스크립트 - 네이버 가격비교 해외직구 페이지에서 스마트스토어 링크 수집
 console.log('🆕 Predvia 스마트스토어 링크 수집 확장프로그램 실행됨');
+console.log('🌐 현재 URL:', window.location.href);
+console.log('⏰ 현재 시간:', new Date().toLocaleString());
 
 // ⭐ 즉시 차단 복구 체크 (페이지 로드와 동시에)
 (async function immediateResumeCheck() {
   try {
     const blockedData = localStorage.getItem('blockedStore');
     if (blockedData) {
-      const blocked = JSON.parse(blockedData);
+      let blocked;
+      try {
+        blocked = JSON.parse(blockedData);
+      } catch (parseError) {
+        console.error('차단 데이터 파싱 오류:', parseError);
+        localStorage.removeItem('blockedStore');
+        return;
+      }
+      
       console.log('🔄 차단된 스토어 발견 - 즉시 복구 시작:', blocked);
       
       // 서버에 복구 시작 로그 전송
@@ -17,7 +27,7 @@ console.log('🆕 Predvia 스마트스토어 링크 수집 확장프로그램 �
           message: `🔄 ${blocked.storeId}: Chrome 재시작 후 ${blocked.currentIndex}/${blocked.totalProducts}번째 상품부터 재개`,
           timestamp: new Date().toISOString()
         })
-      });
+      }).catch(e => console.log('복구 로그 전송 실패:', e));
 
       // 네이버 가격비교 페이지에서 바로 차단된 스토어 전체상품 페이지로 이동
       if (window.location.href.includes('search.shopping.naver.com')) {
@@ -42,7 +52,15 @@ async function resumeFromBlocked() {
       return false; // 차단된 스토어 없음
     }
 
-    const blocked = JSON.parse(blockedData);
+    let blocked;
+    try {
+      blocked = JSON.parse(blockedData);
+    } catch (parseError) {
+      console.error('차단 데이터 파싱 오류:', parseError);
+      localStorage.removeItem('blockedStore');
+      return false;
+    }
+    
     console.log('🔄 차단 복구 시작:', blocked);
     
     // 서버에 로그 전송
@@ -76,7 +94,14 @@ if (document.readyState === 'loading') {
 }
 
 async function initializeExtension() {
-  console.log('🆕 Predvia 스마트스토어 링크 수집 초기화 완료');
+  console.log('🆕 Predvia 스마트스토어 링크 수집 초기화 시작');
+  
+  // ⭐ 서버 연결 테스트
+  const serverConnected = await testServerConnection();
+  if (!serverConnected) {
+    console.error('❌ 서버 연결 실패 - 작업을 중단합니다');
+    return;
+  }
   
   // ⭐ 먼저 차단 복구 체크
   const resumed = await resumeFromBlocked();
@@ -89,6 +114,30 @@ async function initializeExtension() {
     console.log('🚀 자동 스마트스토어 링크 추출 시작...');
     scrollAndCollectLinks();
   }, 3000); // 3초 후 자동 실행 (페이지 로딩 대기)
+}
+
+// ⭐ 서버 연결 테스트 함수
+async function testServerConnection() {
+  try {
+    console.log('🔍 Predvia 서버 연결 테스트 중...');
+    
+    const response = await fetch('http://localhost:8080/api/smartstore/status', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (response.ok) {
+      console.log('✅ Predvia 서버 연결 성공');
+      return true;
+    } else {
+      console.error('❌ 서버 응답 오류:', response.status);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ 서버 연결 실패:', error.message);
+    console.log('💡 Predvia 프로그램이 실행 중인지 확인해주세요');
+    return false;
+  }
 }
 
 // 페이지 끝까지 스크롤하고 스마트스토어 링크 수집
@@ -167,6 +216,7 @@ function isValidSmartStoreLink(url) {
 
 // 스마트스토어 링크 추출
 function extractSmartStoreLinks() {
+  console.log('🔥🔥🔥 extractSmartStoreLinks 함수 시작');
   console.log('🔍 스마트스토어 링크 추출 시작');
   
   const smartStoreLinks = [];
@@ -175,17 +225,24 @@ function extractSmartStoreLinks() {
     // 네이버 가격비교 페이지에서 스마트스토어 링크 찾기
     // 방법 1: "스마트스토어" 텍스트가 포함된 요소 찾기
     const smartStoreElements = document.querySelectorAll('*');
+    console.log('🔥 전체 요소 개수:', smartStoreElements.length);
+    
+    let smartStoreTextCount = 0;
     
     smartStoreElements.forEach((element) => {
       const text = element.textContent || '';
       
       // "스마트스토어" 텍스트가 포함된 요소 찾기
       if (text.includes('스마트스토어') || text.includes('smartstore')) {
+        smartStoreTextCount++;
+        console.log('🔥 스마트스토어 텍스트 발견:', text.substring(0, 100));
+        
         // 해당 요소나 부모 요소에서 링크 찾기
         const linkElement = element.closest('a') || element.querySelector('a');
         
         if (linkElement && linkElement.href) {
           const link = linkElement.href;
+          console.log('🔥 링크 발견:', link);
           
           // ⭐ 유효한 스마트스토어 링크인지 확인
           if (isValidSmartStoreLink(link)) {
@@ -207,11 +264,15 @@ function extractSmartStoreLinks() {
       }
     });
     
+    console.log('🔥 스마트스토어 텍스트 포함 요소:', smartStoreTextCount, '개');
+    
     // 방법 2: 직접 스마트스토어 링크 패턴으로 찾기
     const allLinks = document.querySelectorAll('a[href*="smartstore.naver.com"], a[href*="brand.naver.com"]');
+    console.log('🔥 smartstore 링크 패턴 요소:', allLinks.length, '개');
     
     allLinks.forEach((linkElement) => {
       const link = linkElement.href;
+      console.log('🔥 패턴 링크 확인:', link);
       
       // ⭐ 유효한 스마트스토어 링크인지 확인
       if (isValidSmartStoreLink(link)) {
@@ -234,7 +295,7 @@ function extractSmartStoreLinks() {
     console.error('❌ 스마트스토어 링크 추출 오류:', error);
   }
   
-  console.log(`📦 총 ${smartStoreLinks.length}개 스마트스토어 링크 추출 완료`);
+  console.log(`🔥🔥🔥 총 ${smartStoreLinks.length}개 스마트스토어 링크 추출 완료`);
   return smartStoreLinks;
 }
 
@@ -277,15 +338,20 @@ function extractProductTitle(linkElement) {
 // 서버로 스마트스토어 링크 전송 및 순차 접속
 async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
   try {
-    console.log('📡 Predvia로 스마트스토어 링크 전송 시작...');
+    console.log('🔥🔥🔥 sendSmartStoreLinksToServer 함수 시작');
     
     // 링크가 전달되지 않으면 현재 페이지에서 추출
     if (!smartStoreLinks) {
+      console.log('🔥 smartStoreLinks가 null이므로 추출 시작');
       smartStoreLinks = extractSmartStoreLinks();
+      console.log('🔥 추출 결과:', smartStoreLinks.length, '개');
     }
     
     if (smartStoreLinks.length === 0) {
       console.log('⚠️ 추출된 스마트스토어 링크가 없습니다.');
+      console.log('🔥 페이지 URL:', window.location.href);
+      console.log('🔥 페이지 제목:', document.title);
+      console.log('🔥 페이지 내용 샘플:', document.body.textContent.substring(0, 500));
       return;
     }
     
@@ -296,10 +362,13 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
       pageUrl: window.location.href
     };
     
-    console.log('요청 URL: http://localhost:8080/api/smartstore/links');
+    console.log('🔥🔥🔥 요청 URL: http://localhost:8080/api/smartstore/links');
+    console.log('🔥🔥🔥 전송할 데이터 크기:', JSON.stringify(data).length, 'bytes');
     console.log('전송할 데이터:', JSON.stringify({
       smartStoreLinks: data.smartStoreLinks.slice(0, 5) // 처음 5개만 로그로 확인
     }, null, 2));
+    
+    console.log('🔥🔥🔥 fetch 요청 시작...');
     
     const response = await fetch('http://localhost:8080/api/smartstore/links', {
       method: 'POST',
@@ -310,7 +379,8 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
       body: JSON.stringify(data)
     });
     
-    console.log('응답 상태:', response.status);
+    console.log('🔥🔥🔥 응답 상태:', response.status);
+    console.log('🔥🔥🔥 응답 헤더:', [...response.headers.entries()]);
     
     if (response.ok) {
       console.log('✅ 서버 통신 성공 - 응답 확인 중');
@@ -318,51 +388,100 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
       try {
         // ⭐ 응답 텍스트 먼저 확인
         const responseText = await response.text();
-        console.log('📡 서버 응답 텍스트:', responseText.substring(0, 200) + '...');
+        console.log('📡 서버 응답 길이:', responseText.length);
+        console.log('📡 서버 응답 내용:', responseText.substring(0, 200));
         
-        if (!responseText.trim()) {
-          console.error('❌ 서버에서 빈 응답 수신');
+        if (!responseText || responseText.trim().length === 0) {
+          console.error('❌ 서버에서 완전히 빈 응답 수신');
+          console.log('🔄 폴백: 모든 스토어 방문으로 전환');
           await visitSmartStoreLinksSequentially(smartStoreLinks);
           return;
         }
         
-        const responseData = JSON.parse(responseText);
-        console.log('서버 응답:', responseData);
+        // ⭐ JSON 파싱 시도
+        let responseData;
+        try {
+          responseData = JSON.parse(responseText);
+          console.log('✅ JSON 파싱 성공');
+        } catch (parseError) {
+          console.error('❌ JSON 파싱 실패:', parseError.message);
+          console.log('📄 원본 응답:', responseText);
+          console.log('🔄 폴백: 모든 스토어 방문으로 전환');
+          await visitSmartStoreLinksSequentially(smartStoreLinks);
+          return;
+        }
         
-        if (responseData.success) {
-          console.log(`📊 ${responseData.totalLinks || responseData.linkCount}개 중 ${responseData.selectedLinks}개 스토어 선택됨`);
-          console.log(`🎯 목표: ${responseData.targetProducts}개 상품 수집`);
+        console.log('📊 서버 응답 데이터:', responseData);
+        
+        // ⭐ 응답 유효성 검사
+        if (!responseData || typeof responseData !== 'object') {
+          console.error('❌ 잘못된 응답 형식');
+          console.log('🔄 폴백: 모든 스토어 방문으로 전환');
+          await visitSmartStoreLinksSequentially(smartStoreLinks);
+          return;
+        }
+        
+        if (responseData.success === true) {
+          console.log(`📊 ${responseData.totalLinks || 0}개 중 ${responseData.selectedLinks || 0}개 스토어 선택됨`);
+          console.log(`🎯 목표: ${responseData.targetProducts || 100}개 상품 수집`);
           
           // ⭐ 서버에서 선택된 스토어 목록 받기
-          if (responseData.selectedStores && responseData.selectedStores.length > 0) {
+          if (responseData.selectedStores && Array.isArray(responseData.selectedStores) && responseData.selectedStores.length > 0) {
             console.log('🎯 선택된 스토어만 방문 시작:');
             responseData.selectedStores.forEach((store, index) => {
-              console.log(`  ${index + 1}. ${store.title} (${store.storeId})`);
+              console.log(`  ${index + 1}. ${store.title || '제목없음'} (${store.storeId || 'ID없음'})`);
             });
             
             // ⭐ 선택된 스토어만 방문
             await visitSelectedStoresOnly(responseData.selectedStores);
           } else {
-            console.error('❌ 선택된 스토어 목록을 받지 못함');
+            console.error('❌ 선택된 스토어 목록이 없거나 잘못됨');
+            console.log('🔄 폴백: 모든 스토어 방문으로 전환');
+            await visitSmartStoreLinksSequentially(smartStoreLinks);
           }
         } else {
-          console.error('❌ 서버에서 스토어 선택 실패');
+          console.error('❌ 서버에서 실패 응답:', responseData.error || '알 수 없는 오류');
+          console.log('🔄 폴백: 모든 스토어 방문으로 전환');
+          await visitSmartStoreLinksSequentially(smartStoreLinks);
         }
-      } catch (parseError) {
-        console.error('❌ JSON 파싱 오류:', parseError);
-        // JSON 파싱 실패해도 순차 접속은 실행
+        
+      } catch (processError) {
+        console.error('❌ 응답 처리 오류:', processError);
+        console.log('🔄 폴백: 모든 스토어 방문으로 전환');
         await visitSmartStoreLinksSequentially(smartStoreLinks);
       }
       
     } else {
       console.error('❌ 서버 응답 오류:', response.status, response.statusText);
+      console.log('🔄 폴백: 모든 스토어 방문으로 전환');
+      await visitSmartStoreLinksSequentially(smartStoreLinks);
     }
     
   } catch (error) {
     console.error('❌ Predvia 통신 오류:', error);
     console.error('❌ 오류 타입:', error.constructor.name);
     console.error('❌ 오류 메시지:', error.message);
+    console.error('❌ 오류 스택:', error.stack);
+    
+    // ⭐ 네트워크 오류 상세 분석
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error('🌐 네트워크 연결 오류 - Predvia 서버가 실행 중인지 확인');
+    } else if (error.name === 'SyntaxError') {
+      console.error('📄 JSON 파싱 오류 - 서버 응답 형식 문제');
+    } else {
+      console.error('❓ 알 수 없는 오류 유형');
+    }
+    
     console.log('💡 Predvia 프로그램이 실행 중인지 확인해주세요.');
+    console.log('💡 localhost:8080 포트가 열려있는지 확인해주세요.');
+    
+    // ⭐ 오류 발생 시에도 폴백으로 모든 스토어 방문
+    console.log('🔄 오류 발생으로 폴백: 모든 스토어 방문으로 전환');
+    try {
+      await visitSmartStoreLinksSequentially(smartStoreLinks);
+    } catch (fallbackError) {
+      console.error('❌ 폴백 실행도 실패:', fallbackError);
+    }
   }
 }
 
