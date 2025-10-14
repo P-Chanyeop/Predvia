@@ -55,7 +55,7 @@ async function handleAllProductsPage() {
       await sendLogToServer(`🔍 ${storeId}: 리뷰 검색 시작`);
       
       const productData = await collectProductData(storeId, runId);
-      await sendProductDataToServer(storeId, productData, productData.length);
+      // ⭐ 중복 호출 제거 - visitProductsSequentially 완료 후에만 호출
       
     }, 2000); // 2초만 대기
     
@@ -576,15 +576,54 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
         // ⭐ 5-8초 랜덤 대기 (차단 방지)
         const delay = 5000 + Math.random() * 3000;
         const timeoutPromise = new Promise(resolve => setTimeout(resolve, delay));
-        const accessPromise = new Promise(async (resolve) => {
+        const accessPromise = new Promise(async (resolve, reject) => {
           try {
             const productTab = window.open(product.url, '_blank');
-            await new Promise(r => setTimeout(r, 1000)); // 1초만 대기
             
-            if (productTab && !productTab.closed) {
-              productTab.close();
-            }
-            resolve();
+            // ⭐ 차단 페이지 감지를 위한 체크
+            setTimeout(async () => {
+              try {
+                if (productTab && !productTab.closed) {
+                  // 차단 페이지 텍스트 감지
+                  const pageContent = productTab.document.body.textContent || '';
+                  if (pageContent.includes('현재 서비스 접속이 불가합니다') || 
+                      pageContent.includes('동시에 접속하는 이용자 수가 많거나') ||
+                      pageContent.includes('인터넷 네트워크 상태가 불안정하여')) {
+                    
+                    await sendLogToServer(`🚫 ${storeId}: 네이버 차단 페이지 감지 - 크롤링 즉시 중단`);
+                    
+                    // ⭐ 서버에 중단 신호 전송
+                    try {
+                      await fetch('http://localhost:8080/api/smartstore/stop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          reason: 'blocked',
+                          storeId: storeId,
+                          message: '네이버 차단 페이지 감지로 인한 크롤링 중단'
+                        })
+                      });
+                    } catch (e) {
+                      console.log('중단 신호 전송 오류:', e);
+                    }
+                    
+                    productTab.close();
+                    reject(new Error('BLOCKED_BY_NAVER'));
+                    return;
+                  }
+                  
+                  productTab.close();
+                }
+                resolve();
+              } catch (crossOriginError) {
+                // 크로스 오리진 오류는 정상 접속으로 간주
+                if (productTab && !productTab.closed) {
+                  productTab.close();
+                }
+                resolve();
+              }
+            }, 1000); // 1초 후 차단 페이지 체크
+            
           } catch (e) {
             resolve(); // 모든 오류는 완료 처리
           }
@@ -601,7 +640,14 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
       } catch (error) {
         const errorMsg = `❌ ${storeId}: [${i + 1}/${productUrls.length}] 접속 오류 - ${error.message}`;
         sendLogToServer(errorMsg);
-        // 오류 발생 시에도 계속 진행
+        
+        // ⭐ 네이버 차단 감지 시 전체 크롤링 중단
+        if (error.message === 'BLOCKED_BY_NAVER') {
+          await sendLogToServer(`🛑 ${storeId}: 네이버 차단으로 인한 전체 크롤링 중단`);
+          throw error; // 상위로 예외 전파하여 전체 크롤링 중단
+        }
+        
+        // 다른 오류는 계속 진행
       }
     }
     
@@ -620,12 +666,22 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
     const finalMsg = `🎉 ${storeId}: 모든 상품 접속 완료 (${productUrls.length}개)`;
     await sendLogToServer(finalMsg);
     
+    // ⭐ 메인 스토어 탭 닫기 (작업 완료 후)
+    setTimeout(() => {
+      window.close();
+    }, 2000); // 2초 후 탭 닫기
+    
   } catch (error) {
     const errorMsg = `❌ ${storeId}: 순차 접속 오류 - ${error.message}`;
     await sendLogToServer(errorMsg);
     
     // ⭐ 오류 발생 시에도 완료 처리 (무한 대기 방지)
     await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
+    
+    // ⭐ 오류 시에도 탭 닫기
+    setTimeout(() => {
+      window.close();
+    }, 2000);
   }
 }
 

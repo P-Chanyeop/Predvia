@@ -31,6 +31,9 @@ namespace Gumaedaehang.Services
         private List<SmartStoreLink> _selectedStores = new();
         private bool _shouldStop = false;
         private readonly object _counterLock = new object();
+        
+        // ⭐ 중복 처리 방지를 위한 처리된 스토어 추적
+        private readonly HashSet<string> _processedStores = new HashSet<string>();
 
         public ThumbnailWebServer()
         {
@@ -73,6 +76,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/all-products", HandleAllProductsPage);
                 _app.MapPost("/api/smartstore/product-data", HandleProductData);
                 _app.MapPost("/api/smartstore/log", HandleExtensionLog);
+                _app.MapPost("/api/smartstore/stop", HandleStopCrawling); // ⭐ 크롤링 중단 API 추가
                 
                 // ⭐ 상태 관리 API 추가
                 _app.MapPost("/api/smartstore/state", HandleStoreState);
@@ -324,6 +328,7 @@ namespace Gumaedaehang.Services
                 {
                     _totalProductCount = 0;
                     _shouldStop = false;
+                    _processedStores.Clear(); // ⭐ 처리된 스토어 목록도 초기화
                     LogWindow.AddLogStatic($"🔄 상품 카운터 초기화: 0/{TARGET_PRODUCT_COUNT}개");
                 }
 
@@ -698,6 +703,21 @@ namespace Gumaedaehang.Services
                     // ⭐ 상품 카운터 업데이트 (정확히 100개까지만)
                     lock (_counterLock)
                     {
+                        // ⭐ 중복 처리 방지 체크
+                        if (_processedStores.Contains(productData.StoreId))
+                        {
+                            LogWindow.AddLogStatic($"🔄 이미 처리된 스토어 중복 요청 무시: {productData.StoreId}");
+                            return Results.Json(new { 
+                                success = true,
+                                duplicate = true,
+                                totalProducts = _totalProductCount,
+                                message = "Store already processed, ignoring duplicate request" 
+                            });
+                        }
+                        
+                        // ⭐ 처리된 스토어로 등록
+                        _processedStores.Add(productData.StoreId);
+                        
                         var previousCount = _totalProductCount;
                         var productsToAdd = Math.Min(productData.ProductCount, TARGET_PRODUCT_COUNT - _totalProductCount);
                         
@@ -1019,6 +1039,48 @@ namespace Gumaedaehang.Services
             {
                 LogWindow.AddLogStatic($"상태 확인 오류: {ex.Message}");
                 return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // 크롤링 중단 API (차단 감지 시)
+        private async Task<IResult> HandleStopCrawling(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var json = await reader.ReadToEndAsync();
+                
+                var stopData = JsonSerializer.Deserialize<JsonElement>(json);
+                var reason = stopData.GetProperty("reason").GetString();
+                var storeId = stopData.GetProperty("storeId").GetString();
+                var message = stopData.GetProperty("message").GetString();
+                
+                LogWindow.AddLogStatic($"🚫 크롤링 중단 요청 수신: {reason}");
+                LogWindow.AddLogStatic($"🚫 스토어: {storeId}");
+                LogWindow.AddLogStatic($"🚫 사유: {message}");
+                
+                // ⭐ 즉시 크롤링 중단
+                lock (_counterLock)
+                {
+                    _shouldStop = true;
+                    LogWindow.AddLogStatic($"🛑 네이버 차단 감지로 인한 크롤링 강제 중단 (현재: {_totalProductCount}/100)");
+                }
+                
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsync("{\"success\":true,\"message\":\"Crawling stopped due to blocking\"}");
+                
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 크롤링 중단 API 오류: {ex.Message}");
+                
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsync("{\"success\":false,\"error\":\"Stop API error\"}");
+                
+                return Results.Ok();
             }
         }
 
