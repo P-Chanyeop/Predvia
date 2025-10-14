@@ -612,6 +612,36 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                     return;
                   }
                   
+                  // ⭐ 상품 이미지 추출
+                  try {
+                    const mainImage = productTab.document.querySelector('.bd_2DO68') || 
+                                     productTab.document.querySelector('img[alt="대표이미지"]');
+                    
+                    if (mainImage && mainImage.src) {
+                      const imageUrl = mainImage.src;
+                      const productId = product.url.split('/products/')[1];
+                      
+                      await sendLogToServer(`🖼️ ${storeId}: 상품 이미지 발견 - ${productId}`);
+                      
+                      // ⭐ 서버로 이미지 URL 전송
+                      await fetch('http://localhost:8080/api/smartstore/image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          storeId: storeId,
+                          productId: productId,
+                          imageUrl: imageUrl,
+                          productUrl: product.url
+                        })
+                      });
+                      
+                    } else {
+                      await sendLogToServer(`❌ ${storeId}: 상품 이미지 없음 - ${product.url}`);
+                    }
+                  } catch (imageError) {
+                    await sendLogToServer(`❌ ${storeId}: 이미지 추출 오류 - ${imageError.message}`);
+                  }
+                  
                   productTab.close();
                 }
                 resolve();
