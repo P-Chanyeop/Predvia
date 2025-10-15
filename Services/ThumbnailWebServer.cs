@@ -57,6 +57,9 @@ namespace Gumaedaehang.Services
             {
                 LogWindow.AddLogStatic("🚀 웹서버 시작 중...");
                 
+                // ⭐ 기존 데이터 초기화
+                ClearPreviousData();
+                
                 var builder = WebApplication.CreateBuilder();
                 
                 // CORS 서비스 추가
@@ -84,6 +87,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/stop", HandleStopCrawling); // ⭐ 크롤링 중단 API 추가
                 _app.MapPost("/api/smartstore/image", HandleProductImage); // ⭐ 상품 이미지 처리 API 추가
                 _app.MapPost("/api/smartstore/product-name", HandleProductName); // ⭐ 상품명 처리 API 추가
+                _app.MapPost("/api/smartstore/reviews", HandleProductReviews); // ⭐ 리뷰 처리 API 추가
                 
                 // ⭐ 상태 관리 API 추가
                 _app.MapPost("/api/smartstore/state", HandleStoreState);
@@ -1286,6 +1290,101 @@ namespace Gumaedaehang.Services
                 LogWindow.AddLogStatic($"❌ 상품명 저장 실패: {ex.Message}");
             }
         }
+
+        // ⭐ 리뷰 처리 API
+        private async Task<IResult> HandleProductReviews(HttpContext context)
+        {
+            try
+            {
+                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                LogWindow.AddLogStatic($"⭐ 리뷰 처리 요청: {body}");
+
+                var reviewData = JsonSerializer.Deserialize<ProductReviewsData>(body);
+                if (reviewData == null)
+                {
+                    LogWindow.AddLogStatic("❌ 리뷰 데이터 파싱 실패");
+                    return Results.BadRequest("Invalid review data");
+                }
+
+                // 리뷰 저장
+                await SaveProductReviews(reviewData);
+
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 리뷰 처리 오류: {ex.Message}");
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = ex.Message }));
+                return Results.Ok();
+            }
+        }
+
+        // ⭐ 리뷰 저장
+        private async Task SaveProductReviews(ProductReviewsData reviewData)
+        {
+            try
+            {
+                // 저장 디렉토리 생성
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var reviewsDir = System.IO.Path.Combine(appDataPath, "Predvia", "Reviews");
+                Directory.CreateDirectory(reviewsDir);
+
+                // 파일명 생성: {storeId}_{productId}_reviews.json
+                var fileName = $"{reviewData.StoreId}_{reviewData.ProductId}_reviews.json";
+                var filePath = System.IO.Path.Combine(reviewsDir, fileName);
+
+                var jsonString = JsonSerializer.Serialize(reviewData, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+                await File.WriteAllTextAsync(filePath, jsonString, System.Text.Encoding.UTF8);
+                
+                LogWindow.AddLogStatic($"✅ 리뷰 저장 완료: {fileName} - {reviewData.Reviews.Count}개 리뷰");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 리뷰 저장 실패: {ex.Message}");
+            }
+        }
+
+        // ⭐ 기존 데이터 초기화
+        private void ClearPreviousData()
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
+                
+                // 초기화할 폴더들
+                var foldersToClean = new[]
+                {
+                    System.IO.Path.Combine(predviaPath, "Images"),
+                    System.IO.Path.Combine(predviaPath, "ProductData"),
+                    System.IO.Path.Combine(predviaPath, "Reviews")
+                };
+                
+                foreach (var folder in foldersToClean)
+                {
+                    if (Directory.Exists(folder))
+                    {
+                        var files = Directory.GetFiles(folder);
+                        foreach (var file in files)
+                        {
+                            File.Delete(file);
+                        }
+                        LogWindow.AddLogStatic($"🧹 {System.IO.Path.GetFileName(folder)} 폴더 초기화 완료 ({files.Length}개 파일 삭제)");
+                    }
+                }
+                
+                // 상품 카운터 초기화
+                _productCount = 0;
+                _processedStores.Clear();
+                
+                LogWindow.AddLogStatic("✅ 기존 데이터 초기화 완료 - 새로운 크롤링 준비됨");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 데이터 초기화 오류: {ex.Message}");
+            }
+        }
     }
 
     // 스마트스토어 링크 요청 데이터 모델
@@ -1513,4 +1612,35 @@ public class ProductNameData
     
     [JsonPropertyName("productUrl")]
     public string ProductUrl { get; set; } = string.Empty;
+}
+
+// ⭐ 리뷰 데이터 모델
+public class ProductReviewsData
+{
+    [JsonPropertyName("storeId")]
+    public string StoreId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("productId")]
+    public string ProductId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("productUrl")]
+    public string ProductUrl { get; set; } = string.Empty;
+    
+    [JsonPropertyName("reviews")]
+    public List<ReviewData> Reviews { get; set; } = new List<ReviewData>();
+    
+    [JsonPropertyName("reviewCount")]
+    public int ReviewCount { get; set; }
+    
+    [JsonPropertyName("timestamp")]
+    public DateTime Timestamp { get; set; } = DateTime.Now;
+}
+
+public class ReviewData
+{
+    [JsonPropertyName("rating")]
+    public int Rating { get; set; }
+    
+    [JsonPropertyName("content")]
+    public string Content { get; set; } = string.Empty;
 }

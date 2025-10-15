@@ -886,3 +886,89 @@ async function notifyServerLinkVisited(link, currentIndex, totalCount) {
 }
 
 console.log('🎯 Predvia 스마트스토어 링크 수집 확장프로그램 로드 완료');
+
+// ⭐ 상품 페이지에서 리뷰 수집
+async function collectProductReviews() {
+  try {
+    // 현재 URL에서 스토어ID와 상품ID 추출
+    const url = window.location.href;
+    const storeMatch = url.match(/smartstore\.naver\.com\/([^\/]+)/);
+    const productMatch = url.match(/products\/(\d+)/);
+    
+    if (!storeMatch || !productMatch) {
+      console.log('❌ 스토어ID 또는 상품ID를 찾을 수 없음');
+      return;
+    }
+    
+    const storeId = storeMatch[1];
+    const productId = productMatch[1];
+    
+    console.log(`⭐ 리뷰 수집 시작: ${storeId}/${productId}`);
+    
+    // 리뷰 데이터 수집
+    const reviews = [];
+    
+    // 별점 수집 (em.n6zq2yy0KA 클래스)
+    const ratingElements = document.querySelectorAll('em.n6zq2yy0KA');
+    
+    // 리뷰 내용 수집 (.vhlVUsCtw3 .K0kwJOXP06 선택자)
+    const reviewElements = document.querySelectorAll('.vhlVUsCtw3 .K0kwJOXP06');
+    
+    console.log(`📊 발견된 별점: ${ratingElements.length}개, 리뷰 내용: ${reviewElements.length}개`);
+    
+    // 리뷰 데이터 조합
+    for (let i = 0; i < Math.min(ratingElements.length, reviewElements.length); i++) {
+      const ratingText = ratingElements[i].textContent.trim();
+      const reviewContent = reviewElements[i].textContent.trim();
+      
+      // 별점을 숫자로 변환 (1-5)
+      let rating = 5; // 기본값
+      if (ratingText.includes('1')) rating = 1;
+      else if (ratingText.includes('2')) rating = 2;
+      else if (ratingText.includes('3')) rating = 3;
+      else if (ratingText.includes('4')) rating = 4;
+      else if (ratingText.includes('5')) rating = 5;
+      
+      reviews.push({
+        rating: rating,
+        content: reviewContent
+      });
+    }
+    
+    // 서버로 리뷰 데이터 전송
+    if (reviews.length > 0) {
+      const reviewData = {
+        storeId: storeId,
+        productId: productId,
+        productUrl: url,
+        reviews: reviews,
+        reviewCount: reviews.length,
+        timestamp: new Date().toISOString()
+      };
+      
+      await fetch('http://localhost:8080/api/smartstore/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': 'chrome-extension'
+        },
+        body: JSON.stringify(reviewData)
+      });
+      
+      console.log(`✅ 리뷰 ${reviews.length}개 서버 전송 완료`);
+    } else {
+      console.log('❌ 수집된 리뷰가 없음');
+    }
+    
+  } catch (error) {
+    console.error('❌ 리뷰 수집 오류:', error);
+  }
+}
+
+// 상품 페이지에서 자동으로 리뷰 수집 실행
+if (window.location.href.includes('smartstore.naver.com') && window.location.href.includes('/products/')) {
+  // 페이지 로드 완료 후 3초 뒤 리뷰 수집
+  setTimeout(() => {
+    collectProductReviews();
+  }, 3000);
+}

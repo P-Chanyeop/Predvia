@@ -277,6 +277,14 @@ namespace Gumaedaehang
         private void InitializeProductElements()
         {
             // 더미데이터 제거됨 - 실제 데이터는 AddProductImageCard 메서드를 통해 동적으로 추가됩니다
+            Debug.WriteLine("InitializeProductElements 호출됨");
+            
+            // 테스트용 - 즉시 하나의 카드 추가
+            Dispatcher.UIThread.Post(() =>
+            {
+                AddProductImageCard("test", "123", "/mnt/c/Users/decem/AppData/Roaming/Predvia/Images/choileelang_10000947462_main.jpg", "테스트 상품");
+            });
+            
             LoadCrawledData();
         }
 
@@ -285,41 +293,62 @@ namespace Gumaedaehang
         {
             try
             {
+                Debug.WriteLine("LoadCrawledData 시작");
+                
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
                 var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
                 var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
 
+                Debug.WriteLine($"이미지 경로: {imagesPath}");
+                Debug.WriteLine($"상품데이터 경로: {productDataPath}");
+                Debug.WriteLine($"이미지 폴더 존재: {Directory.Exists(imagesPath)}");
+                Debug.WriteLine($"상품데이터 폴더 존재: {Directory.Exists(productDataPath)}");
+
                 if (!Directory.Exists(imagesPath) || !Directory.Exists(productDataPath))
+                {
+                    Debug.WriteLine("필요한 폴더가 존재하지 않음");
                     return;
+                }
 
                 var imageFiles = Directory.GetFiles(imagesPath, "*_main.jpg");
+                Debug.WriteLine($"찾은 이미지 파일 개수: {imageFiles.Length}");
                 
                 foreach (var imageFile in imageFiles)
                 {
                     var fileName = System.IO.Path.GetFileNameWithoutExtension(imageFile);
                     var parts = fileName.Split('_');
                     
+                    Debug.WriteLine($"처리 중인 파일: {fileName}");
+                    
                     if (parts.Length >= 3)
                     {
                         var storeId = parts[0];
                         var productId = parts[1];
                         
+                        Debug.WriteLine($"스토어ID: {storeId}, 상품ID: {productId}");
+                        
                         // 상품명 파일 확인
                         var nameFile = System.IO.Path.Combine(productDataPath, $"{storeId}_{productId}_name.txt");
                         var productName = File.Exists(nameFile) ? File.ReadAllText(nameFile) : "상품명 없음";
                         
+                        Debug.WriteLine($"상품명: {productName}");
+                        
                         // UI에 상품 추가
                         Dispatcher.UIThread.Post(() =>
                         {
+                            Debug.WriteLine($"UI 스레드에서 카드 추가: {storeId}_{productId}");
                             AddProductImageCard(storeId, productId, imageFile, productName);
                         });
                     }
                 }
+                
+                Debug.WriteLine("LoadCrawledData 완료");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"크롤링 데이터 로드 오류: {ex.Message}");
+                Debug.WriteLine($"스택 트레이스: {ex.StackTrace}");
             }
         }
 
@@ -328,8 +357,16 @@ namespace Gumaedaehang
         {
             try
             {
+                Debug.WriteLine($"AddProductImageCard 시작: {storeId}_{productId}");
+                
                 var container = this.FindControl<StackPanel>("RealDataContainer");
-                if (container == null) return;
+                if (container == null) 
+                {
+                    Debug.WriteLine("RealDataContainer를 찾을 수 없음!");
+                    return;
+                }
+                
+                Debug.WriteLine($"RealDataContainer 찾음, 현재 자식 개수: {container.Children.Count}");
 
                 // 전체 상품 컨테이너
                 var productContainer = new StackPanel { Spacing = 10, Margin = new Thickness(0, 0, 0, 20) };
@@ -386,19 +423,22 @@ namespace Gumaedaehang
                 // 실제 크롤링된 이미지 로드
                 try
                 {
-                    if (imageUrl.StartsWith("file://") || File.Exists(imageUrl))
+                    if (File.Exists(imageUrl))
                     {
-                        var bitmap = new Avalonia.Media.Imaging.Bitmap(imageUrl.Replace("file://", ""));
+                        var bitmap = new Avalonia.Media.Imaging.Bitmap(imageUrl);
                         image.Source = bitmap;
                     }
                     else
                     {
-                        image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
+                        // 기본 이미지 대신 빈 이미지 표시
+                        image.Source = null;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
+                    Debug.WriteLine($"이미지 로드 실패: {imageUrl}, 오류: {ex.Message}");
+                    // 기본 이미지 대신 빈 이미지 표시
+                    image.Source = null;
                 }
 
                 imageBorder.Child = image;
@@ -689,6 +729,8 @@ namespace Gumaedaehang
 
                 // 메인 컨테이너에 추가
                 container.Children.Add(productContainer);
+                
+                Debug.WriteLine($"상품 카드 추가 완료: {storeId}_{productId}, 총 카드 개수: {container.Children.Count}");
 
                 // 스크롤을 맨 아래로
                 if (container.Parent is ScrollViewer scrollViewer)
@@ -701,13 +743,19 @@ namespace Gumaedaehang
                 var dataAvailableView = this.FindControl<Grid>("DataAvailableView");
                 if (noDataView != null && dataAvailableView != null)
                 {
+                    Debug.WriteLine("NoDataView 숨기고 DataAvailableView 표시");
                     noDataView.IsVisible = false;
                     dataAvailableView.IsVisible = true;
+                }
+                else
+                {
+                    Debug.WriteLine($"View 찾기 실패 - NoDataView: {noDataView != null}, DataAvailableView: {dataAvailableView != null}");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"카드 추가 오류: {ex.Message}");
+                Debug.WriteLine($"카드 추가 오류: {ex.Message}");
+                Debug.WriteLine($"스택 트레이스: {ex.StackTrace}");
             }
         }
 
@@ -1433,6 +1481,10 @@ namespace Gumaedaehang
             Debug.WriteLine("🔥 소싱재료 버튼 클릭됨!");
             try
             {
+                // ⭐ ThumbnailWebServer 시작 (데이터 초기화 포함)
+                var webServer = new ThumbnailWebServer();
+                await webServer.StartAsync();
+                
                 await HandlePairingButtonClick(_autoSourcingTextBox, _autoSourcingButton, "자동 소싱");
             }
             catch (Exception ex)
