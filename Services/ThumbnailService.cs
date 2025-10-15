@@ -18,7 +18,7 @@ namespace Gumaedaehang.Services
         public ThumbnailService()
         {
             // 썸네일 저장 폴더 생성
-            _thumbnailDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "Thumbnails");
+            _thumbnailDirectory = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "Thumbnails");
             Directory.CreateDirectory(_thumbnailDirectory);
         }
 
@@ -32,7 +32,7 @@ namespace Gumaedaehang.Services
 
                 // 파일명 생성 (productId + timestamp)
                 var fileName = $"{productId}_{DateTime.Now:yyyyMMdd_HHmmss}.jpg";
-                var filePath = Path.Combine(_thumbnailDirectory, fileName);
+                var filePath = System.IO.Path.Combine(_thumbnailDirectory, fileName);
 
                 // 이미 존재하면 기존 파일 반환
                 if (File.Exists(filePath))
@@ -106,7 +106,7 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                var metadataFile = Path.Combine(_thumbnailDirectory, "thumbnails.json");
+                var metadataFile = System.IO.Path.Combine(_thumbnailDirectory, "thumbnails.json");
                 var products = await LoadMetadataAsync();
                 
                 // 기존 데이터 업데이트 또는 새로 추가
@@ -131,7 +131,7 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                var metadataFile = Path.Combine(_thumbnailDirectory, "thumbnails.json");
+                var metadataFile = System.IO.Path.Combine(_thumbnailDirectory, "thumbnails.json");
                 if (!File.Exists(metadataFile))
                     return new List<ProductData>();
                 

@@ -11,7 +11,7 @@ namespace Gumaedaehang.Services
         
         public ChromeExtensionService()
         {
-            _extensionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chrome-extension");
+            _extensionPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chrome-extension");
         }
         
         public Task<bool> SearchWithExtension(string keyword)

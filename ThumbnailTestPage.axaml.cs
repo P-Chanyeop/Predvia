@@ -147,7 +147,7 @@ namespace Gumaedaehang
             // 파일 경로 (디버그용)
             var pathText = new TextBlock
             {
-                Text = Path.GetFileName(thumbnail.LocalPath),
+                Text = System.IO.Path.GetFileName(thumbnail.LocalPath),
                 FontSize = 9,
                 Foreground = Avalonia.Media.Brushes.DarkGray,
                 TextWrapping = Avalonia.Media.TextWrapping.Wrap
