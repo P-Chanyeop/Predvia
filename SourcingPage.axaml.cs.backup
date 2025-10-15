@@ -8,7 +8,6 @@ using Avalonia.Media.Imaging;
 using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Threading;
-using Avalonia.Layout;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
@@ -269,115 +268,71 @@ namespace Gumaedaehang
         }
         
         // 상품들의 UI 요소들을 초기화
-        // 실제 데이터 컨테이너 초기화
         private void InitializeProductElements()
         {
-            // 더미데이터 제거됨 - 실제 데이터는 AddProductImageCard 메서드를 통해 동적으로 추가됩니다
-        }
-
-        // 실제 상품 이미지 카드 추가 메서드
-        public void AddProductImageCard(string storeId, string productId, string imageUrl)
-        {
-            try
+            var product1 = new ProductUIElements
             {
-                var container = this.FindControl<StackPanel>("RealDataContainer");
-                if (container == null) return;
-
-                // 상품 카드 생성
-                var card = new Border
-                {
-                    Background = new SolidColorBrush(Colors.White),
-                    CornerRadius = new CornerRadius(8),
-                    Padding = new Thickness(15),
-                    Margin = new Thickness(0, 0, 0, 10),
-                    BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0")),
-                    BorderThickness = new Thickness(1)
-                };
-
-                var cardContent = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 15
-                };
-
-                // 상품 이미지
-                var image = new Image
-                {
-                    Width = 100,
-                    Height = 100,
-                    Stretch = Stretch.UniformToFill
-                };
-
-                // 이미지 로드
-                try
-                {
-                    if (imageUrl.StartsWith("file://") || File.Exists(imageUrl))
-                    {
-                        var bitmap = new Avalonia.Media.Imaging.Bitmap(imageUrl.Replace("file://", ""));
-                        image.Source = bitmap;
-                    }
-                    else
-                    {
-                        // 기본 이미지 사용
-                        image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
-                    }
-                }
-                catch
-                {
-                    // 이미지 로드 실패 시 기본 이미지
-                    image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
-                }
-
-                // 상품 정보 텍스트
-                var infoPanel = new StackPanel
-                {
-                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
-                };
-
-                var storeText = new TextBlock
-                {
-                    Text = $"스토어: {storeId}",
-                    FontSize = 14,
-                    FontWeight = FontWeight.SemiBold,
-                    Foreground = new SolidColorBrush(Color.Parse("#E67E22"))
-                };
-
-                var productText = new TextBlock
-                {
-                    Text = $"상품ID: {productId}",
-                    FontSize = 12,
-                    Foreground = new SolidColorBrush(Colors.Gray),
-                    Margin = new Thickness(0, 2, 0, 0)
-                };
-
-                var timeText = new TextBlock
-                {
-                    Text = $"수집시간: {DateTime.Now:HH:mm:ss}",
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(Colors.DarkGray),
-                    Margin = new Thickness(0, 2, 0, 0)
-                };
-
-                infoPanel.Children.Add(storeText);
-                infoPanel.Children.Add(productText);
-                infoPanel.Children.Add(timeText);
-
-                cardContent.Children.Add(image);
-                cardContent.Children.Add(infoPanel);
-                card.Child = cardContent;
-
-                container.Children.Add(card);
-
-                // 스크롤을 맨 아래로
-                if (container.Parent is ScrollViewer scrollViewer)
-                {
-                    scrollViewer.ScrollToEnd();
-                }
-            }
-            catch (Exception ex)
+                ProductId = 1,
+                CheckBox = this.FindControl<CheckBox>("Product1CheckBox"),
+                CategoryStatusIndicator = this.FindControl<Ellipse>("Product1CategoryStatusIndicator"),
+                NameStatusIndicator = this.FindControl<Ellipse>("Product1NameStatusIndicator"),
+                NameKeywordPanel = this.FindControl<WrapPanel>("Product1NameKeywordPanel"),
+                ByteCountTextBlock = this.FindControl<TextBlock>("Product1ByteCountTextBlock"),
+                KeywordPanel = this.FindControl<WrapPanel>("Product1KeywordPanel"),
+                KeywordInputBox = this.FindControl<TextBox>("Product1KeywordInputBox"),
+                AddKeywordButton = this.FindControl<Button>("Product1AddKeywordButton"),
+                DeleteButton = this.FindControl<Button>("Product1DeleteButton"),
+                HoldButton = this.FindControl<Button>("Product1HoldButton"),
+                TaobaoPairingStatusIndicator = this.FindControl<Ellipse>("Product1TaobaoPairingStatusIndicator"),
+                TaobaoPairingButton = this.FindControl<Button>("Product1TaobaoPairingButton"),
+                ProductNameKeywords = new List<string> { "카페드345", "바나나" },
+                SelectedKeywords = new List<string> { "카페드345", "바나나" },
+                IsTaobaoPaired = false
+            };
+            
+            var product2 = new ProductUIElements
             {
-                System.Diagnostics.Debug.WriteLine($"카드 추가 오류: {ex.Message}");
-            }
+                ProductId = 2,
+                CheckBox = this.FindControl<CheckBox>("Product2CheckBox"),
+                CategoryStatusIndicator = this.FindControl<Ellipse>("Product2CategoryStatusIndicator"),
+                NameStatusIndicator = this.FindControl<Ellipse>("Product2NameStatusIndicator"),
+                NameKeywordPanel = this.FindControl<WrapPanel>("Product2NameKeywordPanel"),
+                ByteCountTextBlock = this.FindControl<TextBlock>("Product2ByteCountTextBlock"),
+                KeywordPanel = this.FindControl<WrapPanel>("Product2KeywordPanel"),
+                KeywordInputBox = this.FindControl<TextBox>("Product2KeywordInputBox"),
+                AddKeywordButton = this.FindControl<Button>("Product2AddKeywordButton"),
+                DeleteButton = this.FindControl<Button>("Product2DeleteButton"),
+                HoldButton = this.FindControl<Button>("Product2HoldButton"),
+                TaobaoPairingStatusIndicator = this.FindControl<Ellipse>("Product2TaobaoPairingStatusIndicator"),
+                TaobaoPairingButton = this.FindControl<Button>("Product2TaobaoPairingButton"),
+                ProductNameKeywords = new List<string> { "스테인리스", "주방용품세트", "고급형" },
+                SelectedKeywords = new List<string> { "스테인리스", "주방용품세트" },
+                IsTaobaoPaired = false
+            };
+            
+            var product3 = new ProductUIElements
+            {
+                ProductId = 3,
+                CheckBox = this.FindControl<CheckBox>("Product3CheckBox"),
+                CategoryStatusIndicator = this.FindControl<Ellipse>("Product3CategoryStatusIndicator"),
+                NameStatusIndicator = this.FindControl<Ellipse>("Product3NameStatusIndicator"),
+                NameKeywordPanel = this.FindControl<WrapPanel>("Product3NameKeywordPanel"),
+                ByteCountTextBlock = this.FindControl<TextBlock>("Product3ByteCountTextBlock"),
+                KeywordPanel = this.FindControl<WrapPanel>("Product3KeywordPanel"),
+                KeywordInputBox = this.FindControl<TextBox>("Product3KeywordInputBox"),
+                AddKeywordButton = this.FindControl<Button>("Product3AddKeywordButton"),
+                DeleteButton = this.FindControl<Button>("Product3DeleteButton"),
+                HoldButton = this.FindControl<Button>("Product3HoldButton"),
+                TaobaoPairingStatusIndicator = this.FindControl<Ellipse>("Product3TaobaoPairingStatusIndicator"),
+                TaobaoPairingButton = this.FindControl<Button>("Product3TaobaoPairingButton"),
+                ProductNameKeywords = new List<string> { "티셔츠", "면소재" },
+                SelectedKeywords = new List<string> { "티셔츠", "면소재" },
+                IsTaobaoPaired = false
+            };
+            
+            _productElements[1] = product1;
+            _productElements[2] = product2;
+            _productElements[3] = product3;
         }
         
         // 이벤트 핸들러 등록
@@ -1168,8 +1123,134 @@ namespace Gumaedaehang
         public List<string> SelectedKeywords { get; set; } = new List<string>();
         public bool IsTaobaoPaired { get; set; } = false;
     }
+
+    // 실시간 테스트 버튼 클릭 이벤트
+    private void OnRealTimeTestButtonClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var testImageUrl = "avares://Gumaedaehang/images/product1.png";
+            var testStoreId = "test_store_001";
+            var testProductId = "product_123";
+            
+            AddProductImageCard(testStoreId, testProductId, testImageUrl);
+            System.Diagnostics.Debug.WriteLine("실시간 테스트: 상품 이미지 카드 추가됨");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"실시간 테스트 오류: {ex.Message}");
+        }
+    }
+
+    // 상품 이미지 카드 추가 메서드
+    public void AddProductImageCard(string storeId, string productId, string imageUrl)
+    {
+        try
+        {
+            var container = this.FindControl<StackPanel>("ProductCardsContainer");
+            if (container == null) return;
+
+            var titleBlock = container.Children.OfType<TextBlock>().FirstOrDefault();
+            if (titleBlock != null)
+            {
+                titleBlock.IsVisible = true;
+            }
+
+            var card = CreateProductImageCard(storeId, productId, imageUrl);
+            container.Children.Add(card);
+            
+            System.Diagnostics.Debug.WriteLine($"상품 이미지 카드 추가: {storeId}_{productId}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"상품 이미지 카드 추가 오류: {ex.Message}");
+        }
+    }
+
+    // 상품 이미지 카드 생성
+    private Border CreateProductImageCard(string storeId, string productId, string imageUrl)
+    {
+        var card = new Border
+        {
+            Background = new SolidColorBrush(Colors.White),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(20),
+            Margin = new Thickness(0, 10),
+            BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0")),
+            BorderThickness = new Thickness(1)
+        };
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200, GridUnitType.Pixel) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var image = new Image
+        {
+            Width = 180,
+            Height = 180,
+            Stretch = Stretch.UniformToFill
+        };
+        
+        try
+        {
+            if (imageUrl.StartsWith("avares://"))
+            {
+                var bitmap = new Bitmap(AssetLoader.Open(new Uri(imageUrl)));
+                image.Source = bitmap;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"이미지 로드 실패: {ex.Message}");
+        }
+        
+        Grid.SetColumn(image, 0);
+
+        var infoPanel = new StackPanel
+        {
+            Spacing = 10,
+            Margin = new Thickness(20, 0, 0, 0)
+        };
+
+        infoPanel.Children.Add(new TextBlock
+        {
+            Text = $"스토어: {storeId}",
+            FontSize = 16,
+            FontWeight = FontWeight.Bold,
+            Foreground = new SolidColorBrush(Color.Parse("#333333"))
+        });
+
+        infoPanel.Children.Add(new TextBlock
+        {
+            Text = $"상품: {productId}",
+            FontSize = 14,
+            Foreground = new SolidColorBrush(Color.Parse("#666666"))
+        });
+
+        infoPanel.Children.Add(new TextBlock
+        {
+            Text = $"⏰ {DateTime.Now:HH:mm:ss}",
+            FontSize = 12,
+            Foreground = new SolidColorBrush(Color.Parse("#999999"))
+        });
+
+        infoPanel.Children.Add(new TextBlock
+        {
+            Text = "✅ 이미지 수집 완료",
+            FontSize = 14,
+            FontWeight = FontWeight.Bold,
+            Foreground = new SolidColorBrush(Color.Parse("#E67E22"))
+        });
+
+        Grid.SetColumn(infoPanel, 1);
+        grid.Children.Add(image);
+        grid.Children.Add(infoPanel);
+        card.Child = grid;
+
+        return card;
+    }
 }
-// 확장 메서드 클래스
+
 public static class ControlExtensions
 {
     public static IEnumerable<T> FindAll<T>(this Control control) where T : Control
