@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -56,6 +57,9 @@ namespace Gumaedaehang
             {
                 InitializeComponent();
                 
+                // 플레이스홀더 설정
+                SetupPlaceholders();
+                
                 // 한글 입력 처리용 타이머 초기화
                 _inputTimer = new DispatcherTimer
                 {
@@ -91,7 +95,7 @@ namespace Gumaedaehang
                 // 페어링 버튼 UI 요소 참조
                 _manualSourcingTextBox = this.FindControl<TextBox>("ManualSourcingTextBox");
                 _manualSourcingButton = this.FindControl<Button>("ManualSourcingButton");
-                _autoSourcingTextBox = this.FindControl<TextBox>("AutoSourcingTextBox");
+                _autoSourcingTextBox = this.FindControl<TextBox>("SourcingMaterialTextBox");
                 _autoSourcingButton = this.FindControl<Button>("AutoSourcingButton");
                 _mainProductTextBox = this.FindControl<TextBox>("MainProductTextBox");
                 _mainProductButton = this.FindControl<Button>("MainProductButton");
@@ -273,42 +277,113 @@ namespace Gumaedaehang
         private void InitializeProductElements()
         {
             // 더미데이터 제거됨 - 실제 데이터는 AddProductImageCard 메서드를 통해 동적으로 추가됩니다
+            LoadCrawledData();
         }
 
-        // 실제 상품 이미지 카드 추가 메서드
-        public void AddProductImageCard(string storeId, string productId, string imageUrl)
+        // 크롤링된 데이터를 로드하는 메서드
+        private void LoadCrawledData()
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
+                var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
+                var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
+
+                if (!Directory.Exists(imagesPath) || !Directory.Exists(productDataPath))
+                    return;
+
+                var imageFiles = Directory.GetFiles(imagesPath, "*_main.jpg");
+                
+                foreach (var imageFile in imageFiles)
+                {
+                    var fileName = System.IO.Path.GetFileNameWithoutExtension(imageFile);
+                    var parts = fileName.Split('_');
+                    
+                    if (parts.Length >= 3)
+                    {
+                        var storeId = parts[0];
+                        var productId = parts[1];
+                        
+                        // 상품명 파일 확인
+                        var nameFile = System.IO.Path.Combine(productDataPath, $"{storeId}_{productId}_name.txt");
+                        var productName = File.Exists(nameFile) ? File.ReadAllText(nameFile) : "상품명 없음";
+                        
+                        // UI에 상품 추가
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            AddProductImageCard(storeId, productId, imageFile, productName);
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"크롤링 데이터 로드 오류: {ex.Message}");
+            }
+        }
+
+        // 실제 상품 이미지 카드 추가 메서드 (더미데이터 스타일)
+        public void AddProductImageCard(string storeId, string productId, string imageUrl, string productName = "상품명 없음")
         {
             try
             {
                 var container = this.FindControl<StackPanel>("RealDataContainer");
                 if (container == null) return;
 
-                // 상품 카드 생성
-                var card = new Border
-                {
-                    Background = new SolidColorBrush(Colors.White),
-                    CornerRadius = new CornerRadius(8),
-                    Padding = new Thickness(15),
-                    Margin = new Thickness(0, 0, 0, 10),
-                    BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0")),
-                    BorderThickness = new Thickness(1)
+                // 전체 상품 컨테이너
+                var productContainer = new StackPanel { Spacing = 10, Margin = new Thickness(0, 0, 0, 20) };
+
+                // 카테고리 경로
+                var categoryPanel = new StackPanel 
+                { 
+                    Orientation = Orientation.Horizontal, 
+                    Spacing = 8, 
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    Margin = new Thickness(10, 0, 0, 0)
                 };
 
-                var cardContent = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 15
+                var checkBox = new CheckBox { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+                var categoryIndicator = new Ellipse { Width = 12, Height = 12, Fill = new SolidColorBrush(Color.Parse("#53DA4C")) };
+                var categoryText = new TextBlock 
+                { 
+                    Text = $"카테고리 : 스토어 > {storeId} > 상품", 
+                    FontSize = 13,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
+
+                categoryPanel.Children.Add(checkBox);
+                categoryPanel.Children.Add(categoryIndicator);
+                categoryPanel.Children.Add(categoryText);
+
+                // 상품 정보 박스
+                var productBorder = new Border
+                {
+                    Background = new SolidColorBrush(Colors.Transparent),
+                    CornerRadius = new CornerRadius(0),
+                    Padding = new Thickness(15),
+                    BorderThickness = new Thickness(0),
+                    Margin = new Thickness(10, 0, 0, 0)
+                };
+
+                var productGrid = new Grid();
+                productGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(290) });
+                productGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                productGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
 
                 // 상품 이미지
-                var image = new Image
+                var imageBorder = new Border
                 {
-                    Width = 100,
-                    Height = 100,
-                    Stretch = Stretch.UniformToFill
+                    Width = 260,
+                    Height = 260,
+                    Background = new SolidColorBrush(Color.Parse("#F0F0F0")),
+                    CornerRadius = new CornerRadius(20)
                 };
+                Grid.SetColumn(imageBorder, 0);
 
-                // 이미지 로드
+                var image = new Image { Stretch = Stretch.Uniform, Margin = new Thickness(20) };
+
+                // 실제 크롤링된 이미지 로드
                 try
                 {
                     if (imageUrl.StartsWith("file://") || File.Exists(imageUrl))
@@ -318,66 +393,345 @@ namespace Gumaedaehang
                     }
                     else
                     {
-                        // 기본 이미지 사용
                         image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
                     }
                 }
                 catch
                 {
-                    // 이미지 로드 실패 시 기본 이미지
                     image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
                 }
 
-                // 상품 정보 텍스트
-                var infoPanel = new StackPanel
-                {
+                imageBorder.Child = image;
+
+                // 상품 정보 패널
+                var infoPanel = new StackPanel 
+                { 
+                    Margin = new Thickness(30, 0, 10, 0), 
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top 
+                };
+                Grid.SetColumn(infoPanel, 1);
+
+                // 상품명 섹션
+                var namePanel = new StackPanel 
+                { 
+                    Orientation = Orientation.Horizontal, 
+                    Spacing = 8, 
+                    Margin = new Thickness(0, 0, 0, 15) 
+                };
+                var nameIndicator = new Ellipse { Width = 12, Height = 12, Fill = new SolidColorBrush(Color.Parse("#53DA4C")) };
+                var nameLabel = new TextBlock 
+                { 
+                    Text = "상품명 :", 
+                    FontSize = 15, 
+                    FontWeight = FontWeight.Medium,
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
+                namePanel.Children.Add(nameIndicator);
+                namePanel.Children.Add(nameLabel);
 
-                var storeText = new TextBlock
+                // 상품명 키워드 박스
+                var nameBorder = new Border
                 {
-                    Text = $"스토어: {storeId}",
-                    FontSize = 14,
-                    FontWeight = FontWeight.SemiBold,
-                    Foreground = new SolidColorBrush(Color.Parse("#E67E22"))
+                    Background = new SolidColorBrush(Colors.Transparent),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#DF6C29")),
+                    BorderThickness = new Thickness(2),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(12, 8),
+                    Margin = new Thickness(0, 0, 0, 15),
+                    MinHeight = 40
                 };
 
-                var productText = new TextBlock
-                {
-                    Text = $"상품ID: {productId}",
-                    FontSize = 12,
+                var nameGrid = new Grid();
+                nameGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                nameGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var nameKeywordPanel = new WrapPanel { Orientation = Orientation.Horizontal, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+                var byteCountText = new TextBlock 
+                { 
+                    Text = "0/50 byte", 
+                    FontSize = 12, 
                     Foreground = new SolidColorBrush(Colors.Gray),
-                    Margin = new Thickness(0, 2, 0, 0)
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    Margin = new Thickness(10, 0, 0, 0)
                 };
 
-                var timeText = new TextBlock
+                Grid.SetColumn(nameKeywordPanel, 0);
+                Grid.SetColumn(byteCountText, 1);
+                nameGrid.Children.Add(nameKeywordPanel);
+                nameGrid.Children.Add(byteCountText);
+                nameBorder.Child = nameGrid;
+
+                // 원상품명 (실제 크롤링된 상품명 표시)
+                var originalNamePanel = new StackPanel 
+                { 
+                    Orientation = Orientation.Horizontal, 
+                    Spacing = 8, 
+                    Margin = new Thickness(0, 0, 0, 18) 
+                };
+                var originalNameLabel = new TextBlock { Text = "원상품명:", FontSize = 15, FontWeight = FontWeight.Medium };
+                
+                // 매개변수로 받은 상품명 사용
+                var originalNameText = new TextBlock { Text = productName, FontSize = 15 };
+                originalNamePanel.Children.Add(originalNameLabel);
+                originalNamePanel.Children.Add(originalNameText);
+
+                // 키워드 태그들
+                var keywordPanel = new WrapPanel { Margin = new Thickness(0, 0, 0, 18) };
+                
+                // 기본 키워드 추가
+                var keyword1 = CreateKeywordBorder("수집완료", true);
+                var keyword2 = CreateKeywordBorder($"스토어{storeId}", false);
+                var keyword3 = CreateKeywordBorder("실시간", true);
+                
+                keywordPanel.Children.Add(keyword1);
+                keywordPanel.Children.Add(keyword2);
+                keywordPanel.Children.Add(keyword3);
+
+                // 키워드 추가 입력 섹션
+                var keywordInputPanel = new StackPanel 
+                { 
+                    Orientation = Orientation.Horizontal, 
+                    Spacing = 10, 
+                    Margin = new Thickness(0, 0, 0, 15) 
+                };
+                var keywordInput = new TextBox 
+                { 
+                    FontSize = 14, 
+                    Width = 200, 
+                    Height = 32,
+                    Padding = new Thickness(12, 6),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(6),
+                    Text = ""
+                };
+                var addKeywordBtn = new Button 
+                { 
+                    Content = "추가", 
+                    FontSize = 14,
+                    Width = 60, 
+                    Height = 32, 
+                    Background = new SolidColorBrush(Color.Parse("#F47B20")), 
+                    Foreground = new SolidColorBrush(Colors.White),
+                    BorderThickness = new Thickness(0), 
+                    CornerRadius = new CornerRadius(6)
+                };
+                keywordInputPanel.Children.Add(keywordInput);
+                keywordInputPanel.Children.Add(addKeywordBtn);
+
+                // 정보 패널에 모든 요소 추가
+                infoPanel.Children.Add(namePanel);
+                infoPanel.Children.Add(nameBorder);
+                infoPanel.Children.Add(originalNamePanel);
+                infoPanel.Children.Add(keywordPanel);
+                infoPanel.Children.Add(keywordInputPanel);
+
+                // 우측 버튼들
+                var buttonPanel = new StackPanel 
+                { 
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top, 
+                    Spacing = 12, 
+                    Margin = new Thickness(0, 0, 0, 0) 
+                };
+                Grid.SetColumn(buttonPanel, 2);
+
+                var deleteBtn = new Button 
+                { 
+                    Content = "삭제", 
+                    Background = new SolidColorBrush(Color.Parse("#F47B20")),
+                    Foreground = new SolidColorBrush(Colors.White), 
+                    Padding = new Thickness(30, 8), 
+                    CornerRadius = new CornerRadius(6), 
+                    FontSize = 14,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, 
+                    BorderThickness = new Thickness(0)
+                };
+                var holdBtn = new Button 
+                { 
+                    Content = "상품 보류", 
+                    Background = new SolidColorBrush(Color.Parse("#E0E0E0")),
+                    Foreground = new SolidColorBrush(Colors.Black), 
+                    Padding = new Thickness(30, 8), 
+                    CornerRadius = new CornerRadius(6), 
+                    FontSize = 14,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, 
+                    BorderThickness = new Thickness(0)
+                };
+                buttonPanel.Children.Add(deleteBtn);
+                buttonPanel.Children.Add(holdBtn);
+
+                productGrid.Children.Add(imageBorder);
+                productGrid.Children.Add(infoPanel);
+                productGrid.Children.Add(buttonPanel);
+                productBorder.Child = productGrid;
+
+                // 리뷰 정보 섹션
+                var reviewBorder = new Border
                 {
-                    Text = $"수집시간: {DateTime.Now:HH:mm:ss}",
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(Colors.DarkGray),
-                    Margin = new Thickness(0, 2, 0, 0)
+                    Background = new SolidColorBrush(Colors.Transparent),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#FFDAC4")),
+                    BorderThickness = new Thickness(2),
+                    CornerRadius = new CornerRadius(20),
+                    Padding = new Thickness(15),
+                    Margin = new Thickness(25, 10, 0, 0),
+                    Width = 1415,
+                    Height = 158,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left
                 };
 
-                infoPanel.Children.Add(storeText);
-                infoPanel.Children.Add(productText);
-                infoPanel.Children.Add(timeText);
+                var reviewScrollViewer = new ScrollViewer 
+                { 
+                    Height = 128, 
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto, 
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled 
+                };
 
-                cardContent.Children.Add(image);
-                cardContent.Children.Add(infoPanel);
-                card.Child = cardContent;
+                var reviewPanel = new StackPanel { Spacing = 5 };
 
-                container.Children.Add(card);
+                // 실제 리뷰 데이터 로드 시도
+                try
+                {
+                    string reviewFilePath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
+                        "Predvia", "Reviews", $"{storeId}_{productId}_reviews.json");
+                    if (File.Exists(reviewFilePath))
+                    {
+                        string reviewJson = File.ReadAllText(reviewFilePath, System.Text.Encoding.UTF8);
+                        // 간단한 리뷰 표시 (JSON 파싱 없이)
+                        var reviewText = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
+                        reviewText.Children.Add(new TextBlock { Text = "리뷰 : 실제 수집된 리뷰 데이터", FontSize = 12 });
+                        reviewText.Children.Add(new TextBlock { Text = "★★★★★", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#F47B20")) });
+                        reviewPanel.Children.Add(reviewText);
+                    }
+                    else
+                    {
+                        // 기본 리뷰 표시
+                        var defaultReview = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
+                        defaultReview.Children.Add(new TextBlock { Text = $"리뷰 : {storeId} 스토어 상품 - 수집 완료", FontSize = 12 });
+                        defaultReview.Children.Add(new TextBlock { Text = "★★★★☆", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#F47B20")) });
+                        reviewPanel.Children.Add(defaultReview);
+                    }
+                }
+                catch
+                {
+                    var errorReview = new TextBlock { Text = "리뷰 데이터 로드 중...", FontSize = 12, Foreground = new SolidColorBrush(Colors.Gray) };
+                    reviewPanel.Children.Add(errorReview);
+                }
+
+                reviewScrollViewer.Content = reviewPanel;
+                reviewBorder.Child = reviewScrollViewer;
+
+                // 타오바오 페어링 섹션
+                var pairingPanel = new StackPanel { Spacing = 12, Margin = new Thickness(25, 10, 0, 30) };
+                
+                var pairingHeader = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+                var pairingIndicator = new Ellipse { Width = 12, Height = 12, Fill = new SolidColorBrush(Color.Parse("#FF7272")) };
+                var pairingLabel = new TextBlock 
+                { 
+                    Text = "타오바오와 페어링 :", 
+                    FontSize = 15, 
+                    FontWeight = FontWeight.Medium,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+                pairingHeader.Children.Add(pairingIndicator);
+                pairingHeader.Children.Add(pairingLabel);
+
+                var pairingGrid = new Grid { Margin = new Thickness(0, 0, 0, 0) };
+                pairingGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                pairingGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var pairingInput = new TextBox 
+                { 
+                    Height = 45, 
+                    Text = "",
+                    BorderThickness = new Thickness(1), 
+                    CornerRadius = new CornerRadius(8), 
+                    BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0")),
+                    VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center, 
+                    FontSize = 16, 
+                    Padding = new Thickness(15, 0), 
+                    Margin = new Thickness(0, 0, 15, 0),
+                    Background = new SolidColorBrush(Colors.White)
+                };
+                var pairingBtn = new Button 
+                { 
+                    Content = "페어링", 
+                    Background = new SolidColorBrush(Color.Parse("#F47B20")), 
+                    Foreground = new SolidColorBrush(Colors.White),
+                    Padding = new Thickness(35, 12), 
+                    CornerRadius = new CornerRadius(8), 
+                    FontSize = 16, 
+                    FontWeight = FontWeight.Medium,
+                    BorderThickness = new Thickness(0), 
+                    Height = 45
+                };
+
+                Grid.SetColumn(pairingInput, 0);
+                Grid.SetColumn(pairingBtn, 1);
+                pairingGrid.Children.Add(pairingInput);
+                pairingGrid.Children.Add(pairingBtn);
+
+                var pairingDesc = new TextBlock 
+                { 
+                    Text = "타오바오 상품과 연결하여 가격 및 재고 정보를 실시간으로 확인할 수 있습니다.", 
+                    FontSize = 13, 
+                    Foreground = new SolidColorBrush(Colors.Gray), 
+                    Margin = new Thickness(0, 5, 0, 0)
+                };
+
+                pairingPanel.Children.Add(pairingHeader);
+                pairingPanel.Children.Add(pairingGrid);
+                pairingPanel.Children.Add(pairingDesc);
+
+                // 전체 컨테이너에 모든 요소 추가
+                productContainer.Children.Add(categoryPanel);
+                productContainer.Children.Add(productBorder);
+                productContainer.Children.Add(reviewBorder);
+                productContainer.Children.Add(pairingPanel);
+
+                // 메인 컨테이너에 추가
+                container.Children.Add(productContainer);
 
                 // 스크롤을 맨 아래로
                 if (container.Parent is ScrollViewer scrollViewer)
                 {
                     scrollViewer.ScrollToEnd();
                 }
+
+                // NoDataView 숨기고 DataAvailableView 표시
+                var noDataView = this.FindControl<Grid>("NoDataView");
+                var dataAvailableView = this.FindControl<Grid>("DataAvailableView");
+                if (noDataView != null && dataAvailableView != null)
+                {
+                    noDataView.IsVisible = false;
+                    dataAvailableView.IsVisible = true;
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"카드 추가 오류: {ex.Message}");
             }
+        }
+
+        // 키워드 태그 생성 헬퍼 메서드
+        private Border CreateKeywordBorder(string text, bool isActive)
+        {
+            var border = new Border
+            {
+                Background = isActive ? new SolidColorBrush(Color.Parse("#F47B20")) : new SolidColorBrush(Color.Parse("#D0D0D0")),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(8, 4),
+                Margin = new Thickness(0, 0, 6, 4),
+                Cursor = new Cursor(StandardCursorType.Hand)
+            };
+
+            var textBlock = new TextBlock
+            {
+                Text = text,
+                FontSize = 12,
+                Foreground = isActive ? new SolidColorBrush(Colors.White) : new SolidColorBrush(Color.Parse("#666666"))
+            };
+
+            border.Child = textBlock;
+            return border;
         }
         
         // 이벤트 핸들러 등록
@@ -1076,7 +1430,15 @@ namespace Gumaedaehang
         // 소싱재료 자동찾기 페어링 버튼 클릭
         private async void AutoSourcingButton_Click(object? sender, RoutedEventArgs e)
         {
-            await HandlePairingButtonClick(_autoSourcingTextBox, _autoSourcingButton, "자동 소싱");
+            Debug.WriteLine("🔥 소싱재료 버튼 클릭됨!");
+            try
+            {
+                await HandlePairingButtonClick(_autoSourcingTextBox, _autoSourcingButton, "자동 소싱");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 소싱재료 버튼 오류: {ex.Message}");
+            }
         }
         
         // 메인상품 자동찾기 페어링 버튼 클릭
@@ -1088,7 +1450,12 @@ namespace Gumaedaehang
         // 페어링 버튼 공통 처리 메서드
         private async Task HandlePairingButtonClick(TextBox? textBox, Button? button, string type)
         {
-            if (textBox == null || button == null) return;
+            Debug.WriteLine($"🔥 HandlePairingButtonClick 호출됨 - {type}");
+            if (textBox == null || button == null) 
+            {
+                Debug.WriteLine($"❌ TextBox 또는 Button이 null - TextBox: {textBox != null}, Button: {button != null}");
+                return;
+            }
             
             try
             {
@@ -1145,6 +1512,53 @@ namespace Gumaedaehang
             {
                 Debug.WriteLine($"리소스 정리 중 오류: {ex.Message}");
             }
+        }
+        
+        private void SetupPlaceholders()
+        {
+            try
+            {
+                var manualTextBox = this.FindControl<TextBox>("ManualSourcingTextBox");
+                var materialTextBox = this.FindControl<TextBox>("SourcingMaterialTextBox");
+                var mainProductTextBox = this.FindControl<TextBox>("MainProductTextBox");
+                
+                if (manualTextBox != null)
+                    SetPlaceholder(manualTextBox, "URL을 입력해주세요.");
+                if (materialTextBox != null)
+                    SetPlaceholder(materialTextBox, "소싱재료를 입력해주세요.");
+                if (mainProductTextBox != null)
+                    SetPlaceholder(mainProductTextBox, "메인상품을 입력해주세요.");
+            }
+            catch { }
+        }
+        
+        private void SetPlaceholder(TextBox textBox, string placeholder)
+        {
+            if (string.IsNullOrEmpty(textBox.Text))
+            {
+                textBox.Text = placeholder;
+                textBox.Foreground = new SolidColorBrush(Color.Parse("#999999"));
+            }
+            
+            textBox.GotFocus += (s, e) =>
+            {
+                if (textBox.Text == placeholder)
+                {
+                    textBox.Text = "";
+                    textBox.Foreground = ThemeManager.Instance.IsDarkTheme ? 
+                        new SolidColorBrush(Colors.White) : 
+                        new SolidColorBrush(Color.Parse("#333333"));
+                }
+            };
+            
+            textBox.LostFocus += (s, e) =>
+            {
+                if (string.IsNullOrEmpty(textBox.Text))
+                {
+                    textBox.Text = placeholder;
+                    textBox.Foreground = new SolidColorBrush(Color.Parse("#999999"));
+                }
+            };
         }
     }
     

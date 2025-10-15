@@ -12,6 +12,10 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 
 namespace Gumaedaehang.Services
 {
@@ -1066,7 +1070,8 @@ namespace Gumaedaehang.Services
                 lock (_counterLock)
                 {
                     _shouldStop = true;
-                    LogWindow.AddLogStatic($"🛑 네이버 차단 감지로 인한 크롤링 강제 중단 (현재: {_totalProductCount}/100)");
+                    LogWindow.AddLogStatic($"🛑 네이버 차단 감지로 인한 크롤링 강제 중단");
+                    LogWindow.AddLogStatic($"📊 최종 수집 완료: {_totalProductCount}/100개 ({(_totalProductCount * 100.0 / 100):F1}%)");
                 }
                 
                 context.Response.ContentType = "application/json; charset=utf-8";
@@ -1141,12 +1146,12 @@ namespace Gumaedaehang.Services
                 
                 // 저장 디렉토리 생성
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var imagesDir = Path.Combine(appDataPath, "Predvia", "Images");
+                var imagesDir = System.IO.Path.Combine(appDataPath, "Predvia", "Images");
                 Directory.CreateDirectory(imagesDir);
 
                 // 파일명 생성: {storeId}_{productId}_main.jpg
                 var fileName = $"{imageData.StoreId}_{imageData.ProductId}_main.jpg";
-                var filePath = Path.Combine(imagesDir, fileName);
+                var filePath = System.IO.Path.Combine(imagesDir, fileName);
 
                 await File.WriteAllBytesAsync(filePath, imageBytes);
                 
@@ -1231,16 +1236,50 @@ namespace Gumaedaehang.Services
             {
                 // 저장 디렉토리 생성
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var dataDir = Path.Combine(appDataPath, "Predvia", "ProductData");
+                var dataDir = System.IO.Path.Combine(appDataPath, "Predvia", "ProductData");
                 Directory.CreateDirectory(dataDir);
 
                 // 파일명 생성: {storeId}_{productId}_name.txt
                 var fileName = $"{nameData.StoreId}_{nameData.ProductId}_name.txt";
-                var filePath = Path.Combine(dataDir, fileName);
+                var filePath = System.IO.Path.Combine(dataDir, fileName);
 
                 await File.WriteAllTextAsync(filePath, nameData.ProductName, System.Text.Encoding.UTF8);
                 
                 LogWindow.AddLogStatic($"✅ 상품명 저장 완료: {fileName} - {nameData.ProductName}");
+                
+                // 소싱 페이지에 실시간으로 상품 카드 추가
+                try
+                {
+                    var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop 
+                        ? desktop.MainWindow as MainWindow : null;
+                    
+                    if (mainWindow != null)
+                    {
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            try
+                            {
+                                var sourcingPage = mainWindow.FindControl<SourcingPage>("SourcingPageContent");
+                                if (sourcingPage != null)
+                                {
+                                    // 이미지 파일 경로 찾기
+                                    string imageDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "Images");
+                                    string imageFile = System.IO.Path.Combine(imageDir, $"{nameData.StoreId}_{nameData.ProductId}_main.jpg");
+                                    
+                                    sourcingPage.AddProductImageCard(nameData.StoreId, nameData.ProductId, imageFile, nameData.ProductName);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                LogWindow.AddLogStatic($"❌ 소싱 페이지 카드 추가 오류: {ex.Message}");
+                            }
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogWindow.AddLogStatic($"❌ 소싱 페이지 연동 오류: {ex.Message}");
+                }
             }
             catch (Exception ex)
             {

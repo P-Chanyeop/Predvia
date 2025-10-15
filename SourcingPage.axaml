@@ -172,10 +172,9 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         
-                        <TextBox Grid.Column="0" Height="55" Watermark="URL을 입력해주세요."
+                        <TextBox Grid.Column="0" Height="55" x:Name="ManualSourcingTextBox"
                                  BorderThickness="0" CornerRadius="8"
-                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"
-                                 x:Name="ManualSourcingTextBox"/>
+                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"/>
                         
                         <Button Grid.Column="1" Content="페어링" Background="#F47B20" Foreground="White" 
                                 Padding="40,15" CornerRadius="8" FontSize="18" FontWeight="Medium"
@@ -198,10 +197,9 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         
-                        <TextBox Grid.Column="0" Height="55" Watermark="소싱재료를 입력해주세요."
+                        <TextBox Grid.Column="0" Height="55" x:Name="SourcingMaterialTextBox"
                                  BorderThickness="0" CornerRadius="8"
-                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"
-                                 x:Name="AutoSourcingTextBox"/>
+                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"/>
                         
                         <Button Grid.Column="1" Content="페어링" Background="#F47B20" Foreground="White" 
                                 Padding="40,15" CornerRadius="8" FontSize="18" FontWeight="Medium"
@@ -220,10 +218,9 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         
-                        <TextBox Grid.Column="0" Height="55" Watermark="메인상품을 입력해주세요."
+                        <TextBox Grid.Column="0" Height="55" x:Name="MainProductTextBox"
                                  BorderThickness="0" CornerRadius="8"
-                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"
-                                 x:Name="MainProductTextBox"/>
+                                 VerticalContentAlignment="Center" FontSize="18" Padding="20,0" Margin="0,0,20,0"/>
                         
                         <Button Grid.Column="1" Content="페어링" Background="#F47B20" Foreground="White" 
                                 Padding="40,15" CornerRadius="8" FontSize="18" FontWeight="Medium"
