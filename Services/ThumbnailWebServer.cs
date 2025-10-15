@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace Gumaedaehang.Services
 {
@@ -1150,10 +1151,47 @@ namespace Gumaedaehang.Services
                 await File.WriteAllBytesAsync(filePath, imageBytes);
                 
                 LogWindow.AddLogStatic($"✅ 이미지 저장 완료: {fileName} ({imageBytes.Length} bytes)");
+
+                // ⭐ 실시간 카드 업데이트
+                await UpdateSourcingPageCard(imageData.StoreId, imageData.ProductId, filePath);
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 이미지 저장 실패: {ex.Message}");
+            }
+        }
+
+        // ⭐ 소싱 페이지 실시간 카드 업데이트
+        private async Task UpdateSourcingPageCard(string storeId, string productId, string imagePath)
+        {
+            try
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    // MainWindow에서 SourcingPage 찾기
+                    var mainWindow = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                        ? desktop.MainWindow as MainWindow
+                        : null;
+
+                    if (mainWindow != null)
+                    {
+                        // SourcingPage 찾기 (private 필드이므로 리플렉션 사용)
+                        var sourcingPageField = typeof(MainWindow).GetField("_sourcingPage", 
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        
+                        if (sourcingPageField?.GetValue(mainWindow) is SourcingPage sourcingPage)
+                        {
+                            // 로컬 파일 경로를 file:// URI로 변환
+                            var fileUri = new Uri(imagePath).ToString();
+                            sourcingPage.AddProductImageCard(storeId, productId, fileUri);
+                            LogWindow.AddLogStatic($"🎯 실시간 카드 업데이트: {storeId}_{productId}");
+                        }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 실시간 카드 업데이트 실패: {ex.Message}");
             }
         }
 
