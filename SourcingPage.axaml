@@ -256,7 +256,7 @@
                 <Button Content="데이터 있는 화면 보기 (테스트)" 
                         Background="#F47B20" Foreground="White" Padding="30,15" CornerRadius="8"
                         FontSize="16" FontWeight="Medium" HorizontalAlignment="Center"
-                        Margin="0,30,0,0" x:Name="TestDataButton"/>
+                        Margin="0,30,0,0" x:Name="TestDataButton" Click="TestDataButton_Click"/>
                 
                 </StackPanel>
             </ScrollViewer>

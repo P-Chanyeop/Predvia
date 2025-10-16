@@ -34,8 +34,8 @@ namespace Gumaedaehang
             if (closeButton != null)
                 closeButton.Click += CloseButton_Click;
             
-            // 100ms마다 로그 큐 처리
-            _updateTimer = new Timer(ProcessLogQueue, null, 100, 100);
+            // 500ms마다 로그 큐 처리 (성능 개선)
+            _updateTimer = new Timer(ProcessLogQueue, null, 500, 500);
         }
         
         private void ProcessLogQueue(object? state)

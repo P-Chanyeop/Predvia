@@ -289,7 +289,7 @@ namespace Gumaedaehang
         }
 
         // 크롤링된 데이터를 로드하는 메서드
-        private void LoadCrawledData()
+        public void LoadCrawledData()
         {
             try
             {
@@ -423,25 +423,46 @@ namespace Gumaedaehang
                 // 실제 크롤링된 이미지 로드
                 try
                 {
-                    if (File.Exists(imageUrl))
+                    var imagePath = imageUrl.Replace("file://", "");
+                    Debug.WriteLine($"이미지 로드 시도: {imagePath}");
+                    
+                    if (File.Exists(imagePath))
                     {
-                        var bitmap = new Avalonia.Media.Imaging.Bitmap(imageUrl);
+                        var bitmap = new Avalonia.Media.Imaging.Bitmap(imagePath);
                         image.Source = bitmap;
+                        Debug.WriteLine($"이미지 로드 성공: {imagePath}");
                     }
                     else
                     {
-                        // 기본 이미지 대신 빈 이미지 표시
-                        image.Source = null;
+                        Debug.WriteLine($"이미지 파일 없음: {imagePath}");
+                        // 기본 이미지 사용
+                        try
+                        {
+                            image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/Assets/avalonia-logo.ico")));
+                        }
+                        catch
+                        {
+                            image.Source = null;
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"이미지 로드 실패: {imageUrl}, 오류: {ex.Message}");
-                    // 기본 이미지 대신 빈 이미지 표시
-                    image.Source = null;
+                    // 기본 이미지 사용
+                    try
+                    {
+                        image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/Assets/avalonia-logo.ico")));
+                    }
+                    catch
+                    {
+                        image.Source = null;
+                    }
                 }
 
                 imageBorder.Child = image;
+
+
 
                 // 상품 정보 패널
                 var infoPanel = new StackPanel 
@@ -1384,9 +1405,19 @@ namespace Gumaedaehang
         
         private void TestDataButton_Click(object? sender, RoutedEventArgs e)
         {
-            _hasData = !_hasData;
-            UpdateViewVisibility();
-            Debug.WriteLine($"데이터 상태 변경: {(_hasData ? "데이터 있음" : "데이터 없음")}");
+            try
+            {
+                LogWindow.AddLogStatic("🔥 테스트 데이터 버튼 클릭 - 크롤링된 카드 로드 시작");
+                
+                // 크롤링된 데이터 로드하여 카드 생성
+                LoadCrawledData();
+                
+                LogWindow.AddLogStatic("✅ 테스트 데이터 버튼 - 카드 로드 완료");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 테스트 데이터 버튼 오류: {ex.Message}");
+            }
         }
         
         private void UpdateViewVisibility()
@@ -1482,10 +1513,39 @@ namespace Gumaedaehang
             try
             {
                 // ⭐ ThumbnailWebServer 시작 (데이터 초기화 포함)
-                var webServer = new ThumbnailWebServer();
-                await webServer.StartAsync();
+                if (!ThumbnailWebServer.IsRunning)
+                {
+                    var webServer = new ThumbnailWebServer();
+                    await webServer.StartAsync();
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("✅ 서버가 이미 실행 중입니다");
+                }
                 
                 await HandlePairingButtonClick(_autoSourcingTextBox, _autoSourcingButton, "자동 소싱");
+                
+                // 🔥 크롤링 시작 후 5초마다 카드 새로고침 체크
+                _ = Task.Run(async () =>
+                {
+                    for (int i = 0; i < 60; i++) // 5분간 체크
+                    {
+                        await Task.Delay(5000); // 5초 대기
+                        
+                        // 크롤링된 데이터가 있으면 카드 새로고침
+                        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                        var imagesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Images");
+                        
+                        if (Directory.Exists(imagesPath) && Directory.GetFiles(imagesPath).Length > 0)
+                        {
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                LoadCrawledData();
+                                LogWindow.AddLogStatic($"🔄 자동 카드 새로고침 완료 ({Directory.GetFiles(imagesPath).Length}개 파일)");
+                            });
+                        }
+                    }
+                });
             }
             catch (Exception ex)
             {
