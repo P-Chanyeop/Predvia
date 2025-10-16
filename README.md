@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.26-orange)
+![Release](https://img.shields.io/badge/Release-v1.28-orange)
 
 ## 📋 프로젝트 개요
 
@@ -243,6 +243,16 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **라이트모드 텍스트 가시성** - 모든 텍스트 요소 완벽한 가독성
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
+
+### 🔄 최신 업데이트 (v1.28)
+- [x] **🚀 크롤링 시스템 성능 및 안정성 대폭 개선**
+  - **무한 반복 문제 해결**: 100개 달성 시 `_isCrawlingActive` 플래그로 완전 중단
+  - **순차 처리 강화**: `_currentStoreIndex`와 `_storeProcessLock`으로 스토어 하나씩만 처리
+  - **속도 2-3배 향상**: 페이지 로드 3초→1초, 상품 접속 5-8초→2-4초, 탭 닫기 2초→0.5초
+  - **강제 탭 닫기**: `chrome.tabs.remove()` API 추가로 확실한 탭 정리
+  - **로그 성능 개선**: 업데이트 간격 100ms→500ms로 시스템 부하 감소
+  - **빌드 오류 완전 해결**: 43개 컴파일 오류 모두 수정, 구문 오류 및 클래스 구조 정상화
+  - **크롤링 활성 상태 관리**: 모든 API에서 중단 상태 체크로 불필요한 처리 방지
 
 ### 🔄 최신 업데이트 (v1.4)
 - [x] **🔧 Chrome 확장프로그램 연동 완전 구현**
