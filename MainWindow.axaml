@@ -284,7 +284,7 @@
                 
                 <!-- 소싱 화면 -->
                 <ContentControl x:Name="SourcingContent" IsVisible="False">
-                    <local:SourcingPage/>
+                    <local:SourcingPage x:Name="SourcingPageContent"/>
                 </ContentControl>
                 
                 <!-- 마켓점검 화면 -->

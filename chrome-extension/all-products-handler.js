@@ -21,7 +21,7 @@ function initHandler() {
   
   setTimeout(() => {
     handleAllProductsPage();
-  }, 3000);
+  }, 1000); // 3초→1초로 단축
 }
 
 async function handleAllProductsPage() {
@@ -573,8 +573,8 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
         const visitMsg = `🔗 ${storeId}: [${i + 1}/${productUrls.length}] ${product.url} 접속`;
         sendLogToServer(visitMsg);
         
-        // ⭐ 5-8초 랜덤 대기 (차단 방지)
-        const delay = 5000 + Math.random() * 3000;
+        // ⭐ 2-4초 랜덤 대기 (차단 방지, 속도 개선)
+        const delay = 2000 + Math.random() * 2000;
         const timeoutPromise = new Promise(resolve => setTimeout(resolve, delay));
         const accessPromise = new Promise(async (resolve, reject) => {
           try {
@@ -728,8 +728,18 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
     
     // ⭐ 메인 스토어 탭 닫기 (작업 완료 후)
     setTimeout(() => {
+      // 일반 닫기 시도
       window.close();
-    }, 2000); // 2초 후 탭 닫기
+      
+      // Chrome API로 강제 닫기
+      if (chrome && chrome.tabs) {
+        chrome.tabs.getCurrent((tab) => {
+          if (tab) {
+            chrome.tabs.remove(tab.id);
+          }
+        });
+      }
+    }, 500); // 2초→0.5초로 단축
     
   } catch (error) {
     const errorMsg = `❌ ${storeId}: 순차 접속 오류 - ${error.message}`;
@@ -740,8 +750,18 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
     
     // ⭐ 오류 시에도 탭 닫기
     setTimeout(() => {
+      // 일반 닫기 시도
       window.close();
-    }, 2000);
+      
+      // Chrome API로 강제 닫기
+      if (chrome && chrome.tabs) {
+        chrome.tabs.getCurrent((tab) => {
+          if (tab) {
+            chrome.tabs.remove(tab.id);
+          }
+        });
+      }
+    }, 500); // 2초→0.5초로 단축
   }
 }
 

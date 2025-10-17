@@ -31,6 +31,10 @@ namespace Gumaedaehang
         
         // 로그 창
         private LogWindow? _logWindow;        
+        
+        // SourcingPage 인스턴스 접근을 위한 속성
+        public SourcingPage? SourcingPageInstance => this.FindControl<SourcingPage>("SourcingPageContent");
+        
         // 명언 관련 요소
         private TextBlock? _adviceText;
         private TextBlock? _adviceAuthor;
@@ -360,6 +364,10 @@ namespace Gumaedaehang
                 {
                     // 초기에는 데이터가 없는 상태로 설정
                     sourcingPage.SetHasData(false);
+                    
+                    // 🔥 소싱 탭 클릭 시 항상 크롤링된 데이터 로드
+                    sourcingPage.LoadCrawledData();
+                    LogWindow.AddLogStatic("🔄 소싱 탭 클릭 - 크롤링 데이터 새로고침");
                 }
             }
         }
