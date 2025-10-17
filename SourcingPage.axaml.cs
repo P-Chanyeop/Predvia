@@ -57,6 +57,9 @@ namespace Gumaedaehang
             {
                 InitializeComponent();
                 
+                // 🧹 프로그램 시작 시 자동 초기화 (조용히)
+                ClearPreviousCrawlingDataSilent();
+                
                 // 플레이스홀더 설정
                 SetupPlaceholders();
                 
@@ -424,40 +427,24 @@ namespace Gumaedaehang
                 try
                 {
                     var imagePath = imageUrl.Replace("file://", "");
-                    Debug.WriteLine($"이미지 로드 시도: {imagePath}");
+                    Debug.WriteLine($"이미지 경로: {imagePath}");
                     
                     if (File.Exists(imagePath))
                     {
                         var bitmap = new Avalonia.Media.Imaging.Bitmap(imagePath);
                         image.Source = bitmap;
-                        Debug.WriteLine($"이미지 로드 성공: {imagePath}");
+                        Debug.WriteLine($"✅ 이미지 로드 성공: {imagePath}");
                     }
                     else
                     {
-                        Debug.WriteLine($"이미지 파일 없음: {imagePath}");
-                        // 기본 이미지 사용
-                        try
-                        {
-                            image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/Assets/avalonia-logo.ico")));
-                        }
-                        catch
-                        {
-                            image.Source = null;
-                        }
+                        Debug.WriteLine($"❌ 이미지 파일 없음: {imagePath}");
+                        image.Source = null;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"이미지 로드 실패: {imageUrl}, 오류: {ex.Message}");
-                    // 기본 이미지 사용
-                    try
-                    {
-                        image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/Assets/avalonia-logo.ico")));
-                    }
-                    catch
-                    {
-                        image.Source = null;
-                    }
+                    Debug.WriteLine($"❌ 이미지 로드 실패: {imageUrl}, 오류: {ex.Message}");
+                    image.Source = null;
                 }
 
                 imageBorder.Child = image;
@@ -1510,8 +1497,14 @@ namespace Gumaedaehang
         private async void AutoSourcingButton_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("🔥 소싱재료 버튼 클릭됨!");
+            LogWindow.AddLogStatic("🔥 소싱재료 자동찾기 버튼 클릭됨!");
+            
             try
             {
+                // 🧹 크롤링 시작 전 기존 데이터 초기화 (강제)
+                LogWindow.AddLogStatic("🧹 강제 데이터 초기화 시작");
+                ClearPreviousCrawlingData();
+                
                 // ⭐ ThumbnailWebServer 시작 (데이터 초기화 포함)
                 if (!ThumbnailWebServer.IsRunning)
                 {
@@ -1550,6 +1543,154 @@ namespace Gumaedaehang
             catch (Exception ex)
             {
                 Debug.WriteLine($"❌ 소싱재료 버튼 오류: {ex.Message}");
+            }
+        }
+        
+        // 🧹 기존 크롤링 데이터 초기화 메서드 (조용한 버전 - 생성자용)
+        private void ClearPreviousCrawlingDataSilent()
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
+                
+                int totalDeleted = 0;
+                
+                // 이미지 폴더 초기화
+                var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
+                if (Directory.Exists(imagesPath))
+                {
+                    var fileCount = Directory.GetFiles(imagesPath).Length;
+                    Directory.Delete(imagesPath, true);
+                    totalDeleted += fileCount;
+                }
+                
+                // 상품명 폴더 초기화
+                var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
+                if (Directory.Exists(productDataPath))
+                {
+                    var fileCount = Directory.GetFiles(productDataPath).Length;
+                    Directory.Delete(productDataPath, true);
+                    totalDeleted += fileCount;
+                }
+                
+                // 리뷰 폴더 초기화
+                var reviewsPath = System.IO.Path.Combine(predviaPath, "Reviews");
+                if (Directory.Exists(reviewsPath))
+                {
+                    var fileCount = Directory.GetFiles(reviewsPath).Length;
+                    Directory.Delete(reviewsPath, true);
+                    totalDeleted += fileCount;
+                }
+                
+                // UI에서 기존 카드들 제거
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (RealDataContainer != null)
+                    {
+                        var cardCount = RealDataContainer.Children.Count;
+                        RealDataContainer.Children.Clear();
+                        
+                        // 작업로그에 초기화 완료 메시지 추가
+                        if (totalDeleted > 0 || cardCount > 0)
+                        {
+                            LogWindow.AddLogStatic($"🧹 프로그램 시작 시 자동 초기화 완료 (파일 {totalDeleted}개, 카드 {cardCount}개 삭제)");
+                        }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                // 오류 시에도 로그에 표시
+                Dispatcher.UIThread.Post(() =>
+                {
+                    LogWindow.AddLogStatic($"❌ 자동 초기화 오류: {ex.Message}");
+                });
+            }
+        }
+        
+        // 🧹 기존 크롤링 데이터 초기화 메서드
+        private void ClearPreviousCrawlingData()
+        {
+            try
+            {
+                Debug.WriteLine("🧹 ClearPreviousCrawlingData 시작");
+                LogWindow.AddLogStatic("🧹 기존 크롤링 데이터 초기화 시작");
+                
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
+                
+                Debug.WriteLine($"AppData 경로: {appDataPath}");
+                Debug.WriteLine($"Predvia 경로: {predviaPath}");
+                
+                // 이미지 폴더 초기화
+                var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
+                Debug.WriteLine($"이미지 폴더 경로: {imagesPath}");
+                if (Directory.Exists(imagesPath))
+                {
+                    var fileCount = Directory.GetFiles(imagesPath).Length;
+                    Debug.WriteLine($"삭제할 이미지 파일 개수: {fileCount}");
+                    Directory.Delete(imagesPath, true);
+                    LogWindow.AddLogStatic($"🗑️ 기존 이미지 파일들 삭제 완료 ({fileCount}개)");
+                }
+                else
+                {
+                    Debug.WriteLine("이미지 폴더가 존재하지 않음");
+                }
+                
+                // 상품명 폴더 초기화
+                var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
+                Debug.WriteLine($"상품명 폴더 경로: {productDataPath}");
+                if (Directory.Exists(productDataPath))
+                {
+                    var fileCount = Directory.GetFiles(productDataPath).Length;
+                    Debug.WriteLine($"삭제할 상품명 파일 개수: {fileCount}");
+                    Directory.Delete(productDataPath, true);
+                    LogWindow.AddLogStatic($"🗑️ 기존 상품명 파일들 삭제 완료 ({fileCount}개)");
+                }
+                else
+                {
+                    Debug.WriteLine("상품명 폴더가 존재하지 않음");
+                }
+                
+                // 리뷰 폴더 초기화
+                var reviewsPath = System.IO.Path.Combine(predviaPath, "Reviews");
+                Debug.WriteLine($"리뷰 폴더 경로: {reviewsPath}");
+                if (Directory.Exists(reviewsPath))
+                {
+                    var fileCount = Directory.GetFiles(reviewsPath).Length;
+                    Debug.WriteLine($"삭제할 리뷰 파일 개수: {fileCount}");
+                    Directory.Delete(reviewsPath, true);
+                    LogWindow.AddLogStatic($"🗑️ 기존 리뷰 파일들 삭제 완료 ({fileCount}개)");
+                }
+                else
+                {
+                    Debug.WriteLine("리뷰 폴더가 존재하지 않음");
+                }
+                
+                // UI에서 기존 카드들 제거
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (RealDataContainer != null)
+                    {
+                        var cardCount = RealDataContainer.Children.Count;
+                        RealDataContainer.Children.Clear();
+                        Debug.WriteLine($"UI 카드 {cardCount}개 제거 완료");
+                        LogWindow.AddLogStatic($"🧹 UI 카드들 초기화 완료 ({cardCount}개)");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("RealDataContainer가 null");
+                    }
+                });
+                
+                Debug.WriteLine("✅ 초기화 완료");
+                LogWindow.AddLogStatic("✅ 기존 크롤링 데이터 초기화 완료");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 초기화 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 데이터 초기화 오류: {ex.Message}");
             }
         }
         

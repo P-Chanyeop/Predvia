@@ -46,6 +46,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(error => sendResponse({success: false, error: error.message}));
     return true; // 비동기 응답을 위해 true 반환
   }
+  
+  // 탭 닫기 메시지 처리
+  if (request.action === 'closeTab') {
+    chrome.tabs.remove(sender.tab.id)
+      .then(() => sendResponse({success: true}))
+      .catch(error => sendResponse({success: false, error: error.message}));
+    return true;
+  }
 });
 
 // 네이버 쇼핑 검색 함수
