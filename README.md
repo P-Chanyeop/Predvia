@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.28-orange)
+![Release](https://img.shields.io/badge/Release-v1.30-orange)
 
 ## 📋 프로젝트 개요
 
