@@ -32,6 +32,11 @@
       "matches": ["*://smartstore.naver.com/*/category/ALL*"],
       "js": ["all-products-handler.js"],
       "run_at": "document_end"
+    },
+    {
+      "matches": ["*://smartstore.naver.com/*/products/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
     }
   ],
   "action": {
