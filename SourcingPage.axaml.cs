@@ -285,7 +285,7 @@ namespace Gumaedaehang
             // 테스트용 - 즉시 하나의 카드 추가
             Dispatcher.UIThread.Post(() =>
             {
-                AddProductImageCard("test", "123", "/mnt/c/Users/decem/AppData/Roaming/Predvia/Images/choileelang_10000947462_main.jpg", "테스트 상품");
+                AddProductImageCard("test", "123", "/mnt/c/Users/decem/AppData/Roaming/Predvia/Images/choileelang_10000947462_main.jpg");
             });
             
             LoadCrawledData();
@@ -296,498 +296,520 @@ namespace Gumaedaehang
         {
             try
             {
-                Debug.WriteLine("LoadCrawledData 시작");
-                
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
                 var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
                 var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
 
-                Debug.WriteLine($"이미지 경로: {imagesPath}");
-                Debug.WriteLine($"상품데이터 경로: {productDataPath}");
-                Debug.WriteLine($"이미지 폴더 존재: {Directory.Exists(imagesPath)}");
-                Debug.WriteLine($"상품데이터 폴더 존재: {Directory.Exists(productDataPath)}");
-
                 if (!Directory.Exists(imagesPath) || !Directory.Exists(productDataPath))
                 {
-                    Debug.WriteLine("필요한 폴더가 존재하지 않음");
                     return;
                 }
 
                 var imageFiles = Directory.GetFiles(imagesPath, "*_main.jpg");
-                Debug.WriteLine($"찾은 이미지 파일 개수: {imageFiles.Length}");
                 
                 foreach (var imageFile in imageFiles)
                 {
                     var fileName = System.IO.Path.GetFileNameWithoutExtension(imageFile);
                     var parts = fileName.Split('_');
                     
-                    Debug.WriteLine($"처리 중인 파일: {fileName}");
-                    
                     if (parts.Length >= 3)
                     {
                         var storeId = parts[0];
                         var productId = parts[1];
                         
-                        Debug.WriteLine($"스토어ID: {storeId}, 상품ID: {productId}");
-                        
-                        // 상품명 파일 확인
-                        var nameFile = System.IO.Path.Combine(productDataPath, $"{storeId}_{productId}_name.txt");
-                        var productName = File.Exists(nameFile) ? File.ReadAllText(nameFile) : "상품명 없음";
-                        
-                        Debug.WriteLine($"상품명: {productName}");
-                        
                         // UI에 상품 추가
                         Dispatcher.UIThread.Post(() =>
                         {
-                            Debug.WriteLine($"UI 스레드에서 카드 추가: {storeId}_{productId}");
-                            AddProductImageCard(storeId, productId, imageFile, productName);
+                            AddProductImageCard(storeId, productId, imageFile);
                         });
                     }
                 }
                 
-                Debug.WriteLine("LoadCrawledData 완료");
+                // 데이터가 있으면 표시
+                if (imageFiles.Length > 0)
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _hasData = true;
+                        UpdateViewVisibility();
+                    });
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"크롤링 데이터 로드 오류: {ex.Message}");
-                Debug.WriteLine($"스택 트레이스: {ex.StackTrace}");
+                Debug.WriteLine($"❌ 크롤링 데이터 로드 오류: {ex.Message}");
             }
         }
 
-        // 실제 상품 이미지 카드 추가 메서드 (더미데이터 스타일)
-        public void AddProductImageCard(string storeId, string productId, string imageUrl, string productName = "상품명 없음")
+        // 실제 상품 이미지 카드 추가 메서드 (원본 더미데이터와 완전히 똑같이)
+        public void AddProductImageCard(string storeId, string productId, string imageUrl)
         {
             try
             {
-                Debug.WriteLine($"AddProductImageCard 시작: {storeId}_{productId}");
-                
                 var container = this.FindControl<StackPanel>("RealDataContainer");
-                if (container == null) 
-                {
-                    Debug.WriteLine("RealDataContainer를 찾을 수 없음!");
-                    return;
-                }
-                
-                Debug.WriteLine($"RealDataContainer 찾음, 현재 자식 개수: {container.Children.Count}");
+                if (container == null) return;
 
                 // 전체 상품 컨테이너
-                var productContainer = new StackPanel { Spacing = 10, Margin = new Thickness(0, 0, 0, 20) };
+                var productContainer = new StackPanel { Spacing = 0, Margin = new Thickness(0, 0, 0, 40) };
 
-                // 카테고리 경로
+                // 1. 카테고리 경로 (체크박스 + 빨간 점 + 텍스트)
                 var categoryPanel = new StackPanel 
                 { 
                     Orientation = Orientation.Horizontal, 
                     Spacing = 8, 
-                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                    Margin = new Thickness(10, 0, 0, 0)
+                    Margin = new Thickness(0, 0, 0, 15)
                 };
 
-                var checkBox = new CheckBox { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
-                var categoryIndicator = new Ellipse { Width = 12, Height = 12, Fill = new SolidColorBrush(Color.Parse("#53DA4C")) };
+                var checkBox = new CheckBox { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+                var redDot = new Ellipse 
+                { 
+                    Width = 8, 
+                    Height = 8, 
+                    Fill = new SolidColorBrush(Colors.Red),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
                 var categoryText = new TextBlock 
                 { 
-                    Text = $"카테고리 : 스토어 > {storeId} > 상품", 
+                    Text = "카테고리 : 홈 > 가구 > 인테", 
                     FontSize = 13,
+                    FontFamily = new FontFamily("Malgun Gothic"),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
 
                 categoryPanel.Children.Add(checkBox);
-                categoryPanel.Children.Add(categoryIndicator);
+                categoryPanel.Children.Add(redDot);
                 categoryPanel.Children.Add(categoryText);
 
-                // 상품 정보 박스
-                var productBorder = new Border
-                {
-                    Background = new SolidColorBrush(Colors.Transparent),
-                    CornerRadius = new CornerRadius(0),
-                    Padding = new Thickness(15),
-                    BorderThickness = new Thickness(0),
-                    Margin = new Thickness(10, 0, 0, 0)
-                };
+                // 2. 메인 상품 영역 (이미지 + 정보 + 버튼)
+                var mainGrid = new Grid { Margin = new Thickness(0, 0, 0, 20) };
+                mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) }); // 이미지
+                mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // 정보
+                mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) }); // 버튼
 
-                var productGrid = new Grid();
-                productGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(290) });
-                productGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                productGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-
-                // 상품 이미지
+                // 왼쪽 상품 이미지
                 var imageBorder = new Border
                 {
-                    Width = 260,
-                    Height = 260,
-                    Background = new SolidColorBrush(Color.Parse("#F0F0F0")),
-                    CornerRadius = new CornerRadius(20)
+                    Width = 180,
+                    Height = 180,
+                    Background = new SolidColorBrush(Color.Parse("#F5F5F5")),
+                    CornerRadius = new CornerRadius(8)
                 };
                 Grid.SetColumn(imageBorder, 0);
 
-                var image = new Image { Stretch = Stretch.Uniform, Margin = new Thickness(20) };
-
-                // 실제 크롤링된 이미지 로드
+                var image = new Image { Stretch = Stretch.Uniform, Margin = new Thickness(10) };
                 try
                 {
-                    var imagePath = imageUrl.Replace("file://", "");
-                    Debug.WriteLine($"이미지 경로: {imagePath}");
-                    
-                    if (File.Exists(imagePath))
+                    if (File.Exists(imageUrl))
                     {
-                        var bitmap = new Avalonia.Media.Imaging.Bitmap(imagePath);
+                        var bitmap = new Avalonia.Media.Imaging.Bitmap(imageUrl);
                         image.Source = bitmap;
-                        Debug.WriteLine($"✅ 이미지 로드 성공: {imagePath}");
                     }
                     else
                     {
-                        Debug.WriteLine($"❌ 이미지 파일 없음: {imagePath}");
-                        image.Source = null;
+                        image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    Debug.WriteLine($"❌ 이미지 로드 실패: {imageUrl}, 오류: {ex.Message}");
-                    image.Source = null;
+                    image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
                 }
-
                 imageBorder.Child = image;
 
-
-
-                // 상품 정보 패널
+                // 중간 정보 패널
                 var infoPanel = new StackPanel 
                 { 
-                    Margin = new Thickness(30, 0, 10, 0), 
-                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top 
+                    Margin = new Thickness(20, 0, 20, 0),
+                    Spacing = 15
                 };
                 Grid.SetColumn(infoPanel, 1);
 
-                // 상품명 섹션
-                var namePanel = new StackPanel 
+                // 상품명 라벨 (녹색 점)
+                var nameLabel = new StackPanel 
                 { 
                     Orientation = Orientation.Horizontal, 
-                    Spacing = 8, 
-                    Margin = new Thickness(0, 0, 0, 15) 
+                    Spacing = 8
                 };
-                var nameIndicator = new Ellipse { Width = 12, Height = 12, Fill = new SolidColorBrush(Color.Parse("#53DA4C")) };
-                var nameLabel = new TextBlock 
+                var greenDot = new Ellipse 
                 { 
-                    Text = "상품명 :", 
-                    FontSize = 15, 
-                    FontWeight = FontWeight.Medium,
+                    Width = 8, 
+                    Height = 8, 
+                    Fill = new SolidColorBrush(Colors.Green),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
-                namePanel.Children.Add(nameIndicator);
-                namePanel.Children.Add(nameLabel);
+                var nameText = new TextBlock 
+                { 
+                    Text = "상품명 :", 
+                    FontSize = 14,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+                nameLabel.Children.Add(greenDot);
+                nameLabel.Children.Add(nameText);
 
-                // 상품명 키워드 박스
-                var nameBorder = new Border
+                // 상품명 입력박스 (주황색 테두리, 넓게)
+                var nameInputBorder = new Border
                 {
-                    Background = new SolidColorBrush(Colors.Transparent),
-                    BorderBrush = new SolidColorBrush(Color.Parse("#DF6C29")),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46")),
                     BorderThickness = new Thickness(2),
-                    CornerRadius = new CornerRadius(8),
-                    Padding = new Thickness(12, 8),
-                    Margin = new Thickness(0, 0, 0, 15),
-                    MinHeight = 40
+                    CornerRadius = new CornerRadius(6),
+                    Padding = new Thickness(15, 12),
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch
                 };
 
-                var nameGrid = new Grid();
-                nameGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                nameGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                var nameInputGrid = new Grid();
+                nameInputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                nameInputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-                var nameKeywordPanel = new WrapPanel { Orientation = Orientation.Horizontal, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+                var nameInputText = new TextBlock 
+                { 
+                    Text = "가베트345 ㅁ 바나나", 
+                    FontSize = 14,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
                 var byteCountText = new TextBlock 
                 { 
-                    Text = "0/50 byte", 
+                    Text = "19/50 byte", 
                     FontSize = 12, 
+                    FontFamily = new FontFamily("Malgun Gothic"),
                     Foreground = new SolidColorBrush(Colors.Gray),
-                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                    Margin = new Thickness(10, 0, 0, 0)
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
 
-                Grid.SetColumn(nameKeywordPanel, 0);
+                Grid.SetColumn(nameInputText, 0);
                 Grid.SetColumn(byteCountText, 1);
-                nameGrid.Children.Add(nameKeywordPanel);
-                nameGrid.Children.Add(byteCountText);
-                nameBorder.Child = nameGrid;
+                nameInputGrid.Children.Add(nameInputText);
+                nameInputGrid.Children.Add(byteCountText);
+                nameInputBorder.Child = nameInputGrid;
 
                 // 원상품명 (실제 크롤링된 상품명 표시)
-                var originalNamePanel = new StackPanel 
+                var originalNameText = new TextBlock 
                 { 
-                    Orientation = Orientation.Horizontal, 
-                    Spacing = 8, 
-                    Margin = new Thickness(0, 0, 0, 18) 
+                    Text = GetOriginalProductName(storeId, productId), 
+                    FontSize = 13,
+                    FontFamily = new FontFamily("Malgun Gothic")
                 };
-                var originalNameLabel = new TextBlock { Text = "원상품명:", FontSize = 15, FontWeight = FontWeight.Medium };
-                
-                // 매개변수로 받은 상품명 사용
-                var originalNameText = new TextBlock { Text = productName, FontSize = 15 };
-                originalNamePanel.Children.Add(originalNameLabel);
-                originalNamePanel.Children.Add(originalNameText);
 
                 // 키워드 태그들
-                var keywordPanel = new WrapPanel { Margin = new Thickness(0, 0, 0, 18) };
-                
-                // 기본 키워드 추가
-                var keyword1 = CreateKeywordBorder("수집완료", true);
-                var keyword2 = CreateKeywordBorder($"스토어{storeId}", false);
-                var keyword3 = CreateKeywordBorder("실시간", true);
+                var keywordPanel = new WrapPanel();
+                var keyword1 = CreateKeywordTag("가베트345", true);
+                var keyword2 = CreateKeywordTag("가베트-553422", true);  
+                var keyword3 = CreateKeywordTag("바나나", false);
                 
                 keywordPanel.Children.Add(keyword1);
                 keywordPanel.Children.Add(keyword2);
                 keywordPanel.Children.Add(keyword3);
 
-                // 키워드 추가 입력 섹션
+                // 키워드 입력 + 추가 버튼
                 var keywordInputPanel = new StackPanel 
                 { 
                     Orientation = Orientation.Horizontal, 
-                    Spacing = 10, 
-                    Margin = new Thickness(0, 0, 0, 15) 
+                    Spacing = 8
                 };
                 var keywordInput = new TextBox 
                 { 
-                    FontSize = 14, 
-                    Width = 200, 
-                    Height = 32,
-                    Padding = new Thickness(12, 6),
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(6),
-                    Text = ""
+                    Width = 120, 
+                    Height = 30,
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Watermark = "키워드 입력"
                 };
-                var addKeywordBtn = new Button 
+                var addButton = new Button 
                 { 
                     Content = "추가", 
-                    FontSize = 14,
-                    Width = 60, 
-                    Height = 32, 
-                    Background = new SolidColorBrush(Color.Parse("#F47B20")), 
+                    Width = 50, 
+                    Height = 30,
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Background = new SolidColorBrush(Color.Parse("#FF8A46")),
                     Foreground = new SolidColorBrush(Colors.White),
-                    BorderThickness = new Thickness(0), 
-                    CornerRadius = new CornerRadius(6)
+                    HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
                 };
                 keywordInputPanel.Children.Add(keywordInput);
-                keywordInputPanel.Children.Add(addKeywordBtn);
+                keywordInputPanel.Children.Add(addButton);
 
                 // 정보 패널에 모든 요소 추가
-                infoPanel.Children.Add(namePanel);
-                infoPanel.Children.Add(nameBorder);
-                infoPanel.Children.Add(originalNamePanel);
+                infoPanel.Children.Add(nameLabel);
+                infoPanel.Children.Add(nameInputBorder);
+                infoPanel.Children.Add(originalNameText);
                 infoPanel.Children.Add(keywordPanel);
                 infoPanel.Children.Add(keywordInputPanel);
 
-                // 우측 버튼들
+                // 우측 버튼들 (세로 배치)
                 var buttonPanel = new StackPanel 
                 { 
-                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top, 
-                    Spacing = 12, 
-                    Margin = new Thickness(0, 0, 0, 0) 
+                    Spacing = 10,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right
                 };
                 Grid.SetColumn(buttonPanel, 2);
 
-                var deleteBtn = new Button 
+                var deleteButton = new Button 
                 { 
                     Content = "삭제", 
-                    Background = new SolidColorBrush(Color.Parse("#F47B20")),
-                    Foreground = new SolidColorBrush(Colors.White), 
-                    Padding = new Thickness(30, 8), 
-                    CornerRadius = new CornerRadius(6), 
-                    FontSize = 14,
-                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, 
-                    BorderThickness = new Thickness(0)
+                    Width = 120, 
+                    Height = 35,
+                    FontSize = 13,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Background = new SolidColorBrush(Color.Parse("#FF8A46")),
+                    Foreground = new SolidColorBrush(Colors.White),
+                    HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
                 };
-                var holdBtn = new Button 
+                var holdButton = new Button 
                 { 
                     Content = "상품 보류", 
-                    Background = new SolidColorBrush(Color.Parse("#E0E0E0")),
-                    Foreground = new SolidColorBrush(Colors.Black), 
-                    Padding = new Thickness(30, 8), 
-                    CornerRadius = new CornerRadius(6), 
-                    FontSize = 14,
-                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, 
-                    BorderThickness = new Thickness(0)
+                    Width = 120, 
+                    Height = 35,
+                    FontSize = 13,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Background = new SolidColorBrush(Color.Parse("#CCCCCC")),
+                    Foreground = new SolidColorBrush(Colors.Black),
+                    HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
                 };
-                buttonPanel.Children.Add(deleteBtn);
-                buttonPanel.Children.Add(holdBtn);
 
-                productGrid.Children.Add(imageBorder);
-                productGrid.Children.Add(infoPanel);
-                productGrid.Children.Add(buttonPanel);
-                productBorder.Child = productGrid;
+                buttonPanel.Children.Add(deleteButton);
+                buttonPanel.Children.Add(holdButton);
 
-                // 리뷰 정보 섹션
+                // 그리드에 모든 요소 추가
+                mainGrid.Children.Add(imageBorder);
+                mainGrid.Children.Add(infoPanel);
+                mainGrid.Children.Add(buttonPanel);
+
+                // 3. 하단 리뷰 영역 (주황색 테두리 - 리뷰만)
                 var reviewBorder = new Border
                 {
-                    Background = new SolidColorBrush(Colors.Transparent),
-                    BorderBrush = new SolidColorBrush(Color.Parse("#FFDAC4")),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46")),
                     BorderThickness = new Thickness(2),
-                    CornerRadius = new CornerRadius(20),
-                    Padding = new Thickness(15),
-                    Margin = new Thickness(25, 10, 0, 0),
-                    Width = 1415,
-                    Height = 158,
-                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(20, 15)
                 };
 
-                var reviewScrollViewer = new ScrollViewer 
-                { 
-                    Height = 128, 
-                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto, 
-                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled 
-                };
+                var reviewPanel = new StackPanel { Spacing = 8 };
 
-                var reviewPanel = new StackPanel { Spacing = 5 };
-
-                // 실제 리뷰 데이터 로드 시도
-                try
+                // 실제 크롤링된 리뷰 데이터 표시
+                var reviewTexts = GetProductReviews(storeId, productId);
+                foreach (var reviewText in reviewTexts)
                 {
-                    string reviewFilePath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
-                        "Predvia", "Reviews", $"{storeId}_{productId}_reviews.json");
-                    if (File.Exists(reviewFilePath))
-                    {
-                        string reviewJson = File.ReadAllText(reviewFilePath, System.Text.Encoding.UTF8);
-                        // 간단한 리뷰 표시 (JSON 파싱 없이)
-                        var reviewText = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
-                        reviewText.Children.Add(new TextBlock { Text = "리뷰 : 실제 수집된 리뷰 데이터", FontSize = 12 });
-                        reviewText.Children.Add(new TextBlock { Text = "★★★★★", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#F47B20")) });
-                        reviewPanel.Children.Add(reviewText);
-                    }
-                    else
-                    {
-                        // 기본 리뷰 표시
-                        var defaultReview = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
-                        defaultReview.Children.Add(new TextBlock { Text = $"리뷰 : {storeId} 스토어 상품 - 수집 완료", FontSize = 12 });
-                        defaultReview.Children.Add(new TextBlock { Text = "★★★★☆", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#F47B20")) });
-                        reviewPanel.Children.Add(defaultReview);
-                    }
+                    var reviewBlock = new TextBlock 
+                    { 
+                        Text = reviewText, 
+                        FontSize = 12,
+                        FontFamily = new FontFamily("Malgun Gothic")
+                    };
+                    reviewPanel.Children.Add(reviewBlock);
                 }
-                catch
-                {
-                    var errorReview = new TextBlock { Text = "리뷰 데이터 로드 중...", FontSize = 12, Foreground = new SolidColorBrush(Colors.Gray) };
-                    reviewPanel.Children.Add(errorReview);
-                }
-
-                reviewScrollViewer.Content = reviewPanel;
-                reviewBorder.Child = reviewScrollViewer;
-
-                // 타오바오 페어링 섹션
-                var pairingPanel = new StackPanel { Spacing = 12, Margin = new Thickness(25, 10, 0, 30) };
                 
-                var pairingHeader = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-                var pairingIndicator = new Ellipse { Width = 12, Height = 12, Fill = new SolidColorBrush(Color.Parse("#FF7272")) };
-                var pairingLabel = new TextBlock 
+                // 리뷰가 없으면 기본 메시지 표시
+                if (reviewTexts.Count == 0)
+                {
+                    var noReviewText = new TextBlock 
+                    { 
+                        Text = "리뷰 데이터 로드 중...", 
+                        FontSize = 12,
+                        FontFamily = new FontFamily("Malgun Gothic"),
+                        Foreground = new SolidColorBrush(Colors.Gray)
+                    };
+                    reviewPanel.Children.Add(noReviewText);
+                }
+                reviewBorder.Child = reviewPanel;
+
+                // 4. 타오바오 페어링 (주황색 테두리 밖에 별도로)
+                var pairingPanel = new StackPanel 
                 { 
-                    Text = "타오바오와 페어링 :", 
-                    FontSize = 15, 
+                    Orientation = Orientation.Horizontal, 
+                    Spacing = 10,
+                    Margin = new Thickness(0, 15, 0, 15)
+                };
+                var redDot2 = new Ellipse 
+                { 
+                    Width = 8, 
+                    Height = 8, 
+                    Fill = new SolidColorBrush(Colors.Red),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+                var pairingTitle = new TextBlock 
+                { 
+                    Text = "타오바오와 페어링", 
+                    FontSize = 14,
+                    FontFamily = new FontFamily("Malgun Gothic"),
                     FontWeight = FontWeight.Medium,
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
-                pairingHeader.Children.Add(pairingIndicator);
-                pairingHeader.Children.Add(pairingLabel);
-
-                var pairingGrid = new Grid { Margin = new Thickness(0, 0, 0, 0) };
-                pairingGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                pairingGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-                var pairingInput = new TextBox 
-                { 
-                    Height = 45, 
-                    Text = "",
-                    BorderThickness = new Thickness(1), 
-                    CornerRadius = new CornerRadius(8), 
-                    BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0")),
-                    VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center, 
-                    FontSize = 16, 
-                    Padding = new Thickness(15, 0), 
-                    Margin = new Thickness(0, 0, 15, 0),
-                    Background = new SolidColorBrush(Colors.White)
-                };
-                var pairingBtn = new Button 
+                var pairingButton = new Button 
                 { 
                     Content = "페어링", 
-                    Background = new SolidColorBrush(Color.Parse("#F47B20")), 
+                    Width = 70, 
+                    Height = 30,
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Background = new SolidColorBrush(Color.Parse("#FF8A46")),
                     Foreground = new SolidColorBrush(Colors.White),
-                    Padding = new Thickness(35, 12), 
-                    CornerRadius = new CornerRadius(8), 
-                    FontSize = 16, 
-                    FontWeight = FontWeight.Medium,
-                    BorderThickness = new Thickness(0), 
-                    Height = 45
+                    HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                    VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
 
-                Grid.SetColumn(pairingInput, 0);
-                Grid.SetColumn(pairingBtn, 1);
-                pairingGrid.Children.Add(pairingInput);
-                pairingGrid.Children.Add(pairingBtn);
+                pairingPanel.Children.Add(redDot2);
+                pairingPanel.Children.Add(pairingTitle);
+                pairingPanel.Children.Add(pairingButton);
 
-                var pairingDesc = new TextBlock 
+                // 5. 상품박스 3개 (PREDVIA 로고)
+                var productBoxPanel = new StackPanel 
                 { 
-                    Text = "타오바오 상품과 연결하여 가격 및 재고 정보를 실시간으로 확인할 수 있습니다.", 
-                    FontSize = 13, 
-                    Foreground = new SolidColorBrush(Colors.Gray), 
-                    Margin = new Thickness(0, 5, 0, 0)
+                    Orientation = Orientation.Horizontal, 
+                    Spacing = 20,
+                    Margin = new Thickness(0, 10, 0, 0)
                 };
 
-                pairingPanel.Children.Add(pairingHeader);
-                pairingPanel.Children.Add(pairingGrid);
-                pairingPanel.Children.Add(pairingDesc);
+                for (int i = 0; i < 3; i++)
+                {
+                    var productBox = new StackPanel { Spacing = 10 };
+                    
+                    // PREDVIA 로고 박스
+                    var logoBorder = new Border
+                    {
+                        Width = 160,
+                        Height = 120,
+                        Background = new SolidColorBrush(Color.Parse("#F5F5F5")),
+                        CornerRadius = new CornerRadius(8),
+                        Child = new TextBlock
+                        {
+                            Text = "🔺 PREDVIA",
+                            FontSize = 16,
+                            FontFamily = new FontFamily("Malgun Gothic"),
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                            Foreground = new SolidColorBrush(Color.Parse("#FF8A46"))
+                        }
+                    };
+                    
+                    // 페어링 텍스트
+                    var pairingText = new TextBlock
+                    {
+                        Text = "페어링",
+                        FontSize = 12,
+                        FontFamily = new FontFamily("Malgun Gothic"),
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                    };
+                    
+                    productBox.Children.Add(logoBorder);
+                    productBox.Children.Add(pairingText);
+                    productBoxPanel.Children.Add(productBox);
+                }
 
-                // 전체 컨테이너에 모든 요소 추가
+                // 전체 컨테이너에 추가
                 productContainer.Children.Add(categoryPanel);
-                productContainer.Children.Add(productBorder);
-                productContainer.Children.Add(reviewBorder);
-                productContainer.Children.Add(pairingPanel);
+                productContainer.Children.Add(mainGrid);
+                productContainer.Children.Add(reviewBorder);  // 주황색 테두리 (리뷰만)
+                productContainer.Children.Add(pairingPanel);  // 타오바오 페어링 (별도)
+                productContainer.Children.Add(productBoxPanel); // 상품박스 3개
 
-                // 메인 컨테이너에 추가
                 container.Children.Add(productContainer);
-                
-                Debug.WriteLine($"상품 카드 추가 완료: {storeId}_{productId}, 총 카드 개수: {container.Children.Count}");
 
-                // 스크롤을 맨 아래로
-                if (container.Parent is ScrollViewer scrollViewer)
-                {
-                    scrollViewer.ScrollToEnd();
-                }
-
-                // NoDataView 숨기고 DataAvailableView 표시
-                var noDataView = this.FindControl<Grid>("NoDataView");
-                var dataAvailableView = this.FindControl<Grid>("DataAvailableView");
-                if (noDataView != null && dataAvailableView != null)
-                {
-                    Debug.WriteLine("NoDataView 숨기고 DataAvailableView 표시");
-                    noDataView.IsVisible = false;
-                    dataAvailableView.IsVisible = true;
-                }
-                else
-                {
-                    Debug.WriteLine($"View 찾기 실패 - NoDataView: {noDataView != null}, DataAvailableView: {dataAvailableView != null}");
-                }
+                Debug.WriteLine($"✅ 원본과 완전히 똑같은 카드 추가: {storeId}_{productId}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"카드 추가 오류: {ex.Message}");
-                Debug.WriteLine($"스택 트레이스: {ex.StackTrace}");
+                Debug.WriteLine($"❌ 상품 카드 추가 실패: {ex.Message}");
             }
         }
 
         // 키워드 태그 생성 헬퍼 메서드
-        private Border CreateKeywordBorder(string text, bool isActive)
+        private Border CreateKeywordTag(string text, bool isSelected)
         {
-            var border = new Border
+            return new Border
             {
-                Background = isActive ? new SolidColorBrush(Color.Parse("#F47B20")) : new SolidColorBrush(Color.Parse("#D0D0D0")),
+                Background = isSelected ? new SolidColorBrush(Color.Parse("#FF8A46")) : new SolidColorBrush(Colors.Transparent),
+                BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46")),
+                BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(12),
-                Padding = new Thickness(8, 4),
+                Padding = new Thickness(10, 4),
                 Margin = new Thickness(0, 0, 6, 4),
-                Cursor = new Cursor(StandardCursorType.Hand)
+                Child = new TextBlock
+                {
+                    Text = text,
+                    FontSize = 11,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Foreground = isSelected ? new SolidColorBrush(Colors.White) : new SolidColorBrush(Color.Parse("#FF8A46"))
+                }
             };
-
-            var textBlock = new TextBlock
+        }
+        
+        // 실제 크롤링된 상품명 가져오기
+        private string GetOriginalProductName(string storeId, string productId)
+        {
+            try
             {
-                Text = text,
-                FontSize = 12,
-                Foreground = isActive ? new SolidColorBrush(Colors.White) : new SolidColorBrush(Color.Parse("#666666"))
-            };
-
-            border.Child = textBlock;
-            return border;
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var productDataPath = System.IO.Path.Combine(appDataPath, "Predvia", "ProductData");
+                var nameFile = System.IO.Path.Combine(productDataPath, $"{storeId}_{productId}_name.txt");
+                
+                if (File.Exists(nameFile))
+                {
+                    var productName = File.ReadAllText(nameFile, System.Text.Encoding.UTF8).Trim();
+                    return $"원상품명: {productName}";
+                }
+                else
+                {
+                    return "원상품명: 상품명 로드 중...";
+                }
+            }
+            catch
+            {
+                return "원상품명: 상품명 로드 실패";
+            }
+        }
+        
+        // 실제 크롤링된 리뷰 데이터 가져오기
+        private List<string> GetProductReviews(string storeId, string productId)
+        {
+            var reviews = new List<string>();
+            
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var reviewsPath = System.IO.Path.Combine(appDataPath, "Predvia", "Reviews");
+                var reviewFile = System.IO.Path.Combine(reviewsPath, $"{storeId}_{productId}_reviews.json");
+                
+                if (File.Exists(reviewFile))
+                {
+                    var reviewJson = File.ReadAllText(reviewFile, System.Text.Encoding.UTF8);
+                    
+                    // 간단한 JSON 파싱 (System.Text.Json 사용)
+                    using var document = System.Text.Json.JsonDocument.Parse(reviewJson);
+                    var root = document.RootElement;
+                    
+                    if (root.TryGetProperty("reviews", out var reviewsArray))
+                    {
+                        foreach (var review in reviewsArray.EnumerateArray())
+                        {
+                            var rating = review.TryGetProperty("rating", out var ratingElement) ? ratingElement.GetString() : "⭐";
+                            var content = review.TryGetProperty("content", out var contentElement) ? contentElement.GetString() : "리뷰 내용 없음";
+                            
+                            var stars = rating switch
+                            {
+                                "5" => "⭐⭐⭐⭐⭐",
+                                "4" => "⭐⭐⭐⭐",
+                                "3" => "⭐⭐⭐",
+                                "2" => "⭐⭐",
+                                "1" => "⭐",
+                                _ => "⭐⭐⭐⭐⭐"
+                            };
+                            
+                            reviews.Add($"리뷰: {content} {stars}");
+                            
+                            // 최대 3개 리뷰만 표시
+                            if (reviews.Count >= 3) break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"리뷰 로드 오류: {ex.Message}");
+            }
+            
+            return reviews;
         }
         
         // 이벤트 핸들러 등록
@@ -1394,16 +1416,21 @@ namespace Gumaedaehang
         {
             try
             {
-                LogWindow.AddLogStatic("🔥 테스트 데이터 버튼 클릭 - 크롤링된 카드 로드 시작");
+                // 기존 카드들 모두 제거
+                var container = this.FindControl<StackPanel>("RealDataContainer");
+                if (container != null)
+                {
+                    container.Children.Clear();
+                }
                 
-                // 크롤링된 데이터 로드하여 카드 생성
+                // 크롤링된 실제 데이터 로드
                 LoadCrawledData();
                 
-                LogWindow.AddLogStatic("✅ 테스트 데이터 버튼 - 카드 로드 완료");
+                Debug.WriteLine("✅ 실제 크롤링 데이터 로드 완료");
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 테스트 데이터 버튼 오류: {ex.Message}");
+                Debug.WriteLine($"❌ 테스트 데이터 버튼 오류: {ex.Message}");
             }
         }
         
@@ -1496,54 +1523,7 @@ namespace Gumaedaehang
         // 소싱재료 자동찾기 페어링 버튼 클릭
         private async void AutoSourcingButton_Click(object? sender, RoutedEventArgs e)
         {
-            Debug.WriteLine("🔥 소싱재료 버튼 클릭됨!");
-            LogWindow.AddLogStatic("🔥 소싱재료 자동찾기 버튼 클릭됨!");
-            
-            try
-            {
-                // 🧹 크롤링 시작 전 기존 데이터 초기화 (강제)
-                LogWindow.AddLogStatic("🧹 강제 데이터 초기화 시작");
-                ClearPreviousCrawlingData();
-                
-                // ⭐ ThumbnailWebServer 시작 (데이터 초기화 포함)
-                if (!ThumbnailWebServer.IsRunning)
-                {
-                    var webServer = new ThumbnailWebServer();
-                    await webServer.StartAsync();
-                }
-                else
-                {
-                    LogWindow.AddLogStatic("✅ 서버가 이미 실행 중입니다");
-                }
-                
-                await HandlePairingButtonClick(_autoSourcingTextBox, _autoSourcingButton, "자동 소싱");
-                
-                // 🔥 크롤링 시작 후 5초마다 카드 새로고침 체크
-                _ = Task.Run(async () =>
-                {
-                    for (int i = 0; i < 60; i++) // 5분간 체크
-                    {
-                        await Task.Delay(5000); // 5초 대기
-                        
-                        // 크롤링된 데이터가 있으면 카드 새로고침
-                        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                        var imagesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Images");
-                        
-                        if (Directory.Exists(imagesPath) && Directory.GetFiles(imagesPath).Length > 0)
-                        {
-                            Dispatcher.UIThread.Post(() =>
-                            {
-                                LoadCrawledData();
-                                LogWindow.AddLogStatic($"🔄 자동 카드 새로고침 완료 ({Directory.GetFiles(imagesPath).Length}개 파일)");
-                            });
-                        }
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"❌ 소싱재료 버튼 오류: {ex.Message}");
-            }
+            await HandlePairingButtonClick(_autoSourcingTextBox, _autoSourcingButton, "자동 소싱");
         }
         
         // 🧹 기존 크롤링 데이터 초기화 메서드 (조용한 버전 - 생성자용)
