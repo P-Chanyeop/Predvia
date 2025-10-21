@@ -3,88 +3,9 @@ console.log('🆕 Predvia 스마트스토어 링크 수집 확장프로그램 �
 console.log('🌐 현재 URL:', window.location.href);
 console.log('⏰ 현재 시간:', new Date().toLocaleString());
 
-// ⭐ 즉시 차단 복구 체크 (페이지 로드와 동시에)
-(async function immediateResumeCheck() {
-  try {
-    const blockedData = localStorage.getItem('blockedStore');
-    if (blockedData) {
-      let blocked;
-      try {
-        blocked = JSON.parse(blockedData);
-      } catch (parseError) {
-        console.error('차단 데이터 파싱 오류:', parseError);
-        localStorage.removeItem('blockedStore');
-        return;
-      }
-      
-      console.log('🔄 차단된 스토어 발견 - 즉시 복구 시작:', blocked);
-      
-      // 서버에 복구 시작 로그 전송
-      fetch('http://localhost:8080/api/smartstore/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `🔄 ${blocked.storeId}: Chrome 재시작 후 ${blocked.currentIndex}/${blocked.totalProducts}번째 상품부터 재개`,
-          timestamp: new Date().toISOString()
-        })
-      }).catch(e => console.log('복구 로그 전송 실패:', e));
+// 차단 복구 시스템 제거됨
 
-      // 네이버 가격비교 페이지에서 바로 차단된 스토어 전체상품 페이지로 이동
-      if (window.location.href.includes('search.shopping.naver.com')) {
-        const resumeUrl = `https://smartstore.naver.com/${blocked.storeId}/category/ALL?st=TOTALSALE&runId=${blocked.runId}`;
-        console.log('🔄 차단된 스토어로 바로 이동:', resumeUrl);
-        
-        // 즉시 이동 (37개 스토어 재수집 건너뛰기)
-        window.location.href = resumeUrl;
-        return;
-      }
-    }
-  } catch (error) {
-    console.error('즉시 차단 복구 오류:', error);
-  }
-})();
-
-// ⭐ 재시작 후 차단된 스토어부터 재개 함수
-async function resumeFromBlocked() {
-  try {
-    const blockedData = localStorage.getItem('blockedStore');
-    if (!blockedData) {
-      return false; // 차단된 스토어 없음
-    }
-
-    let blocked;
-    try {
-      blocked = JSON.parse(blockedData);
-    } catch (parseError) {
-      console.error('차단 데이터 파싱 오류:', parseError);
-      localStorage.removeItem('blockedStore');
-      return false;
-    }
-    
-    console.log('🔄 차단 복구 시작:', blocked);
-    
-    // 서버에 로그 전송
-    await fetch('http://localhost:8080/api/smartstore/log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: `🔄 ${blocked.storeId}: 차단된 지점부터 재개 (${blocked.currentIndex}/${blocked.totalProducts}번째 상품부터)`,
-        timestamp: new Date().toISOString()
-      })
-    });
-
-    // 전체상품 페이지로 이동하여 복구 진행
-    const resumeUrl = `https://smartstore.naver.com/${blocked.storeId}/category/ALL?st=TOTALSALE&runId=${blocked.runId}`;
-    console.log('🔄 전체상품 페이지로 이동:', resumeUrl);
-    
-    window.location.href = resumeUrl;
-    return true; // 복구 시작
-
-  } catch (error) {
-    console.log('차단 복구 오류:', error);
-    return false;
-  }
-}
+// 차단 복구 함수 제거됨
 
 // 페이지 로딩 완료 후 실행
 if (document.readyState === 'loading') {
@@ -96,17 +17,14 @@ if (document.readyState === 'loading') {
 async function initializeExtension() {
   console.log('🆕 Predvia 스마트스토어 링크 수집 초기화 시작');
   
+  // 차단 복구 데이터 정리
+  localStorage.removeItem('blockedStore');
+  
   // ⭐ 서버 연결 테스트
   const serverConnected = await testServerConnection();
   if (!serverConnected) {
     console.error('❌ 서버 연결 실패 - 작업을 중단합니다');
     return;
-  }
-  
-  // ⭐ 먼저 차단 복구 체크
-  const resumed = await resumeFromBlocked();
-  if (resumed) {
-    return; // 차단 복구 진행 중, 정상 플로우 건너뛰기
   }
   
   // 자동으로 스마트스토어 링크 추출 및 전송
