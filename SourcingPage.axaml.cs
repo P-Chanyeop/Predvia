@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -57,12 +56,6 @@ namespace Gumaedaehang
             {
                 InitializeComponent();
                 
-                // 🧹 프로그램 시작 시 자동 초기화 (조용히)
-                ClearPreviousCrawlingDataSilent();
-                
-                // 플레이스홀더 설정
-                SetupPlaceholders();
-                
                 // 한글 입력 처리용 타이머 초기화
                 _inputTimer = new DispatcherTimer
                 {
@@ -98,7 +91,7 @@ namespace Gumaedaehang
                 // 페어링 버튼 UI 요소 참조
                 _manualSourcingTextBox = this.FindControl<TextBox>("ManualSourcingTextBox");
                 _manualSourcingButton = this.FindControl<Button>("ManualSourcingButton");
-                _autoSourcingTextBox = this.FindControl<TextBox>("SourcingMaterialTextBox");
+                _autoSourcingTextBox = this.FindControl<TextBox>("AutoSourcingTextBox");
                 _autoSourcingButton = this.FindControl<Button>("AutoSourcingButton");
                 _mainProductTextBox = this.FindControl<TextBox>("MainProductTextBox");
                 _mainProductButton = this.FindControl<Button>("MainProductButton");
@@ -280,14 +273,6 @@ namespace Gumaedaehang
         private void InitializeProductElements()
         {
             // 더미데이터 제거됨 - 실제 데이터는 AddProductImageCard 메서드를 통해 동적으로 추가됩니다
-            Debug.WriteLine("InitializeProductElements 호출됨");
-            
-            // 테스트용 - 즉시 하나의 카드 추가
-            Dispatcher.UIThread.Post(() =>
-            {
-                AddProductImageCard("test", "123", "/mnt/c/Users/decem/AppData/Roaming/Predvia/Images/choileelang_10000947462_main.jpg");
-            });
-            
             LoadCrawledData();
         }
 
@@ -297,14 +282,10 @@ namespace Gumaedaehang
             try
             {
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
-                var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
-                var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
+                var imagesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Images");
 
-                if (!Directory.Exists(imagesPath) || !Directory.Exists(productDataPath))
-                {
+                if (!Directory.Exists(imagesPath))
                     return;
-                }
 
                 var imageFiles = Directory.GetFiles(imagesPath, "*_main.jpg");
                 
@@ -483,10 +464,10 @@ namespace Gumaedaehang
                 nameInputGrid.Children.Add(byteCountText);
                 nameInputBorder.Child = nameInputGrid;
 
-                // 원상품명 (실제 크롤링된 상품명 표시)
+                // 원상품명
                 var originalNameText = new TextBlock 
                 { 
-                    Text = GetOriginalProductName(storeId, productId), 
+                    Text = "원상품명: 조코 바나나 시몬 사랑 아이스크림", 
                     FontSize = 13,
                     FontFamily = new FontFamily("Malgun Gothic")
                 };
@@ -496,7 +477,6 @@ namespace Gumaedaehang
                 var keyword1 = CreateKeywordTag("가베트345", true);
                 var keyword2 = CreateKeywordTag("가베트-553422", true);  
                 var keyword3 = CreateKeywordTag("바나나", false);
-                
                 keywordPanel.Children.Add(keyword1);
                 keywordPanel.Children.Add(keyword2);
                 keywordPanel.Children.Add(keyword3);
@@ -587,31 +567,29 @@ namespace Gumaedaehang
 
                 var reviewPanel = new StackPanel { Spacing = 8 };
 
-                // 실제 크롤링된 리뷰 데이터 표시
-                var reviewTexts = GetProductReviews(storeId, productId);
-                foreach (var reviewText in reviewTexts)
-                {
-                    var reviewBlock = new TextBlock 
-                    { 
-                        Text = reviewText, 
-                        FontSize = 12,
-                        FontFamily = new FontFamily("Malgun Gothic")
-                    };
-                    reviewPanel.Children.Add(reviewBlock);
-                }
-                
-                // 리뷰가 없으면 기본 메시지 표시
-                if (reviewTexts.Count == 0)
-                {
-                    var noReviewText = new TextBlock 
-                    { 
-                        Text = "리뷰 데이터 로드 중...", 
-                        FontSize = 12,
-                        FontFamily = new FontFamily("Malgun Gothic"),
-                        Foreground = new SolidColorBrush(Colors.Gray)
-                    };
-                    reviewPanel.Children.Add(noReviewText);
-                }
+                // 리뷰들만
+                var review1 = new TextBlock 
+                { 
+                    Text = "리뷰 - 프로덕션이야기 : 배송이 너무 좋아요 ⭐⭐⭐⭐⭐", 
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic")
+                };
+                var review2 = new TextBlock 
+                { 
+                    Text = "리뷰 - 시몬TJ234 : 배송이 빠르고 좋습니다 ⭐⭐⭐⭐⭐", 
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic")
+                };
+                var review3 = new TextBlock 
+                { 
+                    Text = "리뷰 - 구매자567 : 가격 대비 만족스러운 상품 ⭐⭐⭐⭐", 
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic")
+                };
+
+                reviewPanel.Children.Add(review1);
+                reviewPanel.Children.Add(review2);
+                reviewPanel.Children.Add(review3);
                 reviewBorder.Child = reviewPanel;
 
                 // 4. 타오바오 페어링 (주황색 테두리 밖에 별도로)
@@ -733,83 +711,6 @@ namespace Gumaedaehang
                     Foreground = isSelected ? new SolidColorBrush(Colors.White) : new SolidColorBrush(Color.Parse("#FF8A46"))
                 }
             };
-        }
-        
-        // 실제 크롤링된 상품명 가져오기
-        private string GetOriginalProductName(string storeId, string productId)
-        {
-            try
-            {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var productDataPath = System.IO.Path.Combine(appDataPath, "Predvia", "ProductData");
-                var nameFile = System.IO.Path.Combine(productDataPath, $"{storeId}_{productId}_name.txt");
-                
-                if (File.Exists(nameFile))
-                {
-                    var productName = File.ReadAllText(nameFile, System.Text.Encoding.UTF8).Trim();
-                    return $"원상품명: {productName}";
-                }
-                else
-                {
-                    return "원상품명: 상품명 로드 중...";
-                }
-            }
-            catch
-            {
-                return "원상품명: 상품명 로드 실패";
-            }
-        }
-        
-        // 실제 크롤링된 리뷰 데이터 가져오기
-        private List<string> GetProductReviews(string storeId, string productId)
-        {
-            var reviews = new List<string>();
-            
-            try
-            {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var reviewsPath = System.IO.Path.Combine(appDataPath, "Predvia", "Reviews");
-                var reviewFile = System.IO.Path.Combine(reviewsPath, $"{storeId}_{productId}_reviews.json");
-                
-                if (File.Exists(reviewFile))
-                {
-                    var reviewJson = File.ReadAllText(reviewFile, System.Text.Encoding.UTF8);
-                    
-                    // 간단한 JSON 파싱 (System.Text.Json 사용)
-                    using var document = System.Text.Json.JsonDocument.Parse(reviewJson);
-                    var root = document.RootElement;
-                    
-                    if (root.TryGetProperty("reviews", out var reviewsArray))
-                    {
-                        foreach (var review in reviewsArray.EnumerateArray())
-                        {
-                            var rating = review.TryGetProperty("rating", out var ratingElement) ? ratingElement.GetString() : "⭐";
-                            var content = review.TryGetProperty("content", out var contentElement) ? contentElement.GetString() : "리뷰 내용 없음";
-                            
-                            var stars = rating switch
-                            {
-                                "5" => "⭐⭐⭐⭐⭐",
-                                "4" => "⭐⭐⭐⭐",
-                                "3" => "⭐⭐⭐",
-                                "2" => "⭐⭐",
-                                "1" => "⭐",
-                                _ => "⭐⭐⭐⭐⭐"
-                            };
-                            
-                            reviews.Add($"리뷰: {content} {stars}");
-                            
-                            // 최대 3개 리뷰만 표시
-                            if (reviews.Count >= 3) break;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"리뷰 로드 오류: {ex.Message}");
-            }
-            
-            return reviews;
         }
         
         // 이벤트 핸들러 등록
@@ -1526,154 +1427,6 @@ namespace Gumaedaehang
             await HandlePairingButtonClick(_autoSourcingTextBox, _autoSourcingButton, "자동 소싱");
         }
         
-        // 🧹 기존 크롤링 데이터 초기화 메서드 (조용한 버전 - 생성자용)
-        private void ClearPreviousCrawlingDataSilent()
-        {
-            try
-            {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
-                
-                int totalDeleted = 0;
-                
-                // 이미지 폴더 초기화
-                var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
-                if (Directory.Exists(imagesPath))
-                {
-                    var fileCount = Directory.GetFiles(imagesPath).Length;
-                    Directory.Delete(imagesPath, true);
-                    totalDeleted += fileCount;
-                }
-                
-                // 상품명 폴더 초기화
-                var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
-                if (Directory.Exists(productDataPath))
-                {
-                    var fileCount = Directory.GetFiles(productDataPath).Length;
-                    Directory.Delete(productDataPath, true);
-                    totalDeleted += fileCount;
-                }
-                
-                // 리뷰 폴더 초기화
-                var reviewsPath = System.IO.Path.Combine(predviaPath, "Reviews");
-                if (Directory.Exists(reviewsPath))
-                {
-                    var fileCount = Directory.GetFiles(reviewsPath).Length;
-                    Directory.Delete(reviewsPath, true);
-                    totalDeleted += fileCount;
-                }
-                
-                // UI에서 기존 카드들 제거
-                Dispatcher.UIThread.Post(() =>
-                {
-                    if (RealDataContainer != null)
-                    {
-                        var cardCount = RealDataContainer.Children.Count;
-                        RealDataContainer.Children.Clear();
-                        
-                        // 작업로그에 초기화 완료 메시지 추가
-                        if (totalDeleted > 0 || cardCount > 0)
-                        {
-                            LogWindow.AddLogStatic($"🧹 프로그램 시작 시 자동 초기화 완료 (파일 {totalDeleted}개, 카드 {cardCount}개 삭제)");
-                        }
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                // 오류 시에도 로그에 표시
-                Dispatcher.UIThread.Post(() =>
-                {
-                    LogWindow.AddLogStatic($"❌ 자동 초기화 오류: {ex.Message}");
-                });
-            }
-        }
-        
-        // 🧹 기존 크롤링 데이터 초기화 메서드
-        private void ClearPreviousCrawlingData()
-        {
-            try
-            {
-                Debug.WriteLine("🧹 ClearPreviousCrawlingData 시작");
-                LogWindow.AddLogStatic("🧹 기존 크롤링 데이터 초기화 시작");
-                
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
-                
-                Debug.WriteLine($"AppData 경로: {appDataPath}");
-                Debug.WriteLine($"Predvia 경로: {predviaPath}");
-                
-                // 이미지 폴더 초기화
-                var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
-                Debug.WriteLine($"이미지 폴더 경로: {imagesPath}");
-                if (Directory.Exists(imagesPath))
-                {
-                    var fileCount = Directory.GetFiles(imagesPath).Length;
-                    Debug.WriteLine($"삭제할 이미지 파일 개수: {fileCount}");
-                    Directory.Delete(imagesPath, true);
-                    LogWindow.AddLogStatic($"🗑️ 기존 이미지 파일들 삭제 완료 ({fileCount}개)");
-                }
-                else
-                {
-                    Debug.WriteLine("이미지 폴더가 존재하지 않음");
-                }
-                
-                // 상품명 폴더 초기화
-                var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
-                Debug.WriteLine($"상품명 폴더 경로: {productDataPath}");
-                if (Directory.Exists(productDataPath))
-                {
-                    var fileCount = Directory.GetFiles(productDataPath).Length;
-                    Debug.WriteLine($"삭제할 상품명 파일 개수: {fileCount}");
-                    Directory.Delete(productDataPath, true);
-                    LogWindow.AddLogStatic($"🗑️ 기존 상품명 파일들 삭제 완료 ({fileCount}개)");
-                }
-                else
-                {
-                    Debug.WriteLine("상품명 폴더가 존재하지 않음");
-                }
-                
-                // 리뷰 폴더 초기화
-                var reviewsPath = System.IO.Path.Combine(predviaPath, "Reviews");
-                Debug.WriteLine($"리뷰 폴더 경로: {reviewsPath}");
-                if (Directory.Exists(reviewsPath))
-                {
-                    var fileCount = Directory.GetFiles(reviewsPath).Length;
-                    Debug.WriteLine($"삭제할 리뷰 파일 개수: {fileCount}");
-                    Directory.Delete(reviewsPath, true);
-                    LogWindow.AddLogStatic($"🗑️ 기존 리뷰 파일들 삭제 완료 ({fileCount}개)");
-                }
-                else
-                {
-                    Debug.WriteLine("리뷰 폴더가 존재하지 않음");
-                }
-                
-                // UI에서 기존 카드들 제거
-                Dispatcher.UIThread.Post(() =>
-                {
-                    if (RealDataContainer != null)
-                    {
-                        var cardCount = RealDataContainer.Children.Count;
-                        RealDataContainer.Children.Clear();
-                        Debug.WriteLine($"UI 카드 {cardCount}개 제거 완료");
-                        LogWindow.AddLogStatic($"🧹 UI 카드들 초기화 완료 ({cardCount}개)");
-                    }
-                    else
-                    {
-                        Debug.WriteLine("RealDataContainer가 null");
-                    }
-                });
-                
-                Debug.WriteLine("✅ 초기화 완료");
-                LogWindow.AddLogStatic("✅ 기존 크롤링 데이터 초기화 완료");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"❌ 초기화 오류: {ex.Message}");
-                LogWindow.AddLogStatic($"❌ 데이터 초기화 오류: {ex.Message}");
-            }
-        }
-        
         // 메인상품 자동찾기 페어링 버튼 클릭
         private async void MainProductButton_Click(object? sender, RoutedEventArgs e)
         {
@@ -1683,12 +1436,7 @@ namespace Gumaedaehang
         // 페어링 버튼 공통 처리 메서드
         private async Task HandlePairingButtonClick(TextBox? textBox, Button? button, string type)
         {
-            Debug.WriteLine($"🔥 HandlePairingButtonClick 호출됨 - {type}");
-            if (textBox == null || button == null) 
-            {
-                Debug.WriteLine($"❌ TextBox 또는 Button이 null - TextBox: {textBox != null}, Button: {button != null}");
-                return;
-            }
+            if (textBox == null || button == null) return;
             
             try
             {
@@ -1745,53 +1493,6 @@ namespace Gumaedaehang
             {
                 Debug.WriteLine($"리소스 정리 중 오류: {ex.Message}");
             }
-        }
-        
-        private void SetupPlaceholders()
-        {
-            try
-            {
-                var manualTextBox = this.FindControl<TextBox>("ManualSourcingTextBox");
-                var materialTextBox = this.FindControl<TextBox>("SourcingMaterialTextBox");
-                var mainProductTextBox = this.FindControl<TextBox>("MainProductTextBox");
-                
-                if (manualTextBox != null)
-                    SetPlaceholder(manualTextBox, "URL을 입력해주세요.");
-                if (materialTextBox != null)
-                    SetPlaceholder(materialTextBox, "소싱재료를 입력해주세요.");
-                if (mainProductTextBox != null)
-                    SetPlaceholder(mainProductTextBox, "메인상품을 입력해주세요.");
-            }
-            catch { }
-        }
-        
-        private void SetPlaceholder(TextBox textBox, string placeholder)
-        {
-            if (string.IsNullOrEmpty(textBox.Text))
-            {
-                textBox.Text = placeholder;
-                textBox.Foreground = new SolidColorBrush(Color.Parse("#999999"));
-            }
-            
-            textBox.GotFocus += (s, e) =>
-            {
-                if (textBox.Text == placeholder)
-                {
-                    textBox.Text = "";
-                    textBox.Foreground = ThemeManager.Instance.IsDarkTheme ? 
-                        new SolidColorBrush(Colors.White) : 
-                        new SolidColorBrush(Color.Parse("#333333"));
-                }
-            };
-            
-            textBox.LostFocus += (s, e) =>
-            {
-                if (string.IsNullOrEmpty(textBox.Text))
-                {
-                    textBox.Text = placeholder;
-                    textBox.Foreground = new SolidColorBrush(Color.Parse("#999999"));
-                }
-            };
         }
     }
     
