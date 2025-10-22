@@ -21,6 +21,21 @@ using Gumaedaehang.Services;
 
 namespace Gumaedaehang
 {
+    // 리뷰 데이터 구조
+    public class ReviewItem
+    {
+        public int rating { get; set; }
+        public string content { get; set; } = "";
+    }
+
+    public class ReviewFileData
+    {
+        public List<ReviewItem> reviews { get; set; } = new List<ReviewItem>();
+        public int reviewCount { get; set; }
+    }
+
+namespace Gumaedaehang
+{
     public partial class SourcingPage : UserControl
     {
         private readonly ThumbnailService _thumbnailService = new();
@@ -50,6 +65,9 @@ namespace Gumaedaehang
         private Button? _autoSourcingButton;
         private TextBox? _mainProductTextBox;
         private Button? _mainProductButton;
+        
+        // 실제 데이터 컨테이너
+        private StackPanel? RealDataContainer;
         
         public SourcingPage()
         {
@@ -103,6 +121,9 @@ namespace Gumaedaehang
                 _mainProductTextBox = this.FindControl<TextBox>("MainProductTextBox");
                 _mainProductButton = this.FindControl<Button>("MainProductButton");
                 
+                // RealDataContainer 초기화
+                RealDataContainer = this.FindControl<StackPanel>("RealDataContainer");
+                
                 // 상품들의 UI 요소들 초기화
                 InitializeProductElements();
                 
@@ -114,6 +135,9 @@ namespace Gumaedaehang
                 
                 // 초기 상태 설정
                 UpdateViewVisibility();
+                
+                // 크롤링된 데이터 자동 로드
+                LoadCrawledData();
             }
             catch (Exception ex)
             {
@@ -282,13 +306,8 @@ namespace Gumaedaehang
             // 더미데이터 제거됨 - 실제 데이터는 AddProductImageCard 메서드를 통해 동적으로 추가됩니다
             Debug.WriteLine("InitializeProductElements 호출됨");
             
-            // 테스트용 - 즉시 하나의 카드 추가
-            Dispatcher.UIThread.Post(() =>
-            {
-                AddProductImageCard("test", "123", "/mnt/c/Users/decem/AppData/Roaming/Predvia/Images/choileelang_10000947462_main.jpg");
-            });
-            
-            LoadCrawledData();
+            // 초기화 후에는 데이터를 로드하지 않음 (자동 초기화 완료)
+            Debug.WriteLine("초기화 완료 - 빈 상태로 시작");
         }
 
         // 크롤링된 데이터를 로드하는 메서드
@@ -340,6 +359,67 @@ namespace Gumaedaehang
             {
                 Debug.WriteLine($"❌ 크롤링 데이터 로드 오류: {ex.Message}");
             }
+        }
+
+        // 크롤링된 상품명 읽기
+        private string GetOriginalProductName(string storeId, string productId)
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var productDataPath = Path.Combine(appDataPath, "Predvia", "ProductData");
+                var nameFile = Path.Combine(productDataPath, $"{storeId}_{productId}_name.txt");
+                
+                if (File.Exists(nameFile))
+                {
+                    return File.ReadAllText(nameFile, System.Text.Encoding.UTF8);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 상품명 읽기 오류: {ex.Message}");
+            }
+            return "상품명 없음";
+        }
+
+        // 크롤링된 리뷰 데이터 읽기
+        private List<string> GetProductReviews(string storeId, string productId)
+        {
+            var reviews = new List<string>();
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var reviewsPath = Path.Combine(appDataPath, "Predvia", "Reviews");
+                var reviewFile = Path.Combine(reviewsPath, $"{storeId}_{productId}_reviews.json");
+                
+                if (File.Exists(reviewFile))
+                {
+                    var jsonContent = File.ReadAllText(reviewFile, System.Text.Encoding.UTF8);
+                    var reviewData = System.Text.Json.JsonSerializer.Deserialize<ReviewFileData>(jsonContent);
+                    
+                    if (reviewData?.reviews != null)
+                    {
+                        foreach (var review in reviewData.reviews)
+                        {
+                            if (!string.IsNullOrEmpty(review.content))
+                            {
+                                reviews.Add($"⭐ {review.rating}/5 - {review.content}");
+                            }
+                        }
+                    }
+                }
+                
+                if (reviews.Count == 0)
+                {
+                    reviews.Add("리뷰 없음");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 리뷰 읽기 오류: {ex.Message}");
+                reviews.Add("리뷰 읽기 오류");
+            }
+            return reviews;
         }
 
         // 실제 상품 이미지 카드 추가 메서드 (원본 더미데이터와 완전히 똑같이)
@@ -463,7 +543,7 @@ namespace Gumaedaehang
 
                 var nameInputText = new TextBlock 
                 { 
-                    Text = "가베트345 ㅁ 바나나", 
+                    Text = GetOriginalProductName(storeId, productId), 
                     FontSize = 14,
                     FontFamily = new FontFamily("Malgun Gothic"),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
@@ -783,20 +863,30 @@ namespace Gumaedaehang
                     {
                         foreach (var review in reviewsArray.EnumerateArray())
                         {
-                            var rating = review.TryGetProperty("rating", out var ratingElement) ? ratingElement.GetString() : "⭐";
-                            var content = review.TryGetProperty("content", out var contentElement) ? contentElement.GetString() : "리뷰 내용 없음";
+                            var rating = review.TryGetProperty("rating", out var ratingElement) ? ratingElement.GetDouble() : 0.0;
+                            var ratingText = review.TryGetProperty("ratingText", out var ratingTextElement) ? ratingTextElement.GetString() : "";
+                            var recentRating = review.TryGetProperty("recentRating", out var recentRatingElement) ? recentRatingElement.GetString() : "";
+                            var content = review.TryGetProperty("content", out var contentElement) ? contentElement.GetString() : "평점 정보 없음";
                             
+                            // 별점 표시 (소수점 지원)
                             var stars = rating switch
                             {
-                                "5" => "⭐⭐⭐⭐⭐",
-                                "4" => "⭐⭐⭐⭐",
-                                "3" => "⭐⭐⭐",
-                                "2" => "⭐⭐",
-                                "1" => "⭐",
-                                _ => "⭐⭐⭐⭐⭐"
+                                >= 4.5 => "⭐⭐⭐⭐⭐",
+                                >= 3.5 => "⭐⭐⭐⭐",
+                                >= 2.5 => "⭐⭐⭐",
+                                >= 1.5 => "⭐⭐",
+                                >= 0.5 => "⭐",
+                                _ => "☆"
                             };
                             
-                            reviews.Add($"리뷰: {content} {stars}");
+                            // 새로운 형식으로 표시
+                            var displayText = $"{content} {stars}";
+                            if (!string.IsNullOrEmpty(recentRating))
+                            {
+                                displayText += $" {recentRating}";
+                            }
+                            
+                            reviews.Add(displayText);
                             
                             // 최대 3개 리뷰만 표시
                             if (reviews.Count >= 3) break;
