@@ -95,6 +95,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/image", HandleProductImage); // ⭐ 상품 이미지 처리 API 추가
                 _app.MapPost("/api/smartstore/product-name", HandleProductName); // ⭐ 상품명 처리 API 추가
                 _app.MapPost("/api/smartstore/reviews", HandleProductReviews); // ⭐ 리뷰 처리 API 추가
+                _app.MapPost("/api/smartstore/categories", HandleCategories); // ⭐ 카테고리 처리 API 추가
                 
                 // ⭐ 상태 관리 API 추가
                 _app.MapPost("/api/smartstore/state", HandleStoreState);
@@ -1114,12 +1115,7 @@ namespace Gumaedaehang.Services
                     // ⭐ 80개 미만이면 Chrome 재시작
                     if (_totalProductCount < 80)
                     {
-                        LogWindow.AddLogStatic($"🔄 80개 미만 수집으로 Chrome 재시작 시도...");
-                        _ = Task.Run(async () =>
-                        {
-                            await Task.Delay(3000); // 3초 대기
-                            await RestartChromeAndResume();
-                        });
+                        LogWindow.AddLogStatic($"🔄 80개 미만 수집 - 크롤링 완료");
                     }
                 }
                 
@@ -1372,6 +1368,92 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 상품명 저장 실패: {ex.Message}");
+            }
+        }
+
+        // ⭐ 카테고리 처리 API
+        private async Task<IResult> HandleCategories(HttpContext context)
+        {
+            try
+            {
+                var requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                var categoryData = JsonSerializer.Deserialize<CategoryData>(requestBody);
+
+                if (categoryData?.Categories != null && categoryData.Categories.Count > 0)
+                {
+                    await SaveCategories(categoryData);
+                    await LogMessage($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
+                    
+                    // 소싱 페이지에 카테고리 데이터 실시간 표시
+                    await UpdateSourcingPageCategories(categoryData);
+                }
+
+                await context.Response.WriteAsync("{\"status\":\"success\"}");
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                await LogMessage($"❌ 카테고리 처리 오류: {ex.Message}");
+                return Results.BadRequest($"카테고리 처리 실패: {ex.Message}");
+            }
+        }
+
+        // 카테고리 데이터 저장
+        private async Task SaveCategories(CategoryData categoryData)
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var predviaPath = Path.Combine(appDataPath, "Predvia");
+                var categoriesPath = Path.Combine(predviaPath, "Categories");
+
+                Directory.CreateDirectory(categoriesPath);
+
+                var fileName = $"{categoryData.StoreId}_categories.json";
+                var filePath = Path.Combine(categoriesPath, fileName);
+
+                var json = JsonSerializer.Serialize(categoryData, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                });
+
+                await File.WriteAllTextAsync(filePath, json, System.Text.Encoding.UTF8);
+                await LogMessage($"💾 카테고리 파일 저장: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                await LogMessage($"❌ 카테고리 저장 오류: {ex.Message}");
+            }
+        }
+
+        // 소싱 페이지에 카테고리 데이터 실시간 업데이트
+        private async Task UpdateSourcingPageCategories(CategoryData categoryData)
+        {
+            try
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                            ? desktop.MainWindow as MainWindow
+                            : null;
+
+                        if (mainWindow?.SourcingPageInstance != null)
+                        {
+                            mainWindow.SourcingPageInstance.AddCategoryData(categoryData);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogMessage($"❌ 소싱 페이지 카테고리 업데이트 오류: {ex.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                await LogMessage($"❌ UI 스레드 카테고리 업데이트 오류: {ex.Message}");
             }
         }
 
@@ -1643,11 +1725,10 @@ namespace Gumaedaehang.Services
         [JsonPropertyName("stuckCount")]
         public int StuckCount { get; set; } = 0;
     }
-}
 
-// ⭐ 차단 정보 모델
-public class BlockedStoreInfo
-{
+    // ⭐ 차단 정보 모델
+    public class BlockedStoreInfo
+    {
     [JsonPropertyName("storeId")]
     public string StoreId { get; set; } = string.Empty;
     
@@ -1667,186 +1748,119 @@ public class BlockedStoreInfo
     public long Timestamp { get; set; }
 }
 
-// ⭐ 상품 이미지 데이터 모델
-        private async Task RestartChromeAndResume()
-        {
-            try
-            {
-                LogWindow.AddLogStatic("🔄 Chrome 재시작 프로세스 시작...");
-                
-                // 1. 기존 Chrome 프로세스 종료
-                await KillChromeProcesses();
-                
-                // 2. 1분 대기 (네이버 차단 해제 대기)
-                LogWindow.AddLogStatic("⏳ 네이버 차단 해제를 위해 60초 대기 중...");
-                await Task.Delay(60000);
-                
-                // 3. Chrome 재시작
-                await StartChromeWithExtension();
-                
-                // 4. 크롤링 상태 초기화
-                lock (_counterLock)
-                {
-                    _shouldStop = false;
-                    LogWindow.AddLogStatic($"🔄 크롤링 재개 준비 완료 (현재: {_totalProductCount}/100개)");
-                }
-                
-                LogWindow.AddLogStatic("✅ Chrome 재시작 완료 - 크롤링 재개 가능");
-                
-            }
-            catch (Exception ex)
-            {
-                LogWindow.AddLogStatic($"❌ Chrome 재시작 오류: {ex.Message}");
-            }
-        }
-        
-        // Chrome 프로세스 종료
-        private async Task KillChromeProcesses()
-        {
-            try
-            {
-                LogWindow.AddLogStatic("🔄 Chrome 프로세스 종료 중...");
-                
-                var processes = System.Diagnostics.Process.GetProcessesByName("chrome");
-                foreach (var process in processes)
-                {
-                    try
-                    {
-                        process.Kill();
-                        await process.WaitForExitAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        LogWindow.AddLogStatic($"⚠️ Chrome 프로세스 종료 실패: {ex.Message}");
-                    }
-                }
-                
-                LogWindow.AddLogStatic($"✅ Chrome 프로세스 {processes.Length}개 종료 완료");
-                await Task.Delay(3000); // 3초 대기
-            }
-            catch (Exception ex)
-            {
-                LogWindow.AddLogStatic($"❌ Chrome 프로세스 종료 오류: {ex.Message}");
-            }
-        }
-        
-        // Chrome 확장프로그램과 함께 시작
-        private async Task StartChromeWithExtension()
-        {
-            try
-            {
-                LogWindow.AddLogStatic("🚀 Chrome 확장프로그램과 함께 재시작 중...");
-                
-                var extensionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chrome-extension");
-                var userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Predvia", "ChromeData");
-                
-                var startInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "chrome.exe",
-                    Arguments = $"--load-extension=\"{extensionPath}\" --user-data-dir=\"{userDataDir}\" --disable-web-security --disable-features=VizDisplayCompositor",
-                    UseShellExecute = true,
-                    CreateNoWindow = false
-                };
-                
-                var process = System.Diagnostics.Process.Start(startInfo);
-                
-                if (process != null)
-                {
-                    LogWindow.AddLogStatic("✅ Chrome 재시작 성공");
-                    await Task.Delay(5000); // Chrome 로딩 대기
-                }
-                else
-                {
-                    LogWindow.AddLogStatic("❌ Chrome 재시작 실패");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogWindow.AddLogStatic($"❌ Chrome 재시작 오류: {ex.Message}");
-            }
-        }
+// ⭐ 카테고리 데이터 모델
+public class CategoryData
+{
+    [JsonPropertyName("storeId")]
+    public string StoreId { get; set; } = "";
+
+    [JsonPropertyName("categories")]
+    public List<CategoryInfo> Categories { get; set; } = new();
+
+    [JsonPropertyName("pageUrl")]
+    public string PageUrl { get; set; } = "";
+
+    [JsonPropertyName("extractedAt")]
+    public string ExtractedAt { get; set; } = "";
+}
+
+public class CategoryInfo
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = "";
+
+    [JsonPropertyName("categoryId")]
+    public string CategoryId { get; set; } = "";
+
+    [JsonPropertyName("order")]
+    public int Order { get; set; }
+}
 
 // ⭐ 상품 이미지 데이터 모델
-public class ProductImageData
-{
-    [JsonPropertyName("storeId")]
-    public string StoreId { get; set; } = string.Empty;
-    
-    [JsonPropertyName("productId")]
-    public string ProductId { get; set; } = string.Empty;
-    
-    [JsonPropertyName("imageUrl")]
-    public string ImageUrl { get; set; } = string.Empty;
-    
-    [JsonPropertyName("productUrl")]
-    public string ProductUrl { get; set; } = string.Empty;
-}
-
-// ⭐ 상품명 데이터 모델
-public class ProductNameData
-{
-    [JsonPropertyName("storeId")]
-    public string StoreId { get; set; } = string.Empty;
-    
-    [JsonPropertyName("productId")]
-    public string ProductId { get; set; } = string.Empty;
-    
-    [JsonPropertyName("productName")]
-    public string ProductName { get; set; } = string.Empty;
-    
-    [JsonPropertyName("productUrl")]
-    public string ProductUrl { get; set; } = string.Empty;
-}
-
-// ⭐ 리뷰 데이터 모델
-public class ProductReviewsData
-{
-    [JsonPropertyName("storeId")]
-    public string StoreId { get; set; } = string.Empty;
-    
-    [JsonPropertyName("productId")]
-    public string ProductId { get; set; } = string.Empty;
-    
-    [JsonPropertyName("productUrl")]
-    public string ProductUrl { get; set; } = string.Empty;
-    
-    [JsonPropertyName("reviews")]
-    public List<ReviewData> Reviews { get; set; } = new List<ReviewData>();
-    
-    [JsonPropertyName("reviewCount")]
-    public int ReviewCount { get; set; }
-    
-    [JsonPropertyName("timestamp")]
-    public DateTime Timestamp { get; set; } = DateTime.Now;
-}
-
-public class ReviewData
-{
-    [JsonPropertyName("rating")]
-    public double Rating { get; set; }
-    
-    [JsonPropertyName("content")]
-    public string Content { get; set; } = string.Empty;
-    
-    [JsonPropertyName("ratingText")]
-    public string RatingText { get; set; } = string.Empty;
-    
-    [JsonPropertyName("recentRating")]
-    public string RecentRating { get; set; } = string.Empty;
-}
-
-// URL에서 스토어 ID 추출 확장 메서드
-public static class UrlExtensions
-{
-    public static string ExtractStoreIdFromUrl(string url)
+    public class ProductImageData
     {
-        try
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("imageUrl")]
+        public string ImageUrl { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productUrl")]
+        public string ProductUrl { get; set; } = string.Empty;
+    }
+
+    // ⭐ 상품명 데이터 모델
+    public class ProductNameData
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productName")]
+        public string ProductName { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productUrl")]
+        public string ProductUrl { get; set; } = string.Empty;
+    }
+
+    // ⭐ 리뷰 데이터 모델
+    public class ProductReviewsData
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productUrl")]
+        public string ProductUrl { get; set; } = string.Empty;
+        
+        [JsonPropertyName("reviews")]
+        public List<ReviewData> Reviews { get; set; } = new List<ReviewData>();
+        
+        [JsonPropertyName("reviewCount")]
+        public int ReviewCount { get; set; }
+        
+        [JsonPropertyName("timestamp")]
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+    }
+
+    public class ReviewData
+    {
+        [JsonPropertyName("rating")]
+        public double Rating { get; set; }
+        
+        [JsonPropertyName("content")]
+        public string Content { get; set; } = string.Empty;
+        
+        [JsonPropertyName("ratingText")]
+        public string RatingText { get; set; } = string.Empty;
+        
+        [JsonPropertyName("recentRating")]
+        public string RecentRating { get; set; } = string.Empty;
+    }
+
+    // URL에서 스토어 ID 추출 확장 메서드
+    public static class UrlExtensions
+    {
+        public static string ExtractStoreIdFromUrl(string url)
         {
-            return url.Split('/').LastOrDefault()?.Split('?').FirstOrDefault() ?? "";
-        }
-        catch
-        {
-            return "";
+            try
+            {
+                return url.Split('/').LastOrDefault()?.Split('?').FirstOrDefault() ?? "";
+            }
+            catch
+            {
+                return "";
+            }
         }
     }
 }

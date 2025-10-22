@@ -805,10 +805,22 @@ async function notifyServerLinkVisited(link, currentIndex, totalCount) {
 
 console.log('🎯 Predvia 스마트스토어 링크 수집 확장프로그램 로드 완료');
 
+// ⭐ 서버로 로그 전송 함수
+async function sendLogToServer(message) {
+  try {
+    await fetch('http://localhost:8080/api/smartstore/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, timestamp: new Date().toISOString() })
+    });
+  } catch (error) {
+    console.log('로그 전송 실패:', error);
+  }
+}
+
 // ⭐ 상품 페이지에서 리뷰 수집
 async function collectProductReviews() {
   try {
-    // 현재 URL에서 스토어ID와 상품ID 추출
     const url = window.location.href;
     const storeMatch = url.match(/smartstore\.naver\.com\/([^\/]+)/);
     const productMatch = url.match(/products\/(\d+)/);
@@ -821,42 +833,48 @@ async function collectProductReviews() {
     const storeId = storeMatch[1];
     const productId = productMatch[1];
     
-    console.log(`⭐ 리뷰 수집 시작: ${storeId}/${productId}`);
-    await sendLogToServer(`⭐ ${storeId}: 리뷰 수집 시작`);
+    console.log(`📊 리뷰 수집 시작: ${storeId}/${productId}`);
+    await sendLogToServer(`📊 ${storeId}: 리뷰 수집 시작`);
     
-    // 리뷰 데이터 수집
+    // 페이지 로딩 대기
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     const reviews = [];
     
-    // 별점 수집 (올바른 선택자)
-    const ratingElements = document.querySelectorAll('.nI8wdMPKHV .rIXQgoa8Xl');
+    // v1.25에서 사용한 정확한 선택자 사용
+    const ratingElements = document.querySelectorAll('em.n6zq2yy0KA');
+    const reviewContentElements = document.querySelectorAll('.vhlVUsCtw3 .K0kwJOXP06');
     
-    // 리뷰 내용 수집 (리뷰 텍스트 선택자 - 실제 구조에 맞게 수정 필요)
-    const reviewElements = document.querySelectorAll('.review-content, .review-text, [class*="review"]');
+    console.log(`📊 발견된 별점: ${ratingElements.length}개, 리뷰 내용: ${reviewContentElements.length}개`);
+    await sendLogToServer(`📊 ${storeId}: 별점 ${ratingElements.length}개, 리뷰 내용 ${reviewContentElements.length}개 발견`);
     
-    console.log(`📊 발견된 별점: ${ratingElements.length}개, 리뷰 내용: ${reviewElements.length}개`);
-    await sendLogToServer(`📊 ${storeId}: 별점 ${ratingElements.length}개, 리뷰 내용 ${reviewElements.length}개 발견`);
+    // 리뷰 데이터 수집
+    const maxReviews = Math.max(ratingElements.length, reviewContentElements.length);
     
-    // 리뷰 데이터 조합
-    for (let i = 0; i < ratingElements.length; i++) {
-      const ratingElement = ratingElements[i];
-      let ratingText = ratingElement.textContent.trim();
+    for (let i = 0; i < maxReviews; i++) {
+      let rating = 5.0;
+      let content = '';
       
-      // "평점" 텍스트 제거하고 숫자만 추출
-      ratingText = ratingText.replace('평점', '').trim();
-      const rating = parseFloat(ratingText) || 5.0;
+      // 별점 추출
+      if (i < ratingElements.length) {
+        const ratingText = ratingElements[i].textContent.trim();
+        rating = parseFloat(ratingText) || 5.0;
+      }
       
-      // 리뷰 내용은 일단 평점 정보로 대체 (실제 리뷰 텍스트 선택자 확인 필요)
-      const reviewContent = `평점 ${rating}점 리뷰`;
+      // 리뷰 내용 추출
+      if (i < reviewContentElements.length) {
+        content = reviewContentElements[i].textContent.trim();
+      }
       
-      console.log(`📊 수집된 리뷰 ${i+1}: 평점=${rating}, 내용=${reviewContent}`);
-      await sendLogToServer(`📊 ${storeId}: 리뷰 ${i+1} - 평점 ${rating}점`);
-      
-      reviews.push({
-        rating: rating,
-        ratingText: ratingText,
-        recentRating: ratingElement.parentElement?.querySelector('.jGjjABJeba')?.textContent?.trim() || '',
-        content: reviewContent
-      });
+      if (rating || content) {
+        reviews.push({
+          rating: rating,
+          content: content || `평점 ${rating}점`
+        });
+        
+        console.log(`⭐ 리뷰 ${i+1}: 평점=${rating}, 내용="${content.substring(0, 50)}..."`);
+        await sendLogToServer(`⭐ ${storeId}: 리뷰 ${i+1} - 평점 ${rating}점`);
+      }
     }
     
     // 서버로 리뷰 데이터 전송
@@ -870,7 +888,7 @@ async function collectProductReviews() {
         timestamp: new Date().toISOString()
       };
       
-      await fetch('http://localhost:8080/api/smartstore/reviews', {
+      const response = await fetch('http://localhost:8080/api/smartstore/reviews', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -879,23 +897,34 @@ async function collectProductReviews() {
         body: JSON.stringify(reviewData)
       });
       
-      console.log(`✅ 리뷰 ${reviews.length}개 서버 전송 완료`);
-      await sendLogToServer(`✅ ${storeId}: 리뷰 ${reviews.length}개 서버 전송 완료`);
+      if (response.ok) {
+        console.log(`✅ 리뷰 ${reviews.length}개 서버 전송 완료`);
+        await sendLogToServer(`✅ ${storeId}: 리뷰 ${reviews.length}개 서버 전송 완료`);
+      } else {
+        console.log(`❌ 리뷰 서버 전송 실패: ${response.status}`);
+        await sendLogToServer(`❌ ${storeId}: 리뷰 서버 전송 실패`);
+      }
     } else {
       console.log(`❌ 리뷰 없음: ${storeId}/${productId}`);
       await sendLogToServer(`❌ ${storeId}: 리뷰 데이터 없음`);
-      console.log('❌ 수집된 리뷰가 없음');
     }
     
   } catch (error) {
     console.error('❌ 리뷰 수집 오류:', error);
+    await sendLogToServer(`❌ 리뷰 수집 오류: ${error.message}`);
   }
 }
 
 // 상품 페이지에서 자동으로 리뷰 수집 실행
 if (window.location.href.includes('smartstore.naver.com') && window.location.href.includes('/products/')) {
-  // 페이지 로드 완료 후 3초 뒤 리뷰 수집
-  setTimeout(() => {
-    collectProductReviews();
-  }, 3000);
+  console.log('🎯 상품 페이지 감지 - 리뷰 수집 준비');
+  
+  // 페이지 로드 완료 후 리뷰 수집
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(collectProductReviews, 3000);
+    });
+  } else {
+    setTimeout(collectProductReviews, 3000);
+  }
 }
