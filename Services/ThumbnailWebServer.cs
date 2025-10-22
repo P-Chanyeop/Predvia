@@ -98,9 +98,9 @@ namespace Gumaedaehang.Services
                 
                 // ⭐ 상태 관리 API 추가
                 _app.MapPost("/api/smartstore/state", HandleStoreState);
+                _app.MapGet("/api/smartstore/status", HandleGetStatus); // ⭐ 상태 조회 API 추가
                 _app.MapGet("/api/smartstore/state", HandleGetStoreState);
                 _app.MapPost("/api/smartstore/progress", HandleStoreProgress);
-                _app.MapGet("/api/smartstore/status", HandleGetStatus);
                 
                 LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (12개)");
 
@@ -1054,26 +1054,36 @@ namespace Gumaedaehang.Services
         }
 
         // ⭐ 전체 상태 확인 API
-        private IResult HandleGetStatus()
+        private async Task<IResult> HandleGetStatus(HttpContext context)
         {
             try
             {
-                lock (_counterLock)
+                var status = new
                 {
-                    return Results.Ok(new
-                    {
-                        totalProducts = _totalProductCount,
-                        targetProducts = TARGET_PRODUCT_COUNT,
-                        shouldStop = _shouldStop,
-                        selectedStores = _selectedStores.Count,
-                        progress = _totalProductCount * 100.0 / TARGET_PRODUCT_COUNT
-                    });
-                }
+                    success = true,
+                    productCount = _totalProductCount,
+                    targetCount = TARGET_PRODUCT_COUNT,
+                    isRunning = !_shouldStop,
+                    selectedStores = _selectedStores.Count,
+                    progress = _totalProductCount * 100.0 / TARGET_PRODUCT_COUNT,
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                };
+                
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsync(JsonSerializer.Serialize(status));
+                
+                return Results.Ok();
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"상태 확인 오류: {ex.Message}");
-                return Results.BadRequest(new { error = ex.Message });
+                LogWindow.AddLogStatic($"❌ 상태 조회 API 오류: {ex.Message}");
+                
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsync("{\"success\":false,\"error\":\"Status API error\"}");
+                
+                return Results.StatusCode(500);
             }
         }
 
@@ -1100,6 +1110,17 @@ namespace Gumaedaehang.Services
                     _shouldStop = true;
                     LogWindow.AddLogStatic($"🛑 네이버 차단 감지로 인한 크롤링 강제 중단");
                     LogWindow.AddLogStatic($"📊 최종 수집 완료: {_totalProductCount}/100개 ({(_totalProductCount * 100.0 / 100):F1}%)");
+                    
+                    // ⭐ 80개 미만이면 Chrome 재시작
+                    if (_totalProductCount < 80)
+                    {
+                        LogWindow.AddLogStatic($"🔄 80개 미만 수집으로 Chrome 재시작 시도...");
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(3000); // 3초 대기
+                            await RestartChromeAndResume();
+                        });
+                    }
                 }
                 
                 // 🔥 차단으로 중단되어도 카드 생성
@@ -1647,6 +1668,105 @@ public class BlockedStoreInfo
 }
 
 // ⭐ 상품 이미지 데이터 모델
+        private async Task RestartChromeAndResume()
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🔄 Chrome 재시작 프로세스 시작...");
+                
+                // 1. 기존 Chrome 프로세스 종료
+                await KillChromeProcesses();
+                
+                // 2. 1분 대기 (네이버 차단 해제 대기)
+                LogWindow.AddLogStatic("⏳ 네이버 차단 해제를 위해 60초 대기 중...");
+                await Task.Delay(60000);
+                
+                // 3. Chrome 재시작
+                await StartChromeWithExtension();
+                
+                // 4. 크롤링 상태 초기화
+                lock (_counterLock)
+                {
+                    _shouldStop = false;
+                    LogWindow.AddLogStatic($"🔄 크롤링 재개 준비 완료 (현재: {_totalProductCount}/100개)");
+                }
+                
+                LogWindow.AddLogStatic("✅ Chrome 재시작 완료 - 크롤링 재개 가능");
+                
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ Chrome 재시작 오류: {ex.Message}");
+            }
+        }
+        
+        // Chrome 프로세스 종료
+        private async Task KillChromeProcesses()
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🔄 Chrome 프로세스 종료 중...");
+                
+                var processes = System.Diagnostics.Process.GetProcessesByName("chrome");
+                foreach (var process in processes)
+                {
+                    try
+                    {
+                        process.Kill();
+                        await process.WaitForExitAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ Chrome 프로세스 종료 실패: {ex.Message}");
+                    }
+                }
+                
+                LogWindow.AddLogStatic($"✅ Chrome 프로세스 {processes.Length}개 종료 완료");
+                await Task.Delay(3000); // 3초 대기
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ Chrome 프로세스 종료 오류: {ex.Message}");
+            }
+        }
+        
+        // Chrome 확장프로그램과 함께 시작
+        private async Task StartChromeWithExtension()
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🚀 Chrome 확장프로그램과 함께 재시작 중...");
+                
+                var extensionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chrome-extension");
+                var userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Predvia", "ChromeData");
+                
+                var startInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "chrome.exe",
+                    Arguments = $"--load-extension=\"{extensionPath}\" --user-data-dir=\"{userDataDir}\" --disable-web-security --disable-features=VizDisplayCompositor",
+                    UseShellExecute = true,
+                    CreateNoWindow = false
+                };
+                
+                var process = System.Diagnostics.Process.Start(startInfo);
+                
+                if (process != null)
+                {
+                    LogWindow.AddLogStatic("✅ Chrome 재시작 성공");
+                    await Task.Delay(5000); // Chrome 로딩 대기
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("❌ Chrome 재시작 실패");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ Chrome 재시작 오류: {ex.Message}");
+            }
+        }
+
+// ⭐ 상품 이미지 데이터 모델
 public class ProductImageData
 {
     [JsonPropertyName("storeId")]
@@ -1703,10 +1823,16 @@ public class ProductReviewsData
 public class ReviewData
 {
     [JsonPropertyName("rating")]
-    public int Rating { get; set; }
+    public double Rating { get; set; }
     
     [JsonPropertyName("content")]
     public string Content { get; set; } = string.Empty;
+    
+    [JsonPropertyName("ratingText")]
+    public string RatingText { get; set; } = string.Empty;
+    
+    [JsonPropertyName("recentRating")]
+    public string RecentRating { get; set; } = string.Empty;
 }
 
 // URL에서 스토어 ID 추출 확장 메서드
