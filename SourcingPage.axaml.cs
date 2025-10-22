@@ -17,6 +17,7 @@ using System;
 using System.Text;
 using System.IO;
 using System.Threading.Tasks;
+using System.Text.Json;
 using Gumaedaehang.Services;
 
 namespace Gumaedaehang
@@ -32,6 +33,23 @@ namespace Gumaedaehang
     {
         public List<ReviewItem> reviews { get; set; } = new List<ReviewItem>();
         public int reviewCount { get; set; }
+    }
+
+    // 카테고리 데이터 구조
+    public class CategoryData
+    {
+        public string StoreId { get; set; } = "";
+        public List<CategoryInfo> Categories { get; set; } = new();
+        public string PageUrl { get; set; } = "";
+        public string ExtractedAt { get; set; } = "";
+    }
+
+    public class CategoryInfo
+    {
+        public string Name { get; set; } = "";
+        public string Url { get; set; } = "";
+        public string CategoryId { get; set; } = "";
+        public int Order { get; set; }
     }
 }
 
@@ -66,9 +84,6 @@ namespace Gumaedaehang
         private Button? _autoSourcingButton;
         private TextBox? _mainProductTextBox;
         private Button? _mainProductButton;
-        
-        // 실제 데이터 컨테이너
-        private StackPanel? RealDataContainer;
         
         public SourcingPage()
         {
@@ -130,9 +145,6 @@ namespace Gumaedaehang
                 _autoSourcingButton = this.FindControl<Button>("AutoSourcingButton");
                 _mainProductTextBox = this.FindControl<TextBox>("MainProductTextBox");
                 _mainProductButton = this.FindControl<Button>("MainProductButton");
-                
-                // RealDataContainer 초기화
-                RealDataContainer = this.FindControl<StackPanel>("RealDataContainer");
                 
                 // 상품들의 UI 요소들 초기화
                 InitializeProductElements();
@@ -329,10 +341,35 @@ namespace Gumaedaehang
                 var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
                 var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
                 var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
+                var categoriesPath = System.IO.Path.Combine(predviaPath, "Categories");
 
                 if (!Directory.Exists(imagesPath) || !Directory.Exists(productDataPath))
                 {
                     return;
+                }
+
+                // 카테고리 데이터 먼저 로드
+                if (Directory.Exists(categoriesPath))
+                {
+                    var categoryFiles = Directory.GetFiles(categoriesPath, "*_categories.json");
+                    foreach (var categoryFile in categoryFiles)
+                    {
+                        try
+                        {
+                            var json = File.ReadAllText(categoryFile, System.Text.Encoding.UTF8);
+                            var categoryData = JsonSerializer.Deserialize<CategoryData>(json);
+                            
+                            if (categoryData != null)
+                            {
+                                _categoryDataCache[categoryData.StoreId] = categoryData;
+                                Debug.WriteLine($"📂 카테고리 데이터 로드: {categoryData.StoreId} - {categoryData.Categories.Count}개");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"❌ 카테고리 파일 로드 오류: {ex.Message}");
+                        }
+                    }
                 }
 
                 var imageFiles = Directory.GetFiles(imagesPath, "*_main.jpg");
@@ -368,6 +405,49 @@ namespace Gumaedaehang
             catch (Exception ex)
             {
                 Debug.WriteLine($"❌ 크롤링 데이터 로드 오류: {ex.Message}");
+            }
+        }
+
+        // 카테고리 정보 가져오기
+        private string GetCategoryInfo(string storeId)
+        {
+            try
+            {
+                if (_categoryDataCache.ContainsKey(storeId))
+                {
+                    var categoryData = _categoryDataCache[storeId];
+                    if (categoryData.Categories.Count > 0)
+                    {
+                        var categoryNames = categoryData.Categories.Select(c => c.Name).ToList();
+                        return $"카테고리: {string.Join(", ", categoryNames)}";
+                    }
+                }
+                
+                // 캐시에 없으면 파일에서 로드 시도
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var categoriesPath = Path.Combine(appDataPath, "Predvia", "Categories");
+                var fileName = $"{storeId}_categories.json";
+                var filePath = Path.Combine(categoriesPath, fileName);
+                
+                if (File.Exists(filePath))
+                {
+                    var json = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
+                    var categoryData = JsonSerializer.Deserialize<CategoryData>(json);
+                    
+                    if (categoryData?.Categories != null && categoryData.Categories.Count > 0)
+                    {
+                        _categoryDataCache[storeId] = categoryData;
+                        var categoryNames = categoryData.Categories.Select(c => c.Name).ToList();
+                        return $"카테고리: {string.Join(", ", categoryNames)}";
+                    }
+                }
+                
+                return "카테고리: 정보 없음";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 카테고리 정보 로드 오류: {ex.Message}");
+                return "카테고리: 로드 실패";
             }
         }
 
@@ -431,6 +511,62 @@ namespace Gumaedaehang
             }
             return reviews;
         }
+
+        // 테스트용 카테고리 데이터 생성
+        private void CreateTestCategoryData()
+        {
+            try
+            {
+                var testCategoryData = new CategoryData
+                {
+                    StoreId = "teststore",
+                    Categories = new List<CategoryInfo>
+                    {
+                        new CategoryInfo { Name = "생활/건강", Url = "/teststore/category/50000008", Order = 1 },
+                        new CategoryInfo { Name = "주방용품", Url = "/teststore/category/50000061", Order = 2 },
+                        new CategoryInfo { Name = "제과/제빵용품", Url = "/teststore/category/50000893", Order = 3 }
+                    },
+                    PageUrl = "https://smartstore.naver.com/teststore",
+                    ExtractedAt = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+                };
+
+                AddCategoryData(testCategoryData);
+                Debug.WriteLine("✅ 테스트 카테고리 데이터 생성 완료");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 테스트 카테고리 데이터 생성 오류: {ex.Message}");
+            }
+        }
+
+        // 카테고리 데이터 추가 메서드
+        public void AddCategoryData(CategoryData categoryData)
+        {
+            try
+            {
+                Debug.WriteLine($"📂 카테고리 데이터 추가: {categoryData.StoreId} - {categoryData.Categories.Count}개");
+                
+                // 카테고리 정보를 상품 카드에 표시하기 위해 저장
+                // 실제로는 각 상품 카드의 카테고리 정보를 업데이트해야 함
+                
+                // 로그 출력
+                foreach (var category in categoryData.Categories)
+                {
+                    Debug.WriteLine($"  - {category.Name} (순서: {category.Order})");
+                }
+                
+                // 카테고리 데이터를 메모리에 저장 (나중에 상품 카드에서 사용)
+                _categoryDataCache[categoryData.StoreId] = categoryData;
+                
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 카테고리 데이터 추가 오류: {ex.Message}");
+            }
+        }
+
+        // 카테고리 데이터 캐시
+        private readonly Dictionary<string, CategoryData> _categoryDataCache = new();
 
         // 실제 상품 이미지 카드 추가 메서드 (원본 더미데이터와 완전히 똑같이)
         public void AddProductImageCard(string storeId, string productId, string imageUrl)
@@ -573,6 +709,16 @@ namespace Gumaedaehang
                 nameInputGrid.Children.Add(byteCountText);
                 nameInputBorder.Child = nameInputGrid;
 
+                // 카테고리 정보 표시 (원상품명 위에 추가)
+                var categoryText = new TextBlock 
+                { 
+                    Text = GetCategoryInfo(storeId), 
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Foreground = new SolidColorBrush(Color.Parse("#666666")),
+                    Margin = new Thickness(0, 5, 0, 0)
+                };
+
                 // 원상품명 (실제 크롤링된 상품명 표시)
                 var originalNameText = new TextBlock 
                 { 
@@ -622,6 +768,7 @@ namespace Gumaedaehang
                 // 정보 패널에 모든 요소 추가
                 infoPanel.Children.Add(nameLabel);
                 infoPanel.Children.Add(nameInputBorder);
+                infoPanel.Children.Add(categoryText);
                 infoPanel.Children.Add(originalNameText);
                 infoPanel.Children.Add(keywordPanel);
                 infoPanel.Children.Add(keywordInputPanel);
@@ -1579,10 +1726,11 @@ namespace Gumaedaehang
                 // UI에서 기존 카드들 제거
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (RealDataContainer != null)
+                    var realDataContainer = this.FindControl<StackPanel>("RealDataContainer");
+                    if (realDataContainer != null)
                     {
-                        var cardCount = RealDataContainer.Children.Count;
-                        RealDataContainer.Children.Clear();
+                        var cardCount = realDataContainer.Children.Count;
+                        realDataContainer.Children.Clear();
                         
                         // 작업로그에 초기화 완료 메시지 추가 (지연 후)
                         if (totalDeleted > 0 || cardCount > 0)
@@ -1674,10 +1822,11 @@ namespace Gumaedaehang
                 // UI에서 기존 카드들 제거
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (RealDataContainer != null)
+                    var realDataContainer = this.FindControl<StackPanel>("RealDataContainer");
+                    if (realDataContainer != null)
                     {
-                        var cardCount = RealDataContainer.Children.Count;
-                        RealDataContainer.Children.Clear();
+                        var cardCount = realDataContainer.Children.Count;
+                        realDataContainer.Children.Clear();
                         Debug.WriteLine($"UI 카드 {cardCount}개 제거 완료");
                         LogWindow.AddLogStatic($"🧹 UI 카드들 초기화 완료 ({cardCount}개)");
                     }
