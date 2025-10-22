@@ -3,9 +3,52 @@ console.log('🆕 Predvia 스마트스토어 링크 수집 확장프로그램 �
 console.log('🌐 현재 URL:', window.location.href);
 console.log('⏰ 현재 시간:', new Date().toLocaleString());
 
-// 차단 복구 시스템 제거됨
+// 차단 감지 및 대응 시스템
+function detectBlocking() {
+  const blockingMessages = [
+    '현재 서비스 접속이 불가합니다',
+    '일시적으로 접속이 제한되었습니다',
+    '서비스 이용에 불편을 드려 죄송합니다',
+    'Access Denied',
+    'Blocked'
+  ];
+  
+  const pageText = document.body ? document.body.textContent : '';
+  
+  for (const message of blockingMessages) {
+    if (pageText.includes(message)) {
+      console.log(`🚫 차단 메시지 감지: ${message}`);
+      return true;
+    }
+  }
+  
+  return false;
+}
 
-// 차단 복구 함수 제거됨
+// 차단 복구 데이터 정리 및 재시작 감지
+async function checkRestartStatus() {
+  try {
+    const response = await fetch('http://localhost:8080/api/smartstore/status', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      // 서버가 살아있고 80개 미만이면 자동으로 크롤링 재개
+      if (data.productCount && data.productCount < 80) {
+        console.log(`🔄 재시작 감지 - 현재 ${data.productCount}개, 크롤링 재개`);
+        return true;
+      } else if (data.productCount && data.productCount >= 80) {
+        console.log(`🛑 재시작 안함 - 현재 ${data.productCount}개 (80개 이상), 크롤링 종료`);
+        return false;
+      }
+    }
+  } catch (error) {
+    console.log('⚠️ 서버 상태 확인 실패:', error);
+  }
+  return false;
+}
 
 // 페이지 로딩 완료 후 실행
 if (document.readyState === 'loading') {
@@ -20,6 +63,9 @@ async function initializeExtension() {
   // 차단 복구 데이터 정리
   localStorage.removeItem('blockedStore');
   
+  // ⭐ 재시작 상태 확인
+  const shouldResume = await checkRestartStatus();
+  
   // ⭐ 서버 연결 테스트
   const serverConnected = await testServerConnection();
   if (!serverConnected) {
@@ -27,11 +73,19 @@ async function initializeExtension() {
     return;
   }
   
-  // 자동으로 스마트스토어 링크 추출 및 전송
-  setTimeout(() => {
-    console.log('🚀 자동 스마트스토어 링크 추출 시작...');
-    scrollAndCollectLinks();
-  }, 3000); // 3초 후 자동 실행 (페이지 로딩 대기)
+  // ⭐ 재시작 후 자동 크롤링 재개 또는 새로운 크롤링 시작
+  if (shouldResume) {
+    console.log('🔄 Chrome 재시작 후 크롤링 자동 재개...');
+    setTimeout(() => {
+      scrollAndCollectLinks();
+    }, 2000); // 2초 후 즉시 재개
+  } else {
+    // 자동으로 스마트스토어 링크 추출 및 전송
+    setTimeout(() => {
+      console.log('🚀 자동 스마트스토어 링크 추출 시작...');
+      scrollAndCollectLinks();
+    }, 3000); // 3초 후 자동 실행 (페이지 로딩 대기)
+  }
 }
 
 // ⭐ 서버 연결 테스트 함수
@@ -805,7 +859,7 @@ async function notifyServerLinkVisited(link, currentIndex, totalCount) {
 
 console.log('🎯 Predvia 스마트스토어 링크 수집 확장프로그램 로드 완료');
 
-// ⭐ 상품 페이지에서 리뷰 수집
+// ⭐ 상품 페이지에서 리뷰 수집 (개선된 버전)
 async function collectProductReviews() {
   try {
     // 현재 URL에서 스토어ID와 상품ID 추출
@@ -823,70 +877,235 @@ async function collectProductReviews() {
     
     console.log(`⭐ 리뷰 수집 시작: ${storeId}/${productId}`);
     
-    // 리뷰 데이터 수집
+    // 서버로 로그 전송
+    try {
+      await fetch('http://localhost:8080/api/smartstore/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `🔍 ${storeId}: 리뷰 수집 시작` })
+      });
+    } catch (logError) {
+      console.log('로그 전송 오류:', logError);
+    }
+    
+    // 페이지 로딩 대기
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     const reviews = [];
     
-    // 별점 수집 (em.n6zq2yy0KA 클래스)
-    const ratingElements = document.querySelectorAll('em.n6zq2yy0KA');
+    // 다양한 리뷰 선택자 시도
+    const reviewSelectors = [
+      // 최신 네이버 스마트스토어 리뷰 선택자들
+      '.review_list_v2 .review_item',
+      '.review-list .review-item', 
+      '.ReviewItems_review_item__2JzZx',
+      '.ReviewList_item__3GJzx',
+      '[data-testid="review-item"]',
+      '.review-item',
+      '.review_item',
+      // 기존 선택자들
+      '.nI8wdMPKHV.AofCh70CRy',
+      'em.n6zq2yy0KA'
+    ];
     
-    // 리뷰 내용 수집 (.vhlVUsCtw3 .K0kwJOXP06 선택자)
-    const reviewElements = document.querySelectorAll('.vhlVUsCtw3 .K0kwJOXP06');
+    let foundReviews = false;
     
-    console.log(`📊 발견된 별점: ${ratingElements.length}개, 리뷰 내용: ${reviewElements.length}개`);
-    
-    // 리뷰 데이터 조합
-    for (let i = 0; i < Math.min(ratingElements.length, reviewElements.length); i++) {
-      const ratingText = ratingElements[i].textContent.trim();
-      const reviewContent = reviewElements[i].textContent.trim();
+    for (const selector of reviewSelectors) {
+      const elements = document.querySelectorAll(selector);
+      console.log(`🔍 선택자 "${selector}": ${elements.length}개 발견`);
       
-      // 별점을 숫자로 변환 (1-5)
-      let rating = 5; // 기본값
-      if (ratingText.includes('1')) rating = 1;
-      else if (ratingText.includes('2')) rating = 2;
-      else if (ratingText.includes('3')) rating = 3;
-      else if (ratingText.includes('4')) rating = 4;
-      else if (ratingText.includes('5')) rating = 5;
-      
-      reviews.push({
-        rating: rating,
-        content: reviewContent
-      });
+      if (elements.length > 0) {
+        elements.forEach((element, index) => {
+          try {
+            // 별점 추출 시도
+            let rating = 0;
+            let ratingText = '';
+            let content = '';
+            
+            // 별점 추출 방법들
+            const ratingSelectors = [
+              '.rating', '.star-rating', '.review-rating',
+              '.rIXQgoa8Xl', 'em.n6zq2yy0KA', '.score'
+            ];
+            
+            for (const ratingSelector of ratingSelectors) {
+              const ratingEl = element.querySelector(ratingSelector);
+              if (ratingEl) {
+                ratingText = ratingEl.textContent.trim();
+                rating = parseFloat(ratingText) || 0;
+                if (rating > 0) break;
+              }
+            }
+            
+            // 리뷰 내용 추출 방법들
+            const contentSelectors = [
+              '.review-content', '.review-text', '.content',
+              '.K0kwJOXP06', '.review_content', '.comment'
+            ];
+            
+            for (const contentSelector of contentSelectors) {
+              const contentEl = element.querySelector(contentSelector);
+              if (contentEl) {
+                content = contentEl.textContent.trim();
+                if (content) break;
+              }
+            }
+            
+            // 내용이 없으면 전체 텍스트 사용
+            if (!content) {
+              content = element.textContent.trim().substring(0, 100);
+            }
+            
+            if (rating > 0 || content) {
+              reviews.push({
+                rating: rating || 5, // 기본값 5점
+                content: content || `리뷰 ${index + 1}`,
+                ratingText: ratingText || '5',
+                recentRating: ''
+              });
+              
+              console.log(`⭐ 리뷰 ${reviews.length}: 별점 ${rating}, 내용: ${content.substring(0, 30)}...`);
+              foundReviews = true;
+            }
+          } catch (err) {
+            console.log(`⚠️ 리뷰 ${index} 처리 오류:`, err);
+          }
+        });
+        
+        if (foundReviews) break; // 리뷰를 찾았으면 중단
+      }
     }
     
-    // 서버로 리뷰 데이터 전송
+    // 서버로 리뷰 데이터 전송 (리뷰가 있을 때만)
     if (reviews.length > 0) {
       const reviewData = {
-        storeId: storeId,
-        productId: productId,
-        productUrl: url,
-        reviews: reviews,
-        reviewCount: reviews.length,
-        timestamp: new Date().toISOString()
-      };
-      
-      await fetch('http://localhost:8080/api/smartstore/reviews', {
+      storeId: storeId,
+      productId: productId,
+      productUrl: url,
+      reviews: reviews,
+      reviewCount: reviews.length,
+      timestamp: new Date().toISOString()
+    };
+    
+    const response = await fetch('http://localhost:8080/api/smartstore/reviews', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'chrome-extension'
+      },
+      body: JSON.stringify(reviewData)
+    });
+    
+    if (response.ok) {
+      console.log(`✅ 리뷰 ${reviews.length}개 서버 전송 완료`);
+      // 서버로 성공 로그 전송
+      try {
+        await fetch('http://localhost:8080/api/smartstore/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: `✅ ${storeId}: 리뷰 ${reviews.length}개 서버 전송 완료` })
+        });
+      } catch (logError) {}
+    } else {
+      console.log(`❌ 서버 전송 실패: ${response.status}`);
+      // 서버로 실패 로그 전송
+      try {
+        await fetch('http://localhost:8080/api/smartstore/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: `❌ ${storeId}: 리뷰 서버 전송 실패 (${response.status})` })
+        });
+      } catch (logError) {}
+    }
+  } else {
+    console.log('❌ 수집된 리뷰가 없음 - 빈 리뷰 파일 생성');
+    // 리뷰가 없어도 빈 리뷰 파일 생성
+    const emptyReviewData = {
+      storeId: storeId,
+      productId: productId,
+      productUrl: window.location.href,
+      reviews: [],
+      reviewCount: 0,
+      timestamp: new Date().toISOString()
+    };
+    
+    try {
+      const response = await fetch('http://localhost:8080/api/smartstore/reviews', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Origin': 'chrome-extension'
-        },
-        body: JSON.stringify(reviewData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emptyReviewData)
       });
       
-      console.log(`✅ 리뷰 ${reviews.length}개 서버 전송 완료`);
-    } else {
-      console.log('❌ 수집된 리뷰가 없음');
+      if (response.ok) {
+        console.log('✅ 빈 리뷰 파일 생성 완료');
+      }
+    } catch (error) {
+      console.log('❌ 빈 리뷰 파일 생성 실패:', error);
     }
+    
+    // 서버로 리뷰 없음 로그 전송
+    try {
+      await fetch('http://localhost:8080/api/smartstore/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `❌ ${storeId}: 수집된 리뷰 없음 (빈 파일 생성)` })
+      });
+    } catch (logError) {}
+  }
     
   } catch (error) {
     console.error('❌ 리뷰 수집 오류:', error);
+    // 서버로 오류 로그 전송
+    try {
+      const url = window.location.href;
+      const storeMatch = url.match(/smartstore\.naver\.com\/([^\/]+)/);
+      const storeId = storeMatch ? storeMatch[1] : 'unknown';
+      
+      await fetch('http://localhost:8080/api/smartstore/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `❌ ${storeId}: 리뷰 수집 오류 - ${error.message}` })
+      });
+    } catch (logError) {}
   }
 }
 
-// 상품 페이지에서 자동으로 리뷰 수집 실행
+// 상품 페이지에서 자동으로 리뷰 수집 실행 (강화된 버전)
 if (window.location.href.includes('smartstore.naver.com') && window.location.href.includes('/products/')) {
-  // 페이지 로드 완료 후 3초 뒤 리뷰 수집
+  console.log('🎯 상품 페이지 감지 - 리뷰 수집 예약');
+  
+  // 즉시 실행
+  collectProductReviews();
+  
+  // 3초 후에도 한번 더 실행 (보험)
   setTimeout(() => {
+    console.log('🎯 3초 후 리뷰 수집 재시도');
     collectProductReviews();
   }, 3000);
+  
+  // 5초 후에도 한번 더 실행 (최종 보험)
+  setTimeout(() => {
+    console.log('🎯 5초 후 리뷰 수집 최종 시도');
+    collectProductReviews();
+  }, 5000);
 }
+
+// 페이지 로드 완료 시에도 실행
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.location.href.includes('smartstore.naver.com') && window.location.href.includes('/products/')) {
+    console.log('🎯 DOM 로드 완료 - 리뷰 수집 실행');
+    setTimeout(() => {
+      collectProductReviews();
+    }, 2000);
+  }
+});
+
+// 윈도우 로드 완료 시에도 실행
+window.addEventListener('load', () => {
+  if (window.location.href.includes('smartstore.naver.com') && window.location.href.includes('/products/')) {
+    console.log('🎯 윈도우 로드 완료 - 리뷰 수집 실행');
+    setTimeout(() => {
+      collectProductReviews();
+    }, 1000);
+  }
+});
