@@ -21,6 +21,22 @@ using Gumaedaehang.Services;
 
 namespace Gumaedaehang
 {
+    // 리뷰 데이터 구조
+    public class ReviewItem
+    {
+        public int rating { get; set; }
+        public string content { get; set; } = "";
+    }
+
+    public class ReviewFileData
+    {
+        public List<ReviewItem> reviews { get; set; } = new List<ReviewItem>();
+        public int reviewCount { get; set; }
+    }
+}
+
+namespace Gumaedaehang
+{
     public partial class SourcingPage : UserControl
     {
         private readonly ThumbnailService _thumbnailService = new();
@@ -51,6 +67,9 @@ namespace Gumaedaehang
         private TextBox? _mainProductTextBox;
         private Button? _mainProductButton;
         
+        // 실제 데이터 컨테이너
+        private StackPanel? RealDataContainer;
+        
         public SourcingPage()
         {
             try
@@ -59,6 +78,15 @@ namespace Gumaedaehang
                 
                 // 🧹 프로그램 시작 시 자동 초기화 (조용히)
                 ClearPreviousCrawlingDataSilent();
+                
+                // 초기화 시작 메시지 (지연 후 표시)
+                Task.Delay(500).ContinueWith(_ =>
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        LogWindow.AddLogStatic("🧹 프로그램 시작 - 이전 크롤링 데이터 자동 초기화 중...");
+                    });
+                });
                 
                 // 플레이스홀더 설정
                 SetupPlaceholders();
@@ -103,6 +131,9 @@ namespace Gumaedaehang
                 _mainProductTextBox = this.FindControl<TextBox>("MainProductTextBox");
                 _mainProductButton = this.FindControl<Button>("MainProductButton");
                 
+                // RealDataContainer 초기화
+                RealDataContainer = this.FindControl<StackPanel>("RealDataContainer");
+                
                 // 상품들의 UI 요소들 초기화
                 InitializeProductElements();
                 
@@ -114,6 +145,9 @@ namespace Gumaedaehang
                 
                 // 초기 상태 설정
                 UpdateViewVisibility();
+                
+                // 크롤링된 데이터 자동 로드
+                LoadCrawledData();
             }
             catch (Exception ex)
             {
@@ -282,13 +316,8 @@ namespace Gumaedaehang
             // 더미데이터 제거됨 - 실제 데이터는 AddProductImageCard 메서드를 통해 동적으로 추가됩니다
             Debug.WriteLine("InitializeProductElements 호출됨");
             
-            // 테스트용 - 즉시 하나의 카드 추가
-            Dispatcher.UIThread.Post(() =>
-            {
-                AddProductImageCard("test", "123", "/mnt/c/Users/decem/AppData/Roaming/Predvia/Images/choileelang_10000947462_main.jpg");
-            });
-            
-            LoadCrawledData();
+            // 초기화 후에는 데이터를 로드하지 않음 (자동 초기화 완료)
+            Debug.WriteLine("초기화 완료 - 빈 상태로 시작");
         }
 
         // 크롤링된 데이터를 로드하는 메서드
@@ -340,6 +369,67 @@ namespace Gumaedaehang
             {
                 Debug.WriteLine($"❌ 크롤링 데이터 로드 오류: {ex.Message}");
             }
+        }
+
+        // 크롤링된 상품명 읽기
+        private string GetOriginalProductName(string storeId, string productId)
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var productDataPath = System.IO.Path.Combine(appDataPath, "Predvia", "ProductData");
+                var nameFile = System.IO.Path.Combine(productDataPath, $"{storeId}_{productId}_name.txt");
+                
+                if (File.Exists(nameFile))
+                {
+                    return File.ReadAllText(nameFile, System.Text.Encoding.UTF8);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 상품명 읽기 오류: {ex.Message}");
+            }
+            return "상품명 없음";
+        }
+
+        // 크롤링된 리뷰 데이터 읽기
+        private List<string> GetProductReviews(string storeId, string productId)
+        {
+            var reviews = new List<string>();
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var reviewsPath = System.IO.Path.Combine(appDataPath, "Predvia", "Reviews");
+                var reviewFile = System.IO.Path.Combine(reviewsPath, $"{storeId}_{productId}_reviews.json");
+                
+                if (File.Exists(reviewFile))
+                {
+                    var jsonContent = File.ReadAllText(reviewFile, System.Text.Encoding.UTF8);
+                    var reviewData = System.Text.Json.JsonSerializer.Deserialize<ReviewFileData>(jsonContent);
+                    
+                    if (reviewData?.reviews != null)
+                    {
+                        foreach (var review in reviewData.reviews)
+                        {
+                            if (!string.IsNullOrEmpty(review.content))
+                            {
+                                reviews.Add($"⭐ {review.rating}/5 - {review.content}");
+                            }
+                        }
+                    }
+                }
+                
+                if (reviews.Count == 0)
+                {
+                    reviews.Add("리뷰 없음");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 리뷰 읽기 오류: {ex.Message}");
+                reviews.Add("리뷰 읽기 오류");
+            }
+            return reviews;
         }
 
         // 실제 상품 이미지 카드 추가 메서드 (원본 더미데이터와 완전히 똑같이)
@@ -463,7 +553,7 @@ namespace Gumaedaehang
 
                 var nameInputText = new TextBlock 
                 { 
-                    Text = "가베트345 ㅁ 바나나", 
+                    Text = GetOriginalProductName(storeId, productId), 
                     FontSize = 14,
                     FontFamily = new FontFamily("Malgun Gothic"),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
@@ -733,83 +823,6 @@ namespace Gumaedaehang
                     Foreground = isSelected ? new SolidColorBrush(Colors.White) : new SolidColorBrush(Color.Parse("#FF8A46"))
                 }
             };
-        }
-        
-        // 실제 크롤링된 상품명 가져오기
-        private string GetOriginalProductName(string storeId, string productId)
-        {
-            try
-            {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var productDataPath = System.IO.Path.Combine(appDataPath, "Predvia", "ProductData");
-                var nameFile = System.IO.Path.Combine(productDataPath, $"{storeId}_{productId}_name.txt");
-                
-                if (File.Exists(nameFile))
-                {
-                    var productName = File.ReadAllText(nameFile, System.Text.Encoding.UTF8).Trim();
-                    return $"원상품명: {productName}";
-                }
-                else
-                {
-                    return "원상품명: 상품명 로드 중...";
-                }
-            }
-            catch
-            {
-                return "원상품명: 상품명 로드 실패";
-            }
-        }
-        
-        // 실제 크롤링된 리뷰 데이터 가져오기
-        private List<string> GetProductReviews(string storeId, string productId)
-        {
-            var reviews = new List<string>();
-            
-            try
-            {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var reviewsPath = System.IO.Path.Combine(appDataPath, "Predvia", "Reviews");
-                var reviewFile = System.IO.Path.Combine(reviewsPath, $"{storeId}_{productId}_reviews.json");
-                
-                if (File.Exists(reviewFile))
-                {
-                    var reviewJson = File.ReadAllText(reviewFile, System.Text.Encoding.UTF8);
-                    
-                    // 간단한 JSON 파싱 (System.Text.Json 사용)
-                    using var document = System.Text.Json.JsonDocument.Parse(reviewJson);
-                    var root = document.RootElement;
-                    
-                    if (root.TryGetProperty("reviews", out var reviewsArray))
-                    {
-                        foreach (var review in reviewsArray.EnumerateArray())
-                        {
-                            var rating = review.TryGetProperty("rating", out var ratingElement) ? ratingElement.GetString() : "⭐";
-                            var content = review.TryGetProperty("content", out var contentElement) ? contentElement.GetString() : "리뷰 내용 없음";
-                            
-                            var stars = rating switch
-                            {
-                                "5" => "⭐⭐⭐⭐⭐",
-                                "4" => "⭐⭐⭐⭐",
-                                "3" => "⭐⭐⭐",
-                                "2" => "⭐⭐",
-                                "1" => "⭐",
-                                _ => "⭐⭐⭐⭐⭐"
-                            };
-                            
-                            reviews.Add($"리뷰: {content} {stars}");
-                            
-                            // 최대 3개 리뷰만 표시
-                            if (reviews.Count >= 3) break;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"리뷰 로드 오류: {ex.Message}");
-            }
-            
-            return reviews;
         }
         
         // 이벤트 핸들러 등록
@@ -1571,20 +1584,30 @@ namespace Gumaedaehang
                         var cardCount = RealDataContainer.Children.Count;
                         RealDataContainer.Children.Clear();
                         
-                        // 작업로그에 초기화 완료 메시지 추가
+                        // 작업로그에 초기화 완료 메시지 추가 (지연 후)
                         if (totalDeleted > 0 || cardCount > 0)
                         {
-                            LogWindow.AddLogStatic($"🧹 프로그램 시작 시 자동 초기화 완료 (파일 {totalDeleted}개, 카드 {cardCount}개 삭제)");
+                            // LogWindow가 준비될 때까지 잠시 기다림
+                            Task.Delay(1000).ContinueWith(_ =>
+                            {
+                                Dispatcher.UIThread.Post(() =>
+                                {
+                                    LogWindow.AddLogStatic($"🧹 프로그램 시작 시 자동 초기화 완료 (파일 {totalDeleted}개, 카드 {cardCount}개 삭제)");
+                                });
+                            });
                         }
                     }
                 });
             }
             catch (Exception ex)
             {
-                // 오류 시에도 로그에 표시
-                Dispatcher.UIThread.Post(() =>
+                // 오류 시에도 로그에 표시 (지연 후)
+                Task.Delay(1000).ContinueWith(_ =>
                 {
-                    LogWindow.AddLogStatic($"❌ 자동 초기화 오류: {ex.Message}");
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        LogWindow.AddLogStatic($"❌ 자동 초기화 오류: {ex.Message}");
+                    });
                 });
             }
         }

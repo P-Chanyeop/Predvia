@@ -822,33 +822,39 @@ async function collectProductReviews() {
     const productId = productMatch[1];
     
     console.log(`⭐ 리뷰 수집 시작: ${storeId}/${productId}`);
+    await sendLogToServer(`⭐ ${storeId}: 리뷰 수집 시작`);
     
     // 리뷰 데이터 수집
     const reviews = [];
     
-    // 별점 수집 (em.n6zq2yy0KA 클래스)
-    const ratingElements = document.querySelectorAll('em.n6zq2yy0KA');
+    // 별점 수집 (올바른 선택자)
+    const ratingElements = document.querySelectorAll('.nI8wdMPKHV .rIXQgoa8Xl');
     
-    // 리뷰 내용 수집 (.vhlVUsCtw3 .K0kwJOXP06 선택자)
-    const reviewElements = document.querySelectorAll('.vhlVUsCtw3 .K0kwJOXP06');
+    // 리뷰 내용 수집 (리뷰 텍스트 선택자 - 실제 구조에 맞게 수정 필요)
+    const reviewElements = document.querySelectorAll('.review-content, .review-text, [class*="review"]');
     
     console.log(`📊 발견된 별점: ${ratingElements.length}개, 리뷰 내용: ${reviewElements.length}개`);
+    await sendLogToServer(`📊 ${storeId}: 별점 ${ratingElements.length}개, 리뷰 내용 ${reviewElements.length}개 발견`);
     
     // 리뷰 데이터 조합
-    for (let i = 0; i < Math.min(ratingElements.length, reviewElements.length); i++) {
-      const ratingText = ratingElements[i].textContent.trim();
-      const reviewContent = reviewElements[i].textContent.trim();
+    for (let i = 0; i < ratingElements.length; i++) {
+      const ratingElement = ratingElements[i];
+      let ratingText = ratingElement.textContent.trim();
       
-      // 별점을 숫자로 변환 (1-5)
-      let rating = 5; // 기본값
-      if (ratingText.includes('1')) rating = 1;
-      else if (ratingText.includes('2')) rating = 2;
-      else if (ratingText.includes('3')) rating = 3;
-      else if (ratingText.includes('4')) rating = 4;
-      else if (ratingText.includes('5')) rating = 5;
+      // "평점" 텍스트 제거하고 숫자만 추출
+      ratingText = ratingText.replace('평점', '').trim();
+      const rating = parseFloat(ratingText) || 5.0;
+      
+      // 리뷰 내용은 일단 평점 정보로 대체 (실제 리뷰 텍스트 선택자 확인 필요)
+      const reviewContent = `평점 ${rating}점 리뷰`;
+      
+      console.log(`📊 수집된 리뷰 ${i+1}: 평점=${rating}, 내용=${reviewContent}`);
+      await sendLogToServer(`📊 ${storeId}: 리뷰 ${i+1} - 평점 ${rating}점`);
       
       reviews.push({
         rating: rating,
+        ratingText: ratingText,
+        recentRating: ratingElement.parentElement?.querySelector('.jGjjABJeba')?.textContent?.trim() || '',
         content: reviewContent
       });
     }
@@ -874,7 +880,10 @@ async function collectProductReviews() {
       });
       
       console.log(`✅ 리뷰 ${reviews.length}개 서버 전송 완료`);
+      await sendLogToServer(`✅ ${storeId}: 리뷰 ${reviews.length}개 서버 전송 완료`);
     } else {
+      console.log(`❌ 리뷰 없음: ${storeId}/${productId}`);
+      await sendLogToServer(`❌ ${storeId}: 리뷰 데이터 없음`);
       console.log('❌ 수집된 리뷰가 없음');
     }
     
