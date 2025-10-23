@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,9 +14,12 @@ namespace Gumaedaehang
     {
         private TextBox? _logTextBox;
         private static LogWindow? _instance;
+        public static LogWindow? Instance => _instance;
         private readonly ConcurrentQueue<string> _logQueue = new();
         private readonly Timer _updateTimer;
         private volatile bool _isUpdating = false;
+        private string _lastLogMessage = "";
+        private DateTime _lastLogTime = DateTime.MinValue;
         
         public LogWindow()
         {
@@ -34,8 +39,8 @@ namespace Gumaedaehang
             if (closeButton != null)
                 closeButton.Click += CloseButton_Click;
             
-            // 500ms마다 로그 큐 처리 (성능 개선)
-            _updateTimer = new Timer(ProcessLogQueue, null, 500, 500);
+            // 로그 업데이트 간격을 1초로 증가 (성능 개선)
+            _updateTimer = new Timer(ProcessLogQueue, null, 1000, 1000);
         }
         
         private void ProcessLogQueue(object? state)
@@ -50,8 +55,8 @@ namespace Gumaedaehang
                 var logs = new System.Text.StringBuilder();
                 int processedCount = 0;
                 
-                // 한 번에 최대 50개 로그 처리
-                while (_logQueue.TryDequeue(out string? logMessage) && processedCount < 50)
+                // 배치 처리 크기를 100개로 증가
+                while (_logQueue.TryDequeue(out string? logMessage) && processedCount < 100)
                 {
                     logs.AppendLine(logMessage);
                     processedCount++;
@@ -65,6 +70,14 @@ namespace Gumaedaehang
                         if (_logTextBox != null)
                         {
                             _logTextBox.Text += logs.ToString();
+                            
+                            // 로그 텍스트 길이 제한 (50,000자 초과 시 앞부분 제거)
+                            if (_logTextBox.Text?.Length > 50000)
+                            {
+                                var lines = _logTextBox.Text.Split(Environment.NewLine);
+                                var keepLines = lines.Skip(lines.Length / 2).ToArray();
+                                _logTextBox.Text = string.Join(Environment.NewLine, keepLines);
+                            }
                             
                             // 스크롤을 맨 아래로
                             _logTextBox.CaretIndex = _logTextBox.Text.Length;
@@ -80,6 +93,15 @@ namespace Gumaedaehang
         {
             string timestamp = DateTime.Now.ToString("HH:mm:ss");
             string logEntry = $"[{timestamp}] {message}";
+            
+            // 중복 로그 방지 (1초 이내 같은 메시지 무시)
+            if (_lastLogMessage == message && DateTime.Now - _lastLogTime < TimeSpan.FromSeconds(1))
+            {
+                return;
+            }
+            
+            _lastLogMessage = message;
+            _lastLogTime = DateTime.Now;
             
             // 큐에 추가 (스레드 안전)
             _logQueue.Enqueue(logEntry);

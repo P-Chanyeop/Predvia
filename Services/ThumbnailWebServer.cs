@@ -920,8 +920,7 @@ namespace Gumaedaehang.Services
                 lock (_statesLock)
                 {
                     var key = $"{storeId}:{runId}";
-                    LogWindow.AddLogStatic($"상태 조회 시도: {key}");
-                    LogWindow.AddLogStatic($"저장된 키들: {string.Join(", ", _storeStates.Keys)}");
+                    // 상태 조회 로그 제거 (너무 빈번함)
                     
                     if (!_storeStates.TryGetValue(key, out storeState!))
                     {
@@ -996,6 +995,32 @@ namespace Gumaedaehang.Services
                             
                             // 🔥 크롤링 완료 시 소싱 페이지 새로고침
                             RefreshSourcingPage();
+                        }
+                    }
+                }
+                
+                // ⭐ collecting 상태 타임아웃 체크 (5초 이상 collecting 상태면 강제 완료)
+                if (storeState.State == "collecting" && 
+                    DateTime.Now - storeState.UpdatedAt > TimeSpan.FromSeconds(5))
+                {
+                    LogWindow.AddLogStatic($"{storeId}: collecting 상태 5초 타임아웃 - 강제 완료 처리");
+                    
+                    lock (_statesLock)
+                    {
+                        var key = $"{storeId}:{runId}";
+                        if (_storeStates.ContainsKey(key))
+                        {
+                            _storeStates[key].State = "done";
+                            _storeStates[key].Lock = false;
+                            _storeStates[key].UpdatedAt = DateTime.Now;
+                            storeState = _storeStates[key];
+                            
+                            // 🔥 순차 처리 - 다음 스토어로 이동
+                            lock (_storeProcessLock)
+                            {
+                                _currentStoreIndex++;
+                                LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                            }
                         }
                     }
                 }
@@ -1078,7 +1103,7 @@ namespace Gumaedaehang.Services
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 상태 조회 API 오류: {ex.Message}");
+                // 상태 조회 API 오류 로그 간소화
                 
                 context.Response.ContentType = "application/json; charset=utf-8";
                 context.Response.StatusCode = 500;
