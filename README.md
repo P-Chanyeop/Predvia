@@ -244,7 +244,15 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.37)
+### 🔄 최신 업데이트 (v1.38 개발 중)
+- [ ] **🛡️ Chrome 확장프로그램 차단 방지 시스템 개발 예정**
+  - **User-Agent 랜덤 로테이션**: Windows/Mac Chrome 다양한 버전으로 브라우저 위장
+  - **헤더 변경 시스템**: Accept-Language, Referer, Sec-Ch-Ua 등 헤더 랜덤화
+  - **declarativeNetRequest API**: 실시간 헤더 변경으로 봇 탐지 우회
+  - **스마트스토어 전용 적용**: 네이버 도메인에서만 헤더 변경 적용
+  - **자연스러운 트래픽 시뮬레이션**: 실제 사용자 접속 패턴 모방
+
+### 🔄 이전 업데이트 (v1.37)
 - [x] **📂 카테고리 크롤링 시스템 완전 구현**
   - **Chrome 확장프로그램 카테고리 수집**: `ul.ySOklWNBjf` 선택자로 네이버 스마트스토어 카테고리 정확 추출
   - **서버 측 카테고리 처리 API**: `/api/smartstore/categories` 엔드포인트로 카테고리 데이터 수신 및 처리

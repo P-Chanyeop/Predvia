@@ -1687,63 +1687,84 @@ namespace Gumaedaehang
         }
         
         // 🧹 기존 크롤링 데이터 초기화 메서드 (조용한 버전 - 생성자용)
-        private void ClearPreviousCrawlingDataSilent()
+        private async void ClearPreviousCrawlingDataSilent()
         {
             try
             {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
-                
-                int totalDeleted = 0;
-                
-                // 이미지 폴더 초기화
-                var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
-                if (Directory.Exists(imagesPath))
+                await Task.Run(async () =>
                 {
-                    var fileCount = Directory.GetFiles(imagesPath).Length;
-                    Directory.Delete(imagesPath, true);
-                    totalDeleted += fileCount;
-                }
-                
-                // 상품명 폴더 초기화
-                var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
-                if (Directory.Exists(productDataPath))
-                {
-                    var fileCount = Directory.GetFiles(productDataPath).Length;
-                    Directory.Delete(productDataPath, true);
-                    totalDeleted += fileCount;
-                }
-                
-                // 리뷰 폴더 초기화
-                var reviewsPath = System.IO.Path.Combine(predviaPath, "Reviews");
-                if (Directory.Exists(reviewsPath))
-                {
-                    var fileCount = Directory.GetFiles(reviewsPath).Length;
-                    Directory.Delete(reviewsPath, true);
-                    totalDeleted += fileCount;
-                }
-                
-                // UI에서 기존 카드들 제거
-                Dispatcher.UIThread.Post(() =>
-                {
-                    var realDataContainer = this.FindControl<StackPanel>("RealDataContainer");
-                    if (realDataContainer != null)
+                    var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                    var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
+                    
+                    int totalDeleted = 0;
+                    int cardCount = 0;
+                    
+                    // 이미지 폴더 초기화
+                    var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
+                    if (Directory.Exists(imagesPath))
                     {
-                        var cardCount = realDataContainer.Children.Count;
-                        realDataContainer.Children.Clear();
-                        
-                        // 작업로그에 초기화 완료 메시지 추가 (지연 후)
-                        if (totalDeleted > 0 || cardCount > 0)
+                        var fileCount = Directory.GetFiles(imagesPath).Length;
+                        Directory.Delete(imagesPath, true);
+                        totalDeleted += fileCount;
+                    }
+                    
+                    // 상품명 폴더 초기화
+                    var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
+                    if (Directory.Exists(productDataPath))
+                    {
+                        var fileCount = Directory.GetFiles(productDataPath).Length;
+                        Directory.Delete(productDataPath, true);
+                        totalDeleted += fileCount;
+                    }
+                    
+                    // 리뷰 폴더 초기화
+                    var reviewsPath = System.IO.Path.Combine(predviaPath, "Reviews");
+                    if (Directory.Exists(reviewsPath))
+                    {
+                        var fileCount = Directory.GetFiles(reviewsPath).Length;
+                        Directory.Delete(reviewsPath, true);
+                        totalDeleted += fileCount;
+                    }
+                    
+                    // 카테고리 폴더 초기화
+                    var categoriesPath = System.IO.Path.Combine(predviaPath, "Categories");
+                    if (Directory.Exists(categoriesPath))
+                    {
+                        var fileCount = Directory.GetFiles(categoriesPath).Length;
+                        Directory.Delete(categoriesPath, true);
+                        totalDeleted += fileCount;
+                    }
+                    
+                    // UI에서 기존 카드들 제거
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        var realDataContainer = this.FindControl<StackPanel>("RealDataContainer");
+                        if (realDataContainer != null)
                         {
-                            // LogWindow가 준비될 때까지 잠시 기다림
-                            Task.Delay(1000).ContinueWith(_ =>
-                            {
-                                Dispatcher.UIThread.Post(() =>
-                                {
-                                    LogWindow.AddLogStatic($"🧹 프로그램 시작 시 자동 초기화 완료 (파일 {totalDeleted}개, 카드 {cardCount}개 삭제)");
-                                });
-                            });
+                            cardCount = realDataContainer.Children.Count;
+                            realDataContainer.Children.Clear();
                         }
+                    });
+                    
+                    // 지연 시간 증가
+                    await Task.Delay(1500);
+                    
+                    // 작업로그에 초기화 완료 메시지 추가
+                    if (totalDeleted > 0 || cardCount > 0)
+                    {
+                        // LogWindow가 준비될 때까지 잠시 기다림
+                        int maxWaitTime = 5000; // 5초
+                        int waitTime = 0;
+                        while (LogWindow.Instance == null && waitTime < maxWaitTime)
+                        {
+                            await Task.Delay(100);
+                            waitTime += 100;
+                        }
+                        
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            LogWindow.AddLogStatic($"초기화 완료 (파일 {totalDeleted}개, 카드 {cardCount}개 삭제)");
+                        });
                     }
                 });
             }

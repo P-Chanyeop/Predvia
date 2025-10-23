@@ -112,8 +112,7 @@ async function extractAndSendCategories(storeId) {
                 
                 // 서버로 카테고리 데이터 전송
                 await sendToServer('/api/smartstore/categories', categoryData);
-                console.log('📤 카테고리 데이터 서버 전송 완료');
-                await sendLogToServer(`✅ ${storeId}: ${categories.length}개 카테고리 수집 완료: ${categories.map(c => c.name).join(', ')}`);
+                await sendLogToServer(`✅ ${storeId}: ${categories.length}개 카테고리 수집 완료`);
             } else {
                 console.log('❌ 카테고리를 찾을 수 없습니다');
                 await sendLogToServer(`❌ ${storeId}: 카테고리 추출 실패 - 카테고리 요소를 찾을 수 없음`);
@@ -152,23 +151,35 @@ async function sendLogToServer(message) {
 // 서버로 데이터 전송하는 범용 함수
 async function sendToServer(endpoint, data) {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
+    
     const response = await fetch(`http://localhost:8080${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (response.ok) {
       console.log(`✅ 서버 전송 성공: ${endpoint}`);
       return true;
     } else {
-      console.error(`❌ 서버 전송 실패: ${endpoint} - ${response.status}`);
+      // 카테고리 전송 실패는 로그에 표시하지 않음 (너무 빈번함)
+      if (!endpoint.includes('/categories')) {
+        console.error(`❌ 서버 전송 실패: ${endpoint} - ${response.status} ${response.statusText}`);
+      }
       return false;
     }
   } catch (error) {
-    console.error(`❌ 서버 전송 오류: ${endpoint} - ${error.message}`);
+    // 카테고리 전송 실패는 로그에 표시하지 않음
+    if (!endpoint.includes('/categories')) {
+      console.error(`❌ 서버 전송 오류: ${endpoint} - ${error.message}`);
+    }
     return false;
   }
 }
