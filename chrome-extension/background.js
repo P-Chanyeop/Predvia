@@ -47,7 +47,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // 비동기 응답을 위해 true 반환
   }
   
-  // 탭 닫기 메시지 처리
+  // 현재 탭 닫기 메시지 처리
+  if (request.action === 'closeCurrentTab') {
+    if (sender.tab && sender.tab.id) {
+      chrome.tabs.remove(sender.tab.id)
+        .then(() => {
+          console.log(`✅ 탭 ${sender.tab.id} 강제 닫기 완료`);
+          sendResponse({success: true});
+        })
+        .catch(error => {
+          console.log(`❌ 탭 ${sender.tab.id} 닫기 실패:`, error);
+          sendResponse({success: false, error: error.message});
+        });
+    } else {
+      sendResponse({success: false, error: 'No tab ID'});
+    }
+    return true;
+  }
+  
+  // 탭 닫기 메시지 처리 (기존)
   if (request.action === 'closeTab') {
     chrome.tabs.remove(sender.tab.id)
       .then(() => sendResponse({success: true}))

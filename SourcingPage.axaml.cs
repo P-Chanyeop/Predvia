@@ -425,9 +425,9 @@ namespace Gumaedaehang
                 
                 // 캐시에 없으면 파일에서 로드 시도
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var categoriesPath = Path.Combine(appDataPath, "Predvia", "Categories");
+                var categoriesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Categories");
                 var fileName = $"{storeId}_categories.json";
-                var filePath = Path.Combine(categoriesPath, fileName);
+                var filePath = System.IO.Path.Combine(categoriesPath, fileName);
                 
                 if (File.Exists(filePath))
                 {
@@ -710,7 +710,7 @@ namespace Gumaedaehang
                 nameInputBorder.Child = nameInputGrid;
 
                 // 카테고리 정보 표시 (원상품명 위에 추가)
-                var categoryText = new TextBlock 
+                var productCategoryText = new TextBlock 
                 { 
                     Text = GetCategoryInfo(storeId), 
                     FontSize = 12,
@@ -768,7 +768,7 @@ namespace Gumaedaehang
                 // 정보 패널에 모든 요소 추가
                 infoPanel.Children.Add(nameLabel);
                 infoPanel.Children.Add(nameInputBorder);
-                infoPanel.Children.Add(categoryText);
+                infoPanel.Children.Add(productCategoryText);
                 infoPanel.Children.Add(originalNameText);
                 infoPanel.Children.Add(keywordPanel);
                 infoPanel.Children.Add(keywordInputPanel);
@@ -1771,7 +1771,7 @@ namespace Gumaedaehang
             catch (Exception ex)
             {
                 // 오류 시에도 로그에 표시 (지연 후)
-                Task.Delay(1000).ContinueWith(_ =>
+                _ = Task.Delay(1000).ContinueWith(_ =>
                 {
                     Dispatcher.UIThread.Post(() =>
                     {
