@@ -244,7 +244,16 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.38)
+### 🔄 최신 업데이트 (v1.39)
+- [x] **🔧 차단 시 크롤링 중단 및 순차 처리 문제 해결 시도**
+  - **차단 시 즉시 중단**: `HandleProductData`에서 `_shouldStop` 체크 추가로 차단 시 즉시 중단
+  - **순차 처리 강화**: 상품 데이터 처리 완료 시 무조건 `_currentStoreIndex++` 실행
+  - **오류 시에도 다음 스토어 이동**: catch 블록에서도 `_currentStoreIndex++` 보장
+  - **collecting 상태 타임아웃 단축**: 5초 → 3초로 단축하여 빠른 스토어 전환
+  - **Chrome 확장프로그램 타임아웃 단축**: 10초 → 5초로 단축하여 빠른 탭 닫기
+  - **3중 탭 닫기 안전장치**: window.close() + Chrome API + about:blank 페이지 이동
+
+### 🔄 이전 업데이트 (v1.38)
 - [x] **🔧 Chrome 확장프로그램 탭 닫기 문제 완전 해결**
   - **순차 처리 위반 문제 해결**: 공구 부족 스토어의 탭이 닫히지 않아 발생하던 순차 처리 위반 완전 해결
   - **Chrome API 강제 탭 닫기**: `chrome.runtime.sendMessage()` + `chrome.tabs.remove()` 이중 안전장치

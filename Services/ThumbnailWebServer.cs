@@ -749,6 +749,21 @@ namespace Gumaedaehang.Services
                     }, statusCode: 400);
                 }
                 
+                // ⭐ 크롤링 중단 체크 - 차단 시 즉시 중단
+                lock (_counterLock)
+                {
+                    if (_shouldStop)
+                    {
+                        LogWindow.AddLogStatic($"🛑 크롤링 중단됨 - {productData.StoreId} 데이터 무시");
+                        return Results.Json(new { 
+                            success = true,
+                            stop = true,
+                            totalProducts = _totalProductCount,
+                            message = "Crawling stopped" 
+                        });
+                    }
+                }
+                
                 if (productData != null)
                 {
                     // ⭐ 선택된 스토어인지 엄격하게 확인
@@ -880,6 +895,20 @@ namespace Gumaedaehang.Services
                     {
                         LogWindow.AddLogStatic($"  ... 외 {productData.Products.Count - 3}개 상품");
                     }
+                    
+                    // ⭐ 스토어 완료 처리 - 다음 스토어로 이동
+                    lock (_storeProcessLock)
+                    {
+                        _currentStoreIndex++;
+                        LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                    }
+                }
+
+                // ⭐ 상품 데이터 처리 완료 - 무조건 다음 스토어로 이동
+                lock (_storeProcessLock)
+                {
+                    _currentStoreIndex++;
+                    LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
                 }
 
                 return Results.Json(new { 
@@ -893,6 +922,14 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"상품 데이터 처리 오류: {ex.Message}");
+                
+                // ⭐ 오류 발생 시에도 다음 스토어로 이동
+                lock (_storeProcessLock)
+                {
+                    _currentStoreIndex++;
+                    LogWindow.AddLogStatic($"📈 오류 후 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                }
+                
                 return Results.Json(new { 
                     success = false, 
                     error = ex.Message 
@@ -1091,11 +1128,11 @@ namespace Gumaedaehang.Services
                     }
                 }
                 
-                // ⭐ collecting 상태 타임아웃 체크 (5초 이상 collecting 상태면 강제 완료)
+                // ⭐ collecting 상태 타임아웃 체크 (3초 이상 collecting 상태면 강제 완료)
                 if (storeState.State == "collecting" && 
-                    DateTime.Now - storeState.UpdatedAt > TimeSpan.FromSeconds(5))
+                    DateTime.Now - storeState.UpdatedAt > TimeSpan.FromSeconds(3))
                 {
-                    LogWindow.AddLogStatic($"{storeId}: collecting 상태 5초 타임아웃 - 강제 완료 처리");
+                    LogWindow.AddLogStatic($"{storeId}: collecting 상태 3초 타임아웃 - 강제 완료 처리");
                     
                     lock (_statesLock)
                     {
