@@ -70,13 +70,18 @@ function checkGongguCount() {
           console.log('🔍 관련 텍스트 발견:', text.trim().substring(0, 100));
         }
       }
+      
+      // 공구 개수를 찾지 못한 경우 0으로 설정
+      gongguCount = 0;
+      console.log('🔄 공구 개수를 0으로 설정 (공구탭 없음으로 판단)');
     }
     
-    // 결과를 서버로 전송
+    // 결과를 서버로 전송 (반드시 실행)
     sendGongguResult(gongguCount);
     
   } catch (error) {
     console.error('공구 개수 확인 오류:', error);
+    // 오류 발생 시에도 0으로 전송
     sendGongguResult(0);
   }
 }
@@ -140,71 +145,19 @@ async function sendGongguResult(gongguCount) {
         setTimeout(() => {
           console.log('🚀 전체상품 페이지로 이동 중...');
           window.location.href = allProductsUrl;
-          
-          // 페이지 이동 후 리뷰 찾기 실행
-          setTimeout(() => {
-            findLastReviewProduct(storeId);
-          }, 5000);
         }, 1000);
         
       } else {
-        console.log(`❌ ${storeId}: 공구 ${gongguCount}개 < 1000개 - 페이지 유지 (곧 닫힐 예정)`);
+        // 공구 개수가 1000개 미만인 경우 (0개 포함) 모두 탭 닫기
+        console.log(`❌ ${storeId}: 공구 ${gongguCount}개 < 1000개 - 즉시 탭 닫기`);
         
-        // ⭐ 1000개 이하면 즉시 완료 상태로 설정
-        try {
-          const urlParams = new URLSearchParams(window.location.search);
-          const runId = urlParams.get('runId') || 'unknown';
-          
-          console.log(`🔧 ${storeId}: 완료 상태 설정 시도 (runId: ${runId})`);
-          
-          // ⭐ 즉시 done + unlock 상태로 설정
-          const response = await fetch('http://localhost:8080/api/smartstore/state', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              storeId: storeId,
-              runId: runId,
-              state: 'done',
-              lock: false,
-              expected: 0,
-              progress: 0,
-              reason: 'below-threshold',
-              timestamp: new Date().toISOString()
-            })
-          });
-          
-          if (response.ok) {
-            console.log(`✅ ${storeId}: 완료 상태 설정 성공 (공구 ${gongguCount}개 < 1000개)`);
-            
-            // 서버에 로그 전송
-            await fetch('http://localhost:8080/api/smartstore/log', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                message: `🔧 ${storeId}: 완료 상태 설정 성공 (공구 ${gongguCount}개 < 1000개)`,
-                timestamp: new Date().toISOString()
-              })
-            });
-            
-            // ⭐ 1000개 미만 스토어 탭 닫기
-            setTimeout(() => {
-              window.close();
-            }, 2000);
-            
-          } else {
-            console.log(`❌ ${storeId}: 완료 상태 설정 실패 - ${response.status}`);
-            // ⭐ 실패 시에도 탭 닫기
-            setTimeout(() => {
-              window.close();
-            }, 2000);
-          }
-        } catch (e) {
-          console.log(`❌ ${storeId}: 완료 상태 설정 오류 - ${e.message}`);
-          // ⭐ 오류 시에도 탭 닫기
-          setTimeout(() => {
-            window.close();
-          }, 2000);
-        }
+        // Chrome API로 현재 탭 강제 닫기
+        chrome.runtime.sendMessage({
+          action: 'closeCurrentTab'
+        }, () => {
+          // 메시지 전송 실패 시 window.close() 시도
+          window.close();
+        });
       }
       
     } else {

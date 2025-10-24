@@ -490,6 +490,9 @@ namespace Gumaedaehang.Services
                 // ⭐ 순차 처리 - 현재 처리할 스토어인지 확인
                 lock (_storeProcessLock)
                 {
+                    LogWindow.AddLogStatic($"🔥🔥🔥 방문 API 디버깅 시작 - 요청 스토어: {visitData.StoreId}");
+                    LogWindow.AddLogStatic($"🔥 현재 인덱스: {_currentStoreIndex}, 전체 스토어 수: {_selectedStores.Count}");
+                    
                     if (_currentStoreIndex >= _selectedStores.Count)
                     {
                         LogWindow.AddLogStatic($"모든 스토어 처리 완료 - 요청 무시: {visitData.StoreId}");
@@ -497,7 +500,12 @@ namespace Gumaedaehang.Services
                     }
                     
                     var currentStore = _selectedStores[_currentStoreIndex];
+                    LogWindow.AddLogStatic($"🔥 현재 스토어 URL: {currentStore.Url}");
+                    LogWindow.AddLogStatic($"🔥 현재 스토어 제목: {currentStore.Title}");
+                    
                     var currentStoreId = UrlExtensions.ExtractStoreIdFromUrl(currentStore.Url);
+                    LogWindow.AddLogStatic($"🔥🔥🔥 추출된 현재 스토어 ID: '{currentStoreId}'");
+                    LogWindow.AddLogStatic($"🔥🔥🔥 요청된 스토어 ID: '{visitData.StoreId}'");
                     
                     if (!visitData.StoreId.Equals(currentStoreId, StringComparison.OrdinalIgnoreCase))
                     {
@@ -567,6 +575,34 @@ namespace Gumaedaehang.Services
                 
                 if (gongguData != null)
                 {
+                    // ⭐ 순차 처리 체크 - 현재 차례가 아니면 즉시 차단
+                    lock (_storeProcessLock)
+                    {
+                        if (_currentStoreIndex >= _selectedStores.Count)
+                        {
+                            LogWindow.AddLogStatic($"❌ 모든 스토어 처리 완료 - {gongguData.StoreId} 차단");
+                            return Results.Json(new { 
+                                success = false, 
+                                message = "크롤링 완료됨" 
+                            });
+                        }
+                        
+                        var currentStore = _selectedStores[_currentStoreIndex];
+                        LogWindow.AddLogStatic($"🔍 디버그 - 현재 인덱스: {_currentStoreIndex}, 스토어 URL: {currentStore.Url}");
+                        
+                        var currentStoreId = UrlExtensions.ExtractStoreIdFromUrl(currentStore.Url);
+                        LogWindow.AddLogStatic($"🔍 디버그 - 추출된 스토어 ID: '{currentStoreId}'");
+                        
+                        if (!gongguData.StoreId.Equals(currentStoreId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            LogWindow.AddLogStatic($"❌ 순차 처리 위반 - 현재: {currentStoreId}, 요청: {gongguData.StoreId} 차단");
+                            return Results.Json(new { 
+                                success = false, 
+                                message = "순차 처리 대기 중" 
+                            });
+                        }
+                    }
+                    
                     if (gongguData.IsValid)
                     {
                         LogWindow.AddLogStatic($"{gongguData.StoreId}: 공구 {gongguData.GongguCount}개 (≥1000개) - 진행");
@@ -574,6 +610,25 @@ namespace Gumaedaehang.Services
                     else
                     {
                         LogWindow.AddLogStatic($"{gongguData.StoreId}: 공구 {gongguData.GongguCount}개 (<1000개) - 스킵");
+                        
+                        // ⭐ 스킵 시 즉시 done 상태로 변경
+                        lock (_statesLock)
+                        {
+                            var key = $"{gongguData.StoreId}:unknown";
+                            if (_storeStates.ContainsKey(key))
+                            {
+                                _storeStates[key].State = "done";
+                                _storeStates[key].Lock = false;
+                                _storeStates[key].UpdatedAt = DateTime.Now;
+                            }
+                        }
+                        
+                        // ⭐ 다음 스토어로 이동
+                        lock (_storeProcessLock)
+                        {
+                            _currentStoreIndex++;
+                            LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                        }
                     }
                 }
 
@@ -585,10 +640,16 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"공구 개수 확인 오류: {ex.Message}");
-                return Results.Json(new { 
+                
+                // 안전한 오류 응답
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { 
                     success = false, 
                     error = ex.Message 
-                }, statusCode: 500);
+                }));
+                
+                return Results.Ok();
             }
         }
 
@@ -616,6 +677,31 @@ namespace Gumaedaehang.Services
                 
                 if (pageData != null)
                 {
+                    // ⭐ 순차 처리 체크 - 현재 차례가 아니면 즉시 차단
+                    lock (_storeProcessLock)
+                    {
+                        if (_currentStoreIndex >= _selectedStores.Count)
+                        {
+                            LogWindow.AddLogStatic($"❌ 모든 스토어 처리 완료 - {pageData.StoreId} 차단");
+                            return Results.Json(new { 
+                                success = false, 
+                                message = "크롤링 완료됨" 
+                            });
+                        }
+                        
+                        var currentStore = _selectedStores[_currentStoreIndex];
+                        var currentStoreId = UrlExtensions.ExtractStoreIdFromUrl(currentStore.Url);
+                        
+                        if (!pageData.StoreId.Equals(currentStoreId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            LogWindow.AddLogStatic($"❌ 순차 처리 위반 - 현재: {currentStoreId}, 요청: {pageData.StoreId} 차단");
+                            return Results.Json(new { 
+                                success = false, 
+                                message = "순차 처리 대기 중" 
+                            });
+                        }
+                    }
+                    
                     LogWindow.AddLogStatic($"{pageData.StoreId}: 전체상품 페이지 접속 완료");
                     LogWindow.AddLogStatic($"  URL: {pageData.PageUrl}");
                 }
@@ -628,10 +714,16 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"전체상품 페이지 처리 오류: {ex.Message}");
-                return Results.Json(new { 
+                
+                // 안전한 오류 응답
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { 
                     success = false, 
                     error = ex.Message 
-                }, statusCode: 500);
+                }));
+                
+                return Results.Ok();
             }
         }
 
@@ -1101,7 +1193,7 @@ namespace Gumaedaehang.Services
                 
                 return Results.Ok();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // 상태 조회 API 오류 로그 간소화
                 
@@ -1407,7 +1499,7 @@ namespace Gumaedaehang.Services
                 if (categoryData?.Categories != null && categoryData.Categories.Count > 0)
                 {
                     await SaveCategories(categoryData);
-                    await LogMessage($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
+                    LogWindow.AddLogStatic($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
                     
                     // 소싱 페이지에 카테고리 데이터 실시간 표시
                     await UpdateSourcingPageCategories(categoryData);
@@ -1418,7 +1510,7 @@ namespace Gumaedaehang.Services
             }
             catch (Exception ex)
             {
-                await LogMessage($"❌ 카테고리 처리 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 카테고리 처리 오류: {ex.Message}");
                 return Results.BadRequest($"카테고리 처리 실패: {ex.Message}");
             }
         }
@@ -1444,11 +1536,11 @@ namespace Gumaedaehang.Services
                 });
 
                 await File.WriteAllTextAsync(filePath, json, System.Text.Encoding.UTF8);
-                await LogMessage($"💾 카테고리 파일 저장: {filePath}");
+                LogWindow.AddLogStatic($"💾 카테고리 파일 저장: {filePath}");
             }
             catch (Exception ex)
             {
-                await LogMessage($"❌ 카테고리 저장 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 카테고리 저장 오류: {ex.Message}");
             }
         }
 
@@ -1467,18 +1559,28 @@ namespace Gumaedaehang.Services
 
                         if (mainWindow?.SourcingPageInstance != null)
                         {
-                            mainWindow.SourcingPageInstance.AddCategoryData(categoryData);
+                            mainWindow.SourcingPageInstance.AddCategoryData(new Gumaedaehang.CategoryData 
+                            {
+                                StoreId = categoryData.StoreId,
+                                Categories = categoryData.Categories?.Select(c => new Gumaedaehang.CategoryInfo
+                                {
+                                    Name = c.Name,
+                                    Url = c.Url,
+                                    CategoryId = c.CategoryId,
+                                    Order = c.Order
+                                }).ToList() ?? new List<Gumaedaehang.CategoryInfo>()
+                            });
                         }
                     }
                     catch (Exception ex)
                     {
-                        LogMessage($"❌ 소싱 페이지 카테고리 업데이트 오류: {ex.Message}");
+                        LogWindow.AddLogStatic($"❌ 소싱 페이지 카테고리 업데이트 오류: {ex.Message}");
                     }
                 });
             }
             catch (Exception ex)
             {
-                await LogMessage($"❌ UI 스레드 카테고리 업데이트 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ UI 스레드 카테고리 업데이트 오류: {ex.Message}");
             }
         }
 
@@ -1880,11 +1982,41 @@ public class CategoryInfo
         {
             try
             {
-                return url.Split('/').LastOrDefault()?.Split('?').FirstOrDefault() ?? "";
+                var storeId = "";
+                
+                if (!string.IsNullOrEmpty(url) && url.Contains("smartstore.naver.com/"))
+                {
+                    var decoded = Uri.UnescapeDataString(url);
+                    // ⭐ inflow URL에서 실제 스토어 ID 추출
+                    if (decoded.Contains("inflow/outlink/url?url="))
+                    {
+                        var innerUrlMatch = System.Text.RegularExpressions.Regex.Match(decoded, @"url=([^&]+)");
+                        if (innerUrlMatch.Success)
+                        {
+                            var innerUrl = Uri.UnescapeDataString(innerUrlMatch.Groups[1].Value);
+                            var storeMatch = System.Text.RegularExpressions.Regex.Match(innerUrl, @"smartstore\.naver\.com/([^/&?]+)");
+                            if (storeMatch.Success)
+                            {
+                                storeId = storeMatch.Groups[1].Value;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // 일반 smartstore URL
+                        var match = System.Text.RegularExpressions.Regex.Match(decoded, @"smartstore\.naver\.com/([^/&?]+)");
+                        if (match.Success)
+                        {
+                            storeId = match.Groups[1].Value;
+                        }
+                    }
+                }
+                
+                return storeId ?? "unknown";
             }
-            catch
+            catch (Exception)
             {
-                return "";
+                return "unknown";
             }
         }
     }

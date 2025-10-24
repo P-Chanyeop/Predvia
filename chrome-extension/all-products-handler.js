@@ -631,7 +631,36 @@ async function notifyAllProductsPageLoaded(storeId) {
       body: JSON.stringify(data)
     });
     
-    if (!response.ok) {
+    if (response.ok) {
+      let result;
+      try {
+        const responseText = await response.text();
+        console.log('📡 서버 응답 텍스트:', responseText);
+        
+        if (!responseText || responseText.trim() === '') {
+          console.log('❌ 빈 응답 수신 - 크롤링 중단');
+          console.log('🚫 탭 닫기 예정 (디버깅용 비활성화)');
+          // window.close();
+          return;
+        }
+        
+        result = JSON.parse(responseText);
+        console.log('📡 서버 응답 파싱 완료:', result);
+      } catch (jsonError) {
+        console.log('❌ JSON 파싱 오류:', jsonError.message);
+        console.log('🚫 크롤링 중단 - 탭 닫기 (디버깅용 비활성화)');
+        // window.close();
+        return;
+      }
+      
+      // ⭐ 서버에서 차단된 경우 즉시 중단
+      if (!result.success) {
+        console.log(`❌ ${storeId}: 서버에서 차단됨 - ${result.message}`);
+        console.log('🚫 크롤링 중단 - 탭 닫기 (디버깅용 비활성화)');
+        // window.close();
+        return;
+      }
+    } else {
       console.error('❌ 서버 응답 오류:', response.status);
     }
     
