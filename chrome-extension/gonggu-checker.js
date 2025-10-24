@@ -151,13 +151,22 @@ async function sendGongguResult(gongguCount) {
         // 공구 개수가 1000개 미만인 경우 (0개 포함) 모두 탭 닫기
         console.log(`❌ ${storeId}: 공구 ${gongguCount}개 < 1000개 - 즉시 탭 닫기`);
         
-        // Chrome API로 현재 탭 강제 닫기
-        chrome.runtime.sendMessage({
-          action: 'closeCurrentTab'
-        }, () => {
-          // 메시지 전송 실패 시 window.close() 시도
-          window.close();
-        });
+        // 즉시 window.close() 시도
+        window.close();
+        
+        // Chrome API로도 탭 닫기 시도 (백업)
+        try {
+          chrome.runtime.sendMessage({
+            action: 'closeCurrentTab'
+          });
+        } catch (e) {
+          console.log('Chrome API 탭 닫기 실패:', e);
+        }
+        
+        // 강제 페이지 이동으로 탭 무력화
+        setTimeout(() => {
+          window.location.href = 'about:blank';
+        }, 500);
       }
       
     } else {

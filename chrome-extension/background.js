@@ -32,8 +32,21 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         files: ['gonggu-checker.js']
       }).then(() => {
         console.log('✅ gonggu-checker.js 강제 주입 완료');
+        
+        // 5초 후에도 결과가 없으면 탭 닫기
+        setTimeout(() => {
+          chrome.tabs.get(tabId).then(currentTab => {
+            if (currentTab && currentTab.url.includes('/category/50000165')) {
+              console.log('⏰ 공구 확인 타임아웃 - 탭 강제 닫기:', tabId);
+              chrome.tabs.remove(tabId).catch(e => console.log('탭 닫기 실패:', e));
+            }
+          }).catch(e => console.log('탭 확인 실패:', e));
+        }, 5000);
+        
       }).catch((error) => {
-        console.log('❌ 스크립트 주입 실패:', error);
+        console.log('❌ 스크립트 주입 실패 - 즉시 탭 닫기:', error);
+        // 스크립트 주입 실패 시 즉시 탭 닫기
+        chrome.tabs.remove(tabId).catch(e => console.log('탭 닫기 실패:', e));
       });
     }
   }
