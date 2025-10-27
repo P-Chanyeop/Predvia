@@ -487,6 +487,28 @@ namespace Gumaedaehang.Services
                     return Results.BadRequest(new { error = "Invalid visit data" });
                 }
 
+                // ⭐ 먼저 visiting 상태 체크 - 다른 스토어가 상품 처리 중이면 모든 요청 차단
+                lock (_statesLock)
+                {
+                    LogWindow.AddLogStatic($"🔍 visiting 상태 체크 시작 - 총 {_storeStates.Count}개 상태");
+                    foreach (var kvp in _storeStates)
+                    {
+                        var key = kvp.Key;
+                        var state = kvp.Value;
+                        LogWindow.AddLogStatic($"🔍 상태 체크: {key} -> {state.State} (Lock: {state.Lock})");
+                        
+                        // ⭐ visiting 상태이고 Lock이 true인 스토어가 있으면 차단
+                        if (state.State == "visiting" && state.Lock)
+                        {
+                            // 키에서 스토어 ID 추출 (storeId:runId 형태)
+                            var keyStoreId = key.Split(':')[0];
+                            LogWindow.AddLogStatic($"🚫 {keyStoreId} 스토어가 상품 처리 중 - {visitData.StoreId} 요청 차단");
+                            return Results.Ok(new { success = false, message = "다른 스토어 처리 중" });
+                        }
+                    }
+                    LogWindow.AddLogStatic($"🔍 visiting 상태 체크 완료 - 차단 없음");
+                }
+                
                 // ⭐ 순차 처리 - 현재 처리할 스토어인지 확인
                 lock (_storeProcessLock)
                 {
@@ -510,6 +532,19 @@ namespace Gumaedaehang.Services
                     if (!visitData.StoreId.Equals(currentStoreId, StringComparison.OrdinalIgnoreCase))
                     {
                         LogWindow.AddLogStatic($"순차 처리 위반 - 현재 처리할 스토어: {currentStoreId}, 요청 스토어: {visitData.StoreId}");
+                        
+                        // ⭐ 이전 스토어 요청이면 즉시 완료 처리하여 다음으로 진행
+                        var prevStoreIndex = _currentStoreIndex - 1;
+                        if (prevStoreIndex >= 0 && prevStoreIndex < _selectedStores.Count)
+                        {
+                            var prevStoreId = UrlExtensions.ExtractStoreIdFromUrl(_selectedStores[prevStoreIndex].Url);
+                            if (visitData.StoreId.Equals(prevStoreId, StringComparison.OrdinalIgnoreCase))
+                            {
+                                LogWindow.AddLogStatic($"🔄 이전 스토어 {visitData.StoreId} 요청 - 즉시 완료 처리");
+                                return Results.Ok(new { success = true, message = "이전 스토어 완료 처리됨" });
+                            }
+                        }
+                        
                         return Results.Ok(new { success = false, message = "순차 처리 대기 중" });
                     }
                     
@@ -534,12 +569,17 @@ namespace Gumaedaehang.Services
                 LogWindow.AddLogStatic($"[{visitData.CurrentIndex}/{visitData.TotalCount}] 스마트스토어 공구탭 접속: {visitData.Title}");
                 LogWindow.AddLogStatic($"현재 상품 수: {_totalProductCount}/{TARGET_PRODUCT_COUNT}");
 
-                return Results.Ok(new { 
+                var response = new { 
                     success = true,
                     currentProducts = _totalProductCount,
                     targetProducts = TARGET_PRODUCT_COUNT,
                     message = "Visit logged successfully" 
-                });
+                };
+                
+                var responseJson = JsonSerializer.Serialize(response);
+                LogWindow.AddLogStatic($"🔥 HandleSmartStoreVisit 응답: {responseJson}");
+                
+                return Results.Json(response);
             }
             catch (Exception ex)
             {
@@ -556,6 +596,28 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ 먼저 visiting 상태 체크 - 다른 스토어가 상품 처리 중이면 모든 요청 차단
+                lock (_statesLock)
+                {
+                    LogWindow.AddLogStatic($"🔍 [공구체크] visiting 상태 체크 시작 - 총 {_storeStates.Count}개 상태");
+                    foreach (var kvp in _storeStates)
+                    {
+                        var key = kvp.Key;
+                        var state = kvp.Value;
+                        LogWindow.AddLogStatic($"🔍 [공구체크] 상태 체크: {key} -> {state.State} (Lock: {state.Lock})");
+                        
+                        // ⭐ visiting 상태이고 Lock이 true인 스토어가 있으면 차단
+                        if (state.State == "visiting" && state.Lock)
+                        {
+                            // 키에서 스토어 ID 추출 (storeId:runId 형태)
+                            var keyStoreId = key.Split(':')[0];
+                            LogWindow.AddLogStatic($"🚫 [공구체크] {keyStoreId} 스토어가 상품 처리 중 - 요청 차단");
+                            return Results.Json(new { success = false, message = "다른 스토어 처리 중" });
+                        }
+                    }
+                    LogWindow.AddLogStatic($"🔍 [공구체크] visiting 상태 체크 완료 - 차단 없음");
+                }
+                
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
                 
@@ -596,6 +658,22 @@ namespace Gumaedaehang.Services
                         if (!gongguData.StoreId.Equals(currentStoreId, StringComparison.OrdinalIgnoreCase))
                         {
                             LogWindow.AddLogStatic($"❌ 순차 처리 위반 - 현재: {currentStoreId}, 요청: {gongguData.StoreId} 차단");
+                            
+                            // ⭐ 이전 스토어 요청이면 즉시 완료 처리
+                            var prevStoreIndex = _currentStoreIndex - 1;
+                            if (prevStoreIndex >= 0 && prevStoreIndex < _selectedStores.Count)
+                            {
+                                var prevStoreId = UrlExtensions.ExtractStoreIdFromUrl(_selectedStores[prevStoreIndex].Url);
+                                if (gongguData.StoreId.Equals(prevStoreId, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    LogWindow.AddLogStatic($"🔄 이전 스토어 {gongguData.StoreId} 공구 체크 - 즉시 완료 처리");
+                                    return Results.Json(new { 
+                                        success = true, 
+                                        message = "이전 스토어 완료 처리됨" 
+                                    });
+                                }
+                            }
+                            
                             return Results.Json(new { 
                                 success = false, 
                                 message = "순차 처리 대기 중" 
@@ -620,6 +698,7 @@ namespace Gumaedaehang.Services
                                 _storeStates[key].State = "done";
                                 _storeStates[key].Lock = false;
                                 _storeStates[key].UpdatedAt = DateTime.Now;
+                                LogWindow.AddLogStatic($"🔄 {gongguData.StoreId}: 스킵으로 인한 강제 done 상태 설정");
                             }
                         }
                         
@@ -658,6 +737,28 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ 먼저 visiting 상태 체크 - 다른 스토어가 상품 처리 중이면 모든 요청 차단
+                lock (_statesLock)
+                {
+                    LogWindow.AddLogStatic($"🔍 [전체상품] visiting 상태 체크 시작 - 총 {_storeStates.Count}개 상태");
+                    foreach (var kvp in _storeStates)
+                    {
+                        var key = kvp.Key;
+                        var state = kvp.Value;
+                        LogWindow.AddLogStatic($"🔍 [전체상품] 상태 체크: {key} -> {state.State} (Lock: {state.Lock})");
+                        
+                        // ⭐ visiting 상태이고 Lock이 true인 스토어가 있으면 차단
+                        if (state.State == "visiting" && state.Lock)
+                        {
+                            // 키에서 스토어 ID 추출 (storeId:runId 형태)
+                            var keyStoreId = key.Split(':')[0];
+                            LogWindow.AddLogStatic($"🚫 [전체상품] {keyStoreId} 스토어가 상품 처리 중 - 요청 차단");
+                            return Results.Json(new { success = false, message = "다른 스토어 처리 중" });
+                        }
+                    }
+                    LogWindow.AddLogStatic($"🔍 [전체상품] visiting 상태 체크 완료 - 차단 없음");
+                }
+                
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
                 
@@ -695,6 +796,22 @@ namespace Gumaedaehang.Services
                         if (!pageData.StoreId.Equals(currentStoreId, StringComparison.OrdinalIgnoreCase))
                         {
                             LogWindow.AddLogStatic($"❌ 순차 처리 위반 - 현재: {currentStoreId}, 요청: {pageData.StoreId} 차단");
+                            
+                            // ⭐ 이전 스토어 요청이면 즉시 완료 처리
+                            var prevStoreIndex = _currentStoreIndex - 1;
+                            if (prevStoreIndex >= 0 && prevStoreIndex < _selectedStores.Count)
+                            {
+                                var prevStoreId = UrlExtensions.ExtractStoreIdFromUrl(_selectedStores[prevStoreIndex].Url);
+                                if (pageData.StoreId.Equals(prevStoreId, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    LogWindow.AddLogStatic($"🔄 이전 스토어 {pageData.StoreId} 전체상품 페이지 - 즉시 완료 처리");
+                                    return Results.Json(new { 
+                                        success = true, 
+                                        message = "이전 스토어 완료 처리됨" 
+                                    });
+                                }
+                            }
+                            
                             return Results.Json(new { 
                                 success = false, 
                                 message = "순차 처리 대기 중" 
@@ -732,6 +849,21 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ v1.39 수정: 100개 목표 달성 시 즉시 중단
+                lock (_counterLock)
+                {
+                    if (_shouldStop || _totalProductCount >= TARGET_PRODUCT_COUNT)
+                    {
+                        LogWindow.AddLogStatic($"🛑 100개 목표 달성으로 추가 상품 처리 중단 (현재: {_totalProductCount}/100)");
+                        return Results.Json(new { 
+                            success = true,
+                            stop = true,
+                            totalProducts = _totalProductCount,
+                            message = "Target reached, stopping crawling" 
+                        });
+                    }
+                }
+                
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
                 
@@ -813,6 +945,26 @@ namespace Gumaedaehang.Services
                             skip = true,
                             message = "Store not selected, data completely ignored" 
                         });
+                    }
+                    
+                    // ⭐ 순차 처리 체크 - 현재 처리할 스토어가 아니면 차단
+                    lock (_storeProcessLock)
+                    {
+                        if (_currentStoreIndex < _selectedStores.Count)
+                        {
+                            var currentStore = _selectedStores[_currentStoreIndex];
+                            var currentStoreId = UrlExtensions.ExtractStoreIdFromUrl(currentStore.Url);
+                            
+                            if (!productData.StoreId.Equals(currentStoreId, StringComparison.OrdinalIgnoreCase))
+                            {
+                                LogWindow.AddLogStatic($"🚫 순차 처리 위반 - 현재: {currentStoreId}, 상품 데이터: {productData.StoreId} 차단");
+                                return Results.Json(new { 
+                                    success = true,
+                                    skip = true,
+                                    message = "순차 처리 대기 중" 
+                                });
+                            }
+                        }
                     }
                     
                     // ⭐ 100개 초과 방지 - 미리 체크

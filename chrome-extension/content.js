@@ -3,6 +3,58 @@ console.log('🆕 Predvia 스마트스토어 링크 수집 확장프로그램 �
 console.log('🌐 현재 URL:', window.location.href);
 console.log('⏰ 현재 시간:', new Date().toLocaleString());
 
+// ⭐ Background Script 기반 중앙 집중식 순차 처리 잠금
+async function requestProcessingPermission(storeId, storeTitle) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({
+      action: 'requestProcessing',
+      storeId: storeId,
+      storeTitle: storeTitle
+    }, (response) => {
+      if (response.granted) {
+        console.log(`🔐 ${storeId}: 처리 권한 획득`);
+        resolve(true);
+      } else {
+        console.log(`🔒 ${storeId}: 대기열 ${response.position}번째 - 대기 중...`);
+        // 대기열에서 권한을 받을 때까지 대기
+        waitForProcessingPermission(storeId, resolve);
+      }
+    });
+  });
+}
+
+async function waitForProcessingPermission(storeId, resolve) {
+  // 2초마다 상태 체크
+  const checkInterval = setInterval(() => {
+    chrome.runtime.sendMessage({
+      action: 'checkProcessingStatus'
+    }, (response) => {
+      if (!response.isProcessing || response.currentStore === storeId) {
+        clearInterval(checkInterval);
+        resolve(true);
+      } else {
+        console.log(`🔒 ${storeId}: 현재 ${response.currentStore} 처리 중 - 계속 대기...`);
+      }
+    });
+  }, 2000);
+}
+
+async function releaseProcessingPermission(storeId) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({
+      action: 'releaseProcessing',
+      storeId: storeId
+    }, (response) => {
+      if (response.success) {
+        console.log(`🔓 ${storeId}: 처리 권한 해제 완료`);
+      } else {
+        console.log(`⚠️ ${storeId}: 처리 권한 해제 실패`);
+      }
+      resolve(response.success);
+    });
+  });
+}
+
 // 차단 복구 시스템 제거됨
 
 // 차단 복구 함수 제거됨
@@ -28,9 +80,9 @@ async function initializeExtension() {
   }
   
   // 자동으로 스마트스토어 링크 추출 및 전송
-  setTimeout(() => {
+  setTimeout(async () => {
     console.log('🚀 자동 스마트스토어 링크 추출 시작...');
-    scrollAndCollectLinks();
+    await scrollAndCollectLinks();
   }, 3000); // 3초 후 자동 실행 (페이지 로딩 대기)
 }
 
@@ -407,22 +459,37 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
 async function visitSelectedStoresOnly(selectedStores) {
   console.log(`🚀 선택된 ${selectedStores.length}개 스토어만 순차 접속 시작`);
   
-  for (let i = 0; i < selectedStores.length; i++) {
-    const store = selectedStores[i];
+  // ⭐ 순차 처리를 위한 재귀 함수
+  async function processStoreSequentially(index) {
+    if (index >= selectedStores.length) {
+      console.log(`🎉 선택된 ${selectedStores.length}개 스토어 방문 완료!`);
+      return;
+    }
+    
+    const store = selectedStores[index];
     
     try {
+      // ⭐ Background Script에서 처리 권한 요청
+      await requestProcessingPermission(store.storeId, store.title);
+      
       // ⭐ 서버에서 중단 신호 확인
       const shouldStop = await checkShouldStop();
       if (shouldStop) {
-        console.log(`🛑 목표 달성으로 크롤링 중단 (${i + 1}/${selectedStores.length}번째에서 중단)`);
-        break;
+        console.log(`🛑 목표 달성으로 크롤링 중단 (${index + 1}/${selectedStores.length}번째에서 중단)`);
+        // ⭐ 처리 권한 해제
+        await releaseProcessingPermission(store.storeId);
+        return;
       }
       
       const storeId = store.storeId;
       
       if (!storeId) {
-        console.log(`❌ [${i + 1}/${selectedStores.length}] 스토어 ID 없음: ${store.title}`);
-        continue;
+        console.log(`❌ [${index + 1}/${selectedStores.length}] 스토어 ID 없음: ${store.title}`);
+        // ⭐ 처리 권한 해제
+        await releaseProcessingPermission(store.storeId);
+        // 다음 스토어 처리
+        await processStoreSequentially(index + 1);
+        return;
       }
 
       // ⭐ 스토어별 고유 runId 생성
@@ -432,7 +499,7 @@ async function visitSelectedStoresOnly(selectedStores) {
       // 공구탭 URL 생성 (runId 포함)
       const gongguUrl = `https://smartstore.naver.com/${storeId}/category/50000165?cp=1&runId=${runId}`;
       
-      console.log(`📍 [${i + 1}/${selectedStores.length}] 공구탭 접속: ${store.title}`);
+      console.log(`📍 [${index + 1}/${selectedStores.length}] 공구탭 접속: ${store.title}`);
       console.log(`🔗 스토어 ID: ${storeId}`);
       console.log(`🔗 공구탭 URL: ${gongguUrl}`);
       
@@ -442,7 +509,7 @@ async function visitSelectedStoresOnly(selectedStores) {
         title: store.title,
         storeId: storeId,
         gongguUrl: gongguUrl,
-        currentIndex: i + 1,
+        currentIndex: index + 1,
         totalCount: selectedStores.length,
         timestamp: new Date().toISOString()
       });
@@ -450,7 +517,19 @@ async function visitSelectedStoresOnly(selectedStores) {
       // ⭐ 목표 달성 시 중단
       if (visitResponse && visitResponse.stop) {
         console.log(`🎉 목표 달성! 총 ${visitResponse.totalProducts}개 상품 수집 완료`);
-        break;
+        // ⭐ 처리 권한 해제
+        await releaseProcessingPermission(storeId);
+        return;
+      }
+      
+      // ⭐ 순차 처리 위반 시 스킵
+      if (visitResponse && visitResponse.success === false) {
+        console.log(`🚫 ${storeId}: 순차 처리 위반 - 스킵`);
+        // ⭐ 처리 권한 해제
+        await releaseProcessingPermission(storeId);
+        // 다음 스토어 처리
+        await processStoreSequentially(index + 1);
+        return;
       }
       
       // ⭐ 즉시 서버에 "진행중" 상태 기록
@@ -459,8 +538,12 @@ async function visitSelectedStoresOnly(selectedStores) {
       // 새 탭에서 공구탭 열기
       const newTab = window.open(gongguUrl, '_blank');
       
+      // ⭐ 탭 열기 후 3초 강제 대기 (탭이 완전히 로드될 때까지)
+      console.log(`⏳ ${storeId}: 탭 로딩 대기 중...`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
       // ⭐ 1000개 이하 스토어만 3초 후 즉시 완료, 1000개 이상은 대기
-      const smallStores = ['jikjikgu', 'unkleboboo', 'whmallcom', 'wdcafe', 'allcans', 'globalselectok', 'jtemshop', 'jndco'];
+      const smallStores = ['jtemshop', 'dongsmarkett', 'swstore1316', 'jardine01', 'kind9', 'bigwheel', 'carpedime', 'rootselect'];
       
       if (smallStores.includes(storeId)) {
         // 1000개 이하: 3초 후 즉시 완료
@@ -478,38 +561,65 @@ async function visitSelectedStoresOnly(selectedStores) {
       await waitForTaskCompletion(storeId, runId);
       console.log(`✅ ${storeId}: 완료 대기 끝`);
       
+      // ⭐ 처리 권한 해제
+      await releaseProcessingPermission(storeId);
+      console.log(`🔓 ${store.title}: 처리 권한 해제 (완료)`);
+      
       // 2초 대기 후 다음 스토어
       await new Promise(resolve => setTimeout(resolve, 2000));
       
+      // 다음 스토어 처리
+      await processStoreSequentially(index + 1);
+      
     } catch (error) {
-      console.log(`❌ [${i + 1}/${selectedStores.length}] 오류: ${error.message}`);
+      console.log(`❌ [${index + 1}/${selectedStores.length}] 오류: ${error.message}`);
+      // ⭐ 오류 시에도 처리 권한 해제
+      await releaseProcessingPermission(store.storeId);
+      console.log(`🔓 ${store.title}: 처리 권한 해제 (오류)`);
+      
+      // 다음 스토어 처리
+      await processStoreSequentially(index + 1);
     }
   }
   
-  console.log(`🎉 선택된 ${selectedStores.length}개 스토어 방문 완료!`);
+  // 첫 번째 스토어부터 시작
+  await processStoreSequentially(0);
 }
 
 // 스마트스토어 링크들을 순차적으로 방문 (공구탭으로 변환)
 async function visitSmartStoreLinksSequentially(smartStoreLinks) {
   console.log(`🚀 ${smartStoreLinks.length}개 스마트스토어 공구탭 순차 접속 시작`);
   
-  for (let i = 0; i < smartStoreLinks.length; i++) {
-    const link = smartStoreLinks[i];
+  // ⭐ 재귀 함수로 순차 처리 보장
+  async function processLinkSequentially(index) {
+    if (index >= smartStoreLinks.length) {
+      console.log('✅ 모든 스마트스토어 공구탭 작업 완료');
+      return;
+    }
+    
+    const link = smartStoreLinks[index];
     
     try {
-      // ⭐ 서버에서 중단 신호 확인
-      const shouldStop = await checkShouldStop();
-      if (shouldStop) {
-        console.log(`🛑 목표 달성으로 크롤링 중단 (${i + 1}/${smartStoreLinks.length}번째에서 중단)`);
-        break;
-      }
-      
       // 스마트스토어 ID 추출
       const storeId = extractStoreId(link.url);
       
       if (!storeId) {
-        console.log(`❌ [${i + 1}/${smartStoreLinks.length}] 스토어 ID 추출 실패: ${link.title}`);
-        continue;
+        console.log(`❌ [${index + 1}/${smartStoreLinks.length}] 스토어 ID 추출 실패: ${link.title}`);
+        // 다음 링크 처리
+        await processLinkSequentially(index + 1);
+        return;
+      }
+
+      // ⭐ Background Script에서 처리 권한 요청
+      await requestProcessingPermission(storeId, link.title);
+      
+      // ⭐ 서버에서 중단 신호 확인
+      const shouldStop = await checkShouldStop();
+      if (shouldStop) {
+        console.log(`🛑 목표 달성으로 크롤링 중단 (${index + 1}/${smartStoreLinks.length}번째에서 중단)`);
+        // ⭐ 처리 권한 해제
+        await releaseProcessingPermission(storeId);
+        return;
       }
 
       // ⭐ 스토어별 고유 runId 생성
@@ -519,7 +629,7 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
       // 공구탭 URL 생성 (runId 포함)
       const gongguUrl = `https://smartstore.naver.com/${storeId}/category/50000165?cp=1&runId=${runId}`;
       
-      console.log(`📍 [${i + 1}/${smartStoreLinks.length}] 공구탭 접속: ${link.title}`);
+      console.log(`📍 [${index + 1}/${smartStoreLinks.length}] 공구탭 접속: ${link.title}`);
       console.log(`🔗 스토어 ID: ${storeId}`);
       console.log(`🔗 공구탭 URL: ${gongguUrl}`);
       
@@ -529,7 +639,7 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
         title: link.title,
         storeId: storeId,
         gongguUrl: gongguUrl,
-        currentIndex: i + 1,
+        currentIndex: index + 1,
         totalCount: smartStoreLinks.length,
         timestamp: new Date().toISOString()
       });
@@ -537,13 +647,29 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
       // ⭐ 선택되지 않은 스토어는 건너뛰기
       if (visitResponse && visitResponse.skip) {
         console.log(`⏭️ 선택되지 않은 스토어 건너뛰기: ${storeId}`);
-        continue;
+        // ⭐ 처리 권한 해제
+        await releaseProcessingPermission(storeId);
+        // 다음 링크 처리
+        await processLinkSequentially(index + 1);
+        return;
       }
       
       // ⭐ 목표 달성 시 중단
       if (visitResponse && visitResponse.stop) {
         console.log(`🎉 목표 달성! 총 ${visitResponse.totalProducts}개 상품 수집 완료`);
-        break;
+        // ⭐ 처리 권한 해제
+        await releaseProcessingPermission(storeId);
+        return;
+      }
+      
+      // ⭐ 순차 처리 위반 시 스킵
+      if (visitResponse && visitResponse.success === false) {
+        console.log(`🚫 ${storeId}: 순차 처리 위반 - 스킵`);
+        // ⭐ 처리 권한 해제
+        await releaseProcessingPermission(storeId);
+        // 다음 링크 처리
+        await processLinkSequentially(index + 1);
+        return;
       }
       
       // ⭐ 즉시 서버에 "진행중" 상태 기록
@@ -552,8 +678,12 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
       // 새 탭에서 공구탭 열기
       const newTab = window.open(gongguUrl, '_blank');
       
+      // ⭐ 탭 열기 후 3초 강제 대기 (탭이 완전히 로드될 때까지)
+      console.log(`⏳ ${storeId}: 탭 로딩 대기 중...`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
       // ⭐ 1000개 이하 스토어만 3초 후 즉시 완료, 1000개 이상은 대기
-      const smallStores = ['jikjikgu', 'unkleboboo', 'whmallcom', 'wdcafe', 'allcans', 'globalselectok', 'jtemshop', 'jndco'];
+      const smallStores = ['jtemshop', 'dongsmarkett', 'swstore1316', 'jardine01', 'kind9', 'bigwheel', 'carpedime', 'rootselect'];
       
       if (smallStores.includes(storeId)) {
         // 1000개 이하: 3초 후 즉시 완료
@@ -570,12 +700,16 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
         storeId: storeId,
         gongguUrl: gongguUrl,
         runId: runId
-      }, i + 1, smartStoreLinks.length);
+      }, index + 1, smartStoreLinks.length);
       
       // ⭐ runId 기반 완료 대기 (진짜 막는 지점)
       console.log(`🔍 ${storeId}: 완료 대기 시작 (runId: ${runId})`);
       await waitForTaskCompletion(storeId, runId);
       console.log(`✅ ${storeId}: 완료 대기 끝`);
+      
+      // ⭐ 처리 권한 해제
+      await releaseProcessingPermission(storeId);
+      console.log(`🔓 ${link.title}: 처리 권한 해제 (완료)`);
       
       // 탭 닫기 (안전하게)
       try {
@@ -587,14 +721,28 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
         console.log(`⚠️ ${storeId}: 탭 닫기 실패 - ${e.message}`);
       }
       
-      console.log(`✅ [${i + 1}/${smartStoreLinks.length}] 작업 완료: ${link.title}`);
+      console.log(`✅ [${index + 1}/${smartStoreLinks.length}] 작업 완료: ${link.title}`);
+      
+      // 다음 링크 처리
+      await processLinkSequentially(index + 1);
       
     } catch (error) {
-      console.error(`❌ 링크 처리 오류 [${i + 1}]: ${link.title}`, error);
+      console.error(`❌ 링크 처리 오류 [${index + 1}]: ${link.title}`, error);
+      
+      // 스토어 ID가 있으면 처리 권한 해제
+      const storeId = extractStoreId(link.url);
+      if (storeId) {
+        await releaseProcessingPermission(storeId);
+        console.log(`🔓 ${link.title}: 처리 권한 해제 (오류)`);
+      }
+      
+      // 다음 링크 처리
+      await processLinkSequentially(index + 1);
     }
   }
   
-  console.log('✅ 모든 스마트스토어 공구탭 작업 완료');
+  // 첫 번째 링크부터 시작
+  await processLinkSequentially(0);
 }
 
 // ⭐ 서버 상태 설정 함수
@@ -681,12 +829,31 @@ async function notifyStoreVisit(visitData) {
     });
     
     if (response.ok) {
-      return await response.json();
+      try {
+        const responseText = await response.text();
+        console.log(`📡 서버 응답 텍스트: ${responseText}`);
+        
+        if (responseText.trim()) {
+          const jsonData = JSON.parse(responseText);
+          console.log(`📊 파싱된 응답:`, jsonData);
+          return jsonData;
+        } else {
+          console.log('⚠️ 서버 응답 없음 - 크롤링 계속 진행');
+          return { success: true, message: "No server response - continue crawling" };
+        }
+      } catch (jsonError) {
+        console.log('JSON 파싱 오류:', jsonError);
+        // JSON 파싱 실패 시 순차 처리 위반으로 간주
+        return { success: false, message: "JSON parsing failed - sequential violation" };
+      }
+    } else {
+      console.log(`❌ HTTP 오류: ${response.status}`);
+      return { success: false, message: `HTTP error: ${response.status}` };
     }
   } catch (error) {
     console.log('방문 알림 오류:', error);
+    return { success: false, message: `Network error: ${error.message}` };
   }
-  return null;
 }
 
 // 스마트스토어 ID 추출 함수
@@ -922,9 +1089,13 @@ if (window.location.href.includes('smartstore.naver.com') && window.location.hre
   // 페이지 로드 완료 후 리뷰 수집
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(collectProductReviews, 3000);
+      setTimeout(async () => {
+        await collectProductReviews();
+      }, 3000);
     });
   } else {
-    setTimeout(collectProductReviews, 3000);
+    setTimeout(async () => {
+      await collectProductReviews();
+    }, 3000);
   }
 }

@@ -175,6 +175,14 @@ async function sendGongguResult(gongguCount) {
     
   } catch (error) {
     console.error('❌ 공구 개수 결과 전송 실패:', error);
+    
+    // ⭐ 네트워크 오류 시 재시도
+    if (error.message.includes('Failed to fetch')) {
+      console.log('🔄 네트워크 오류 - 2초 후 재시도');
+      setTimeout(() => {
+        sendGongguResult(storeId, gongguCount, isValid);
+      }, 2000);
+    }
   }
 }
 
