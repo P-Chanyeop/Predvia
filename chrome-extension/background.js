@@ -1,6 +1,158 @@
-// 백그라운드 서비스 워커
-console.log('Predvia 백그라운드 서비스 워커 시작됨');
+// ⭐ 중앙 집중식 순차 처리 시스템
+console.log('🚀 Predvia 중앙 순차 처리 시스템 시작');
 
+let globalProcessingState = {
+  isProcessing: false,
+  currentStore: null,
+  currentTabId: null,
+  lockTimestamp: null,
+  queue: []
+};
+
+// ⭐ 순차 처리 요청 핸들러
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('🔥 Background 메시지 수신:', request.action, request.storeId);
+  
+  switch (request.action) {
+    case 'requestProcessing':
+      handleProcessingRequest(request, sender, sendResponse);
+      return true; // 비동기 응답
+      
+    case 'releaseProcessing':
+      handleProcessingRelease(request, sender, sendResponse);
+      return true;
+      
+    case 'checkProcessingStatus':
+      sendResponse({
+        isProcessing: globalProcessingState.isProcessing,
+        currentStore: globalProcessingState.currentStore,
+        queueLength: globalProcessingState.queue.length
+      });
+      return true;
+      
+    case 'closeCurrentTab':
+      // 기존 탭 닫기 기능 유지
+      if (sender.tab && sender.tab.id) {
+        chrome.tabs.remove(sender.tab.id, () => {
+          console.log('Tab closed by background script');
+          sendResponse({success: true});
+        });
+      }
+      return true;
+  }
+});
+
+// ⭐ 처리 요청 핸들러
+function handleProcessingRequest(request, sender, sendResponse) {
+  const { storeId, storeTitle } = request;
+  const tabId = sender.tab.id;
+  
+  console.log(`🔍 처리 요청: ${storeId} (탭: ${tabId})`);
+  
+  // 5분 타임아웃 체크
+  if (globalProcessingState.isProcessing && globalProcessingState.lockTimestamp) {
+    const elapsed = Date.now() - globalProcessingState.lockTimestamp;
+    if (elapsed > 300000) { // 5분
+      console.log('🔓 5분 타임아웃으로 잠금 자동 해제');
+      resetProcessingState();
+    }
+  }
+  
+  // 현재 처리 중인 스토어가 없으면 즉시 승인
+  if (!globalProcessingState.isProcessing) {
+    grantProcessing(storeId, storeTitle, tabId);
+    sendResponse({ granted: true, position: 0 });
+    return;
+  }
+  
+  // 이미 처리 중인 스토어와 같으면 승인 (재요청)
+  if (globalProcessingState.currentStore === storeId && globalProcessingState.currentTabId === tabId) {
+    sendResponse({ granted: true, position: 0 });
+    return;
+  }
+  
+  // 대기열에 추가
+  const queueItem = { storeId, storeTitle, tabId, timestamp: Date.now(), sendResponse };
+  globalProcessingState.queue.push(queueItem);
+  
+  console.log(`🔒 대기열 추가: ${storeId} (위치: ${globalProcessingState.queue.length})`);
+  sendResponse({ granted: false, position: globalProcessingState.queue.length });
+}
+
+// ⭐ 처리 해제 핸들러
+function handleProcessingRelease(request, sender, sendResponse) {
+  const { storeId } = request;
+  const tabId = sender.tab.id;
+  
+  console.log(`🔓 처리 해제 요청: ${storeId} (탭: ${tabId})`);
+  
+  // 현재 처리 중인 스토어가 맞는지 확인
+  if (globalProcessingState.currentStore === storeId && globalProcessingState.currentTabId === tabId) {
+    resetProcessingState();
+    processQueue();
+    sendResponse({ success: true });
+  } else {
+    console.log(`⚠️ 잘못된 해제 요청: 현재 ${globalProcessingState.currentStore}, 요청 ${storeId}`);
+    sendResponse({ success: false });
+  }
+}
+
+// ⭐ 처리 권한 부여
+function grantProcessing(storeId, storeTitle, tabId) {
+  globalProcessingState.isProcessing = true;
+  globalProcessingState.currentStore = storeId;
+  globalProcessingState.currentTabId = tabId;
+  globalProcessingState.lockTimestamp = Date.now();
+  
+  console.log(`🔐 처리 권한 부여: ${storeId} (탭: ${tabId})`);
+}
+
+// ⭐ 처리 상태 초기화
+function resetProcessingState() {
+  globalProcessingState.isProcessing = false;
+  globalProcessingState.currentStore = null;
+  globalProcessingState.currentTabId = null;
+  globalProcessingState.lockTimestamp = null;
+  
+  console.log('🔓 처리 상태 초기화 완료');
+}
+
+// ⭐ 대기열 처리
+function processQueue() {
+  if (globalProcessingState.queue.length === 0) {
+    console.log('📭 대기열 비어있음');
+    return;
+  }
+  
+  // 가장 오래된 요청 처리
+  const nextItem = globalProcessingState.queue.shift();
+  const { storeId, storeTitle, tabId, sendResponse } = nextItem;
+  
+  // 탭이 아직 존재하는지 확인
+  chrome.tabs.get(tabId, (tab) => {
+    if (chrome.runtime.lastError || !tab) {
+      console.log(`⚠️ 탭 ${tabId} 더 이상 존재하지 않음, 다음 대기열 처리`);
+      processQueue();
+      return;
+    }
+    
+    grantProcessing(storeId, storeTitle, tabId);
+    sendResponse({ granted: true, position: 0 });
+    console.log(`✅ 대기열에서 처리 권한 부여: ${storeId}`);
+  });
+}
+
+// ⭐ 탭 닫힘 감지 시 자동 해제
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (globalProcessingState.currentTabId === tabId) {
+    console.log(`🗂️ 처리 중인 탭 ${tabId} 닫힘, 자동 해제`);
+    resetProcessingState();
+    processQueue();
+  }
+  
+  // 대기열에서도 제거
+  globalProcessingState.queue = globalProcessingState.queue.filter(item => item.tabId !== tabId);
+});
 
 // ⭐ 탭 업데이트 감지 (전체상품 페이지 강제 주입)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -32,157 +184,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         files: ['gonggu-checker.js']
       }).then(() => {
         console.log('✅ gonggu-checker.js 강제 주입 완료');
-        
-        // 5초 후에도 결과가 없으면 탭 닫기
-        setTimeout(() => {
-          chrome.tabs.get(tabId).then(currentTab => {
-            if (currentTab && currentTab.url.includes('/category/50000165')) {
-              console.log('⏰ 공구 확인 타임아웃 - 탭 강제 닫기:', tabId);
-              chrome.tabs.remove(tabId).catch(e => console.log('탭 닫기 실패:', e));
-            }
-          }).catch(e => console.log('탭 확인 실패:', e));
-        }, 5000);
-        
       }).catch((error) => {
-        console.log('❌ 스크립트 주입 실패 - 즉시 탭 닫기:', error);
-        // 스크립트 주입 실패 시 즉시 탭 닫기
-        chrome.tabs.remove(tabId).catch(e => console.log('탭 닫기 실패:', e));
+        console.log('❌ 스크립트 주입 실패:', error);
       });
     }
   }
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'searchNaver') {
-    searchNaverShopping(request.keyword)
-      .then(result => sendResponse({success: true, data: result}))
-      .catch(error => sendResponse({success: false, error: error.message}));
-    return true; // 비동기 응답을 위해 true 반환
-  }
-  
-  // 현재 탭 닫기 메시지 처리
-  if (request.action === 'closeCurrentTab') {
-    if (sender.tab && sender.tab.id) {
-      chrome.tabs.remove(sender.tab.id)
-        .then(() => {
-          console.log(`✅ 탭 ${sender.tab.id} 강제 닫기 완료`);
-          sendResponse({success: true});
-        })
-        .catch(error => {
-          console.log(`❌ 탭 ${sender.tab.id} 닫기 실패:`, error);
-          sendResponse({success: false, error: error.message});
-        });
-    } else {
-      sendResponse({success: false, error: 'No tab ID'});
-    }
-    return true;
-  }
-  
-  // 탭 닫기 메시지 처리 (기존)
-  if (request.action === 'closeTab') {
-    chrome.tabs.remove(sender.tab.id)
-      .then(() => sendResponse({success: true}))
-      .catch(error => sendResponse({success: false, error: error.message}));
-    return true;
-  }
-});
-
-// 네이버 쇼핑 검색 함수
-async function searchNaverShopping(keyword) {
-  try {
-    // 새 탭 생성 (작은 창으로
-    /*
-    const tab = await chrome.tabs.create({
-      url: `https://search.shopping.naver.com/search/all?adQuery=${encodeURIComponent(keyword)}&origQuery=${encodeURIComponent(keyword)}&pagingIndex=1&pagingSize=40&productSet=overseas&query=${encodeURIComponent(keyword)}&sort=rel&timestamp=&viewType=list`,
-      active: false, // 백그라운드에서 실행
-      pinned: false
-    });
-     */
-    var naverUrl = `https://search.shopping.naver.com/search/all?adQuery=${encodeURIComponent(keyword)}&origQuery=${encodeURIComponent(keyword)}&pagingIndex=1&pagingSize=40&productSet=overseas&query=${encodeURIComponent(keyword)}&sort=rel&timestamp=&viewType=list`
-    const tab = await chrome.windows.create({
-          url: naverUrl,
-          type: 'normal',
-          width: 1200,
-          height: 800,
-          left: 100,
-          top: 100,
-          focused: true
-        });
-
-
-
-    // 작은 창으로 만들기 → 큰 창으로 변경
-    /*
-    await chrome.windows.update(tab.windowId, {
-      width: 1200,
-      height: 800,
-      left: 100,
-      top: 100
-    });
-    */
-     
-
-    // 페이지 로딩 완료 대기
-    await new Promise(resolve => {
-      const listener = (tabId, changeInfo) => {
-        if (tabId === tab.id && changeInfo.status === 'complete') {
-          chrome.tabs.onUpdated.removeListener(listener);
-          resolve();
-        }
-      };
-      chrome.tabs.onUpdated.addListener(listener);
-    });
-
-    // 콘텐츠 스크립트 실행하여 데이터 추출
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: extractProductData
-    });
-
-    // 접속 확인을 위해 10초 후 탭 닫기 (기존 1초에서 변경)
-    setTimeout(() => {
-      chrome.tabs.remove(tab.id);
-    }, 10000);
-
-    return results[0].result;
-  } catch (error) {
-    console.error('네이버 쇼핑 검색 실패:', error);
-    throw error;
-  }
-}
-
-// 상품 데이터 추출 함수 (페이지에서 실행됨)
-function extractProductData() {
-  const products = [];
-  
-  // 상품 요소들 선택
-  const productElements = document.querySelectorAll('.product_item, .basicList_item__2XT81');
-  
-  productElements.forEach((element, index) => {
-    if (index >= 10) return; // 상위 10개만
-    
-    try {
-      const title = element.querySelector('.product_title, .basicList_title__3P9Q7')?.textContent?.trim();
-      const price = element.querySelector('.price_num, .price_price__1WUXk')?.textContent?.trim();
-      const image = element.querySelector('.product_img img, .basicList_thumb__3yvXP img')?.src;
-      const link = element.querySelector('a')?.href;
-      
-      if (title && price) {
-        products.push({
-          title,
-          price,
-          image,
-          link
-        });
-      }
-    } catch (e) {
-      console.error('상품 데이터 추출 오류:', e);
-    }
-  });
-  
-  return {
-    products,
-    timestamp: new Date().toISOString(),
-    keyword: new URLSearchParams(window.location.search).get('query')
-  };
-}
+console.log('🚀 Background Script 중앙 순차 처리 시스템 초기화 완료');

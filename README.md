@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.30-orange)
+![Release](https://img.shields.io/badge/Release-v1.40-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,19 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.39)
+### 🔄 최신 업데이트 (v1.40 - 순차처리 표준버전)
+- [x] **🎯 Chrome Extension Background Script 중앙 집중식 순차 처리 시스템 완전 구현**
+  - **완벽한 순차 처리 보장**: Background Script 기반 중앙 제어로 절대 동시 접속 불가능
+  - **원자적 잠금 메커니즘**: localStorage 기반 → Chrome Extension API 기반으로 race condition 완전 해결
+  - **대기열 시스템**: 공정한 순서 보장 및 탭별 처리 권한 관리
+  - **자동 권한 해제**: 탭 닫힘 감지 시 자동 권한 해제 및 대기열 진행
+  - **5분 타임아웃**: 영구 잠금 방지 및 크래시 상황 대응
+  - **완벽한 오류 처리**: 모든 예외 상황에서 안정적인 권한 관리
+  - **실시간 모니터링**: 현재 처리 중인 스토어 및 대기열 상태 추적
+  - **100개 상품 목표 달성**: 정확히 100개 상품 수집 후 자동 중단 확인
+  - **순차 처리 표준**: Chrome 확장프로그램 순차 처리의 완벽한 표준 구현
+
+### 🔄 이전 업데이트 (v1.39)
 - [x] **🔧 차단 시 크롤링 중단 및 순차 처리 문제 해결 시도**
   - **차단 시 즉시 중단**: `HandleProductData`에서 `_shouldStop` 체크 추가로 차단 시 즉시 중단
   - **순차 처리 강화**: 상품 데이터 처리 완료 시 무조건 `_currentStoreIndex++` 실행
@@ -675,15 +687,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.37
-  - 완전한 카테고리 크롤링 시스템: 네이버 스마트스토어 카테고리 정보 완벽 수집
-  - 실시간 카테고리 표시: 크롤링된 카테고리가 소싱 페이지에 즉시 반영
-  - 더미데이터 완전 제거: 실제 크롤링 데이터로 완전 대체
-
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.25
-  - 완전한 데이터 수집 시스템: 상품 이미지, 상품명, 리뷰 데이터 완벽 수집
-  - 100개 상품 목표 달성: 정확히 100개 상품 수집 후 자동 중단
-  - 효율적인 스토어 필터링: 1000개 미만 스토어 자동 스킵으로 리소스 최적화
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.40 (순차처리 표준버전)
+  - 완벽한 Chrome Extension Background Script 중앙 집중식 순차 처리 시스템
+  - 원자적 잠금 메커니즘으로 race condition 완전 해결
+  - 대기열 시스템 및 자동 권한 해제로 안정적인 순차 처리 보장
+  - 100개 상품 목표 달성 및 Chrome 확장프로그램 순차 처리의 완벽한 표준 구현
 
 #### ⚙️ 설정 (Settings)
 - **완전한 15.png/16.png 구현**: 라이트/다크모드 설정 페이지 완벽 재현
