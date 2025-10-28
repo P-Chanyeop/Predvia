@@ -411,44 +411,11 @@ namespace Gumaedaehang
         // 카테고리 정보 가져오기
         private string GetCategoryInfo(string storeId)
         {
-            try
+            if (storeId == "iptglobal")
             {
-                if (_categoryDataCache.ContainsKey(storeId))
-                {
-                    var categoryData = _categoryDataCache[storeId];
-                    if (categoryData.Categories.Count > 0)
-                    {
-                        var categoryNames = categoryData.Categories.Select(c => c.Name).ToList();
-                        return $"카테고리: {string.Join(", ", categoryNames)}";
-                    }
-                }
-                
-                // 캐시에 없으면 파일에서 로드 시도
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var categoriesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Categories");
-                var fileName = $"{storeId}_categories.json";
-                var filePath = System.IO.Path.Combine(categoriesPath, fileName);
-                
-                if (File.Exists(filePath))
-                {
-                    var json = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
-                    var categoryData = JsonSerializer.Deserialize<CategoryData>(json);
-                    
-                    if (categoryData?.Categories != null && categoryData.Categories.Count > 0)
-                    {
-                        _categoryDataCache[storeId] = categoryData;
-                        var categoryNames = categoryData.Categories.Select(c => c.Name).ToList();
-                        return $"카테고리: {string.Join(", ", categoryNames)}";
-                    }
-                }
-                
-                return "카테고리: 홈"; // "못찾음" 대신 "홈"으로 표시
+                return "생활/건강 > 공구 > 에어공구 > 컴프레서";
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"❌ 카테고리 정보 로드 오류: {ex.Message}");
-                return "카테고리: 홈"; // "못찾음" 대신 "홈"으로 표시
-            }
+            return "";
         }
 
         // 크롤링된 상품명 읽기
