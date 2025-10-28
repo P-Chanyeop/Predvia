@@ -96,6 +96,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/product-name", HandleProductName); // ⭐ 상품명 처리 API 추가
                 _app.MapPost("/api/smartstore/reviews", HandleProductReviews); // ⭐ 리뷰 처리 API 추가
                 _app.MapPost("/api/smartstore/categories", HandleCategories); // ⭐ 카테고리 처리 API 추가
+                _app.MapPost("/api/smartstore/product-categories", HandleProductCategories); // ⭐ 개별 상품 카테고리 처리 API 추가
                 
                 // ⭐ 상태 관리 API 추가
                 _app.MapPost("/api/smartstore/state", HandleStoreState);
@@ -103,7 +104,7 @@ namespace Gumaedaehang.Services
                 _app.MapGet("/api/smartstore/state", HandleGetStoreState);
                 _app.MapPost("/api/smartstore/progress", HandleStoreProgress);
                 
-                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (12개)");
+                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (13개)");
 
                 // ⭐ 서버 변수 초기화
                 lock (_counterLock)
@@ -512,6 +513,13 @@ namespace Gumaedaehang.Services
                 // ⭐ 순차 처리 - 현재 처리할 스토어인지 확인
                 lock (_storeProcessLock)
                 {
+                    // ⭐ 100% 확실한 중단 체크 - 차단 감지 시 더 이상 진행하지 않음
+                    if (_shouldStop)
+                    {
+                        LogWindow.AddLogStatic($"🛑 크롤링 중단됨 - {visitData.StoreId} 방문 요청 무시");
+                        return Results.Ok(new { success = false, message = "크롤링 중단됨" });
+                    }
+                    
                     LogWindow.AddLogStatic($"🔥🔥🔥 방문 API 디버깅 시작 - 요청 스토어: {visitData.StoreId}");
                     LogWindow.AddLogStatic($"🔥 현재 인덱스: {_currentStoreIndex}, 전체 스토어 수: {_selectedStores.Count}");
                     
@@ -640,6 +648,16 @@ namespace Gumaedaehang.Services
                     // ⭐ 순차 처리 체크 - 현재 차례가 아니면 즉시 차단
                     lock (_storeProcessLock)
                     {
+                        // ⭐ 100% 확실한 중단 체크 - 차단 감지 시 더 이상 진행하지 않음
+                        if (_shouldStop)
+                        {
+                            LogWindow.AddLogStatic($"🛑 크롤링 중단됨 - {gongguData.StoreId} 공구체크 요청 무시");
+                            return Results.Json(new { 
+                                success = false, 
+                                message = "크롤링 중단됨" 
+                            });
+                        }
+                        
                         if (_currentStoreIndex >= _selectedStores.Count)
                         {
                             LogWindow.AddLogStatic($"❌ 모든 스토어 처리 완료 - {gongguData.StoreId} 차단");
@@ -781,6 +799,16 @@ namespace Gumaedaehang.Services
                     // ⭐ 순차 처리 체크 - 현재 차례가 아니면 즉시 차단
                     lock (_storeProcessLock)
                     {
+                        // ⭐ 100% 확실한 중단 체크 - 차단 감지 시 더 이상 진행하지 않음
+                        if (_shouldStop)
+                        {
+                            LogWindow.AddLogStatic($"🛑 크롤링 중단됨 - {pageData.StoreId} 전체상품 요청 무시");
+                            return Results.Json(new { 
+                                success = false, 
+                                message = "크롤링 중단됨" 
+                            });
+                        }
+                        
                         if (_currentStoreIndex >= _selectedStores.Count)
                         {
                             LogWindow.AddLogStatic($"❌ 모든 스토어 처리 완료 - {pageData.StoreId} 차단");
@@ -1029,6 +1057,7 @@ namespace Gumaedaehang.Services
                         if (_totalProductCount >= TARGET_PRODUCT_COUNT)
                         {
                             _shouldStop = true;
+                            _isCrawlingActive = false; // ⭐ 추가: 모든 데이터 처리 중단
                             LogWindow.AddLogStatic($"🎉 목표 달성! 정확히 100개 상품 수집 완료 - 크롤링 중단");
                             
                             // 🔥 즉시 카드 생성
@@ -1415,8 +1444,24 @@ namespace Gumaedaehang.Services
                 lock (_counterLock)
                 {
                     _shouldStop = true;
+                    _isCrawlingActive = false; // ⭐ 추가: 모든 데이터 처리 중단
+                    
+                    // ⭐ 실제 파일 개수로 정확한 계산
+                    var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                    var imagesPath = Path.Combine(appDataPath, "Predvia", "Images");
+                    var actualCount = 0;
+                    
+                    try
+                    {
+                        if (Directory.Exists(imagesPath))
+                        {
+                            actualCount = Directory.GetFiles(imagesPath, "*_main.jpg").Length;
+                        }
+                    }
+                    catch { }
+                    
                     LogWindow.AddLogStatic($"🛑 네이버 차단 감지로 인한 크롤링 강제 중단");
-                    LogWindow.AddLogStatic($"📊 최종 수집 완료: {_totalProductCount}/100개 ({(_totalProductCount * 100.0 / 100):F1}%)");
+                    LogWindow.AddLogStatic($"📊 최종 수집 완료: {actualCount}/100개 ({(actualCount * 100.0 / 100):F1}%)");
                     
                     // ⭐ 80개 미만이면 Chrome 재시작
                     if (_totalProductCount < 80)
@@ -1507,7 +1552,7 @@ namespace Gumaedaehang.Services
             try
             {
                 // 🚨 크롤링 중단 상태 체크
-                if (!_isCrawlingActive)
+                if (!_isCrawlingActive || _shouldStop)
                 {
                     LogWindow.AddLogStatic("⏹️ 크롤링 중단됨 - 이미지 처리 스킵");
                     return Results.Ok(new { success = false, message = "크롤링 중단됨" });
@@ -1611,7 +1656,7 @@ namespace Gumaedaehang.Services
             try
             {
                 // 🚨 크롤링 중단 상태 체크
-                if (!_isCrawlingActive)
+                if (!_isCrawlingActive || _shouldStop)
                 {
                     LogWindow.AddLogStatic("⏹️ 크롤링 중단됨 - 상품명 처리 스킵");
                     return Results.Ok(new { success = false, message = "크롤링 중단됨" });
@@ -1687,11 +1732,24 @@ namespace Gumaedaehang.Services
 
                 if (categoryData?.Categories != null && categoryData.Categories.Count > 0)
                 {
-                    await SaveCategories(categoryData);
-                    LogWindow.AddLogStatic($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
-                    
-                    // 소싱 페이지에 카테고리 데이터 실시간 표시
-                    await UpdateSourcingPageCategories(categoryData);
+                    // ⭐ 개별 상품 카테고리인지 확인 (productId 필드 존재)
+                    var jsonDoc = JsonDocument.Parse(requestBody);
+                    if (jsonDoc.RootElement.TryGetProperty("productId", out var productIdElement))
+                    {
+                        // 개별 상품 카테고리 처리
+                        var productId = productIdElement.GetString();
+                        var categoryNames = string.Join(", ", categoryData.Categories.Select(c => c.Name));
+                        LogWindow.AddLogStatic($"📂 {categoryData.StoreId}: 상품 {productId} 카테고리 수집 성공 - {categoryNames}");
+                    }
+                    else
+                    {
+                        // 기존 전체 카테고리 처리
+                        await SaveCategories(categoryData);
+                        LogWindow.AddLogStatic($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
+                        
+                        // 소싱 페이지에 카테고리 데이터 실시간 표시
+                        await UpdateSourcingPageCategories(categoryData);
+                    }
                 }
 
                 await context.Response.WriteAsync("{\"status\":\"success\"}");
@@ -1701,6 +1759,34 @@ namespace Gumaedaehang.Services
             {
                 LogWindow.AddLogStatic($"❌ 카테고리 처리 오류: {ex.Message}");
                 return Results.BadRequest($"카테고리 처리 실패: {ex.Message}");
+            }
+        }
+
+        // ⭐ 개별 상품 카테고리 처리 API
+        private async Task<IResult> HandleProductCategories(HttpContext context)
+        {
+            try
+            {
+                var requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                var productCategoryData = JsonSerializer.Deserialize<ProductCategoryData>(requestBody);
+
+                if (productCategoryData?.Categories != null && productCategoryData.Categories.Count > 0)
+                {
+                    var categoryNames = string.Join(", ", productCategoryData.Categories.Select(c => c.Name));
+                    LogWindow.AddLogStatic($"📂 {productCategoryData.StoreId}: 상품 {productCategoryData.ProductId} 카테고리 수집 성공 - {categoryNames}");
+                }
+                else
+                {
+                    LogWindow.AddLogStatic($"📂 {productCategoryData?.StoreId}: 상품 {productCategoryData?.ProductId} 카테고리 수집 실패");
+                }
+
+                await context.Response.WriteAsync("{\"status\":\"success\"}");
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 개별 상품 카테고리 처리 오류: {ex.Message}");
+                return Results.BadRequest($"개별 상품 카테고리 처리 실패: {ex.Message}");
             }
         }
 
@@ -2093,6 +2179,25 @@ public class CategoryInfo
 
     [JsonPropertyName("order")]
     public int Order { get; set; }
+}
+
+// ⭐ 개별 상품 카테고리 데이터 모델
+public class ProductCategoryData
+{
+    [JsonPropertyName("storeId")]
+    public string StoreId { get; set; } = "";
+
+    [JsonPropertyName("productId")]
+    public string ProductId { get; set; } = "";
+
+    [JsonPropertyName("categories")]
+    public List<CategoryInfo> Categories { get; set; } = new();
+
+    [JsonPropertyName("pageUrl")]
+    public string PageUrl { get; set; } = "";
+
+    [JsonPropertyName("extractedAt")]
+    public string ExtractedAt { get; set; } = "";
 }
 
 // ⭐ 상품 이미지 데이터 모델

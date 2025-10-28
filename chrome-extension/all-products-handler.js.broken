@@ -74,35 +74,75 @@ async function extractAndSendCategories(storeId) {
         console.log('📂 카테고리 정보 추출 시작...');
         await sendLogToServer(`📂 ${storeId}: 카테고리 정보 추출 시작`);
         
-        // ⭐ 안정적인 CSS 선택자 사용: ul.ySOklWNBjf .sAla67hq4a
-        const categorySpans = document.querySelectorAll('ul.ySOklWNBjf .sAla67hq4a');
         const categories = [];
         
-        if (categorySpans.length > 0) {
-            await sendLogToServer(`📂 ${storeId}: ${categorySpans.length}개 카테고리 발견`);
-            
-            categorySpans.forEach((span, index) => {
-                const categoryName = span.textContent.trim();
-                if (categoryName) {
-                    const link = span.closest('a');
-                    categories.push({
-                        name: categoryName,
-                        url: link ? link.getAttribute('href') : null,
-                        categoryId: null,
-                        order: index
-                    });
+        // ⭐ 방법 1: 안정적인 CSS 선택자 (ul.ySOklWNBjf .sAla67hq4a)
+        try {
+            const categorySpans = document.querySelectorAll('ul.ySOklWNBjf .sAla67hq4a');
+            if (categorySpans.length > 0) {
+                await sendLogToServer(`📂 ${storeId}: CSS 선택자로 ${categorySpans.length}개 카테고리 발견`);
+                
+                categorySpans.forEach((span, index) => {
+                    const categoryName = span.textContent.trim();
+                    if (categoryName) {
+                        const link = span.closest('a');
+                        categories.push({
+                            name: categoryName,
+                            url: link ? link.getAttribute('href') : null,
+                            categoryId: null,
+                            order: index
+                        });
+                    }
+                });
+            }
+        } catch (cssError) {
+            await sendLogToServer(`❌ ${storeId}: CSS 선택자 오류 - ${cssError.message}`);
+        }
+        
+        // ⭐ 방법 2: XPath 백업 방법 (CSS가 실패한 경우)
+        if (categories.length === 0) {
+            try {
+                const xpathResult = document.evaluate(
+                    "//ul[@class='ySOklWNBjf']//span[contains(@class,'sAla67hq4a')]",
+                    document,
+                    null,
+                    XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+                    null
+                );
+                
+                if (xpathResult.snapshotLength > 0) {
+                    await sendLogToServer(`📂 ${storeId}: XPath로 ${xpathResult.snapshotLength}개 카테고리 발견`);
+                    
+                    for (let i = 0; i < xpathResult.snapshotLength; i++) {
+                        const span = xpathResult.snapshotItem(i);
+                        const categoryName = span.textContent.trim();
+                        if (categoryName) {
+                            const link = span.closest('a');
+                            categories.push({
+                                name: categoryName,
+                                url: link ? link.getAttribute('href') : null,
+                                categoryId: null,
+                                order: i
+                            });
+                        }
+                    }
                 }
-            });
-        } else {
-            // 기본 홈 카테고리 추가
+            } catch (xpathError) {
+                await sendLogToServer(`❌ ${storeId}: XPath 오류 - ${xpathError.message}`);
+            }
+        }
+        
+        // ⭐ 홈 카테고리 기본 추가 (카테고리가 없는 경우)
+        if (categories.length === 0) {
             categories.push({
                 name: "홈",
                 url: `/${storeId}`,
                 categoryId: null,
                 order: 0
             });
-        }
+            await sendLogToServer(`📂 ${storeId}: 기본 홈 카테고리 추가`);
         
+        // 서버로 카테고리 데이터 전송
         if (categories.length > 0) {
             console.log(`✅ ${categories.length}개 카테고리 발견:`, categories);
             
@@ -113,9 +153,10 @@ async function extractAndSendCategories(storeId) {
                 extractedAt: new Date().toISOString()
             };
             
-            // 서버로 카테고리 데이터 전송
             await sendToServer('/api/smartstore/categories', categoryData);
             await sendLogToServer(`✅ ${storeId}: ${categories.length}개 카테고리 수집 완료`);
+        } else {
+            await sendLogToServer(`❌ ${storeId}: 카테고리 추출 실패`);
         }
         
     } catch (error) {
@@ -746,70 +787,6 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                     return;
                   }
                   
-                  // ⭐ 개별 상품 페이지에서 카테고리 추출
-                  try {
-                    const categorySpans = productTab.document.querySelectorAll('ul.ySOklWNBjf .sAla67hq4a');
-                    const productId = product.url.split('/products/')[1];
-                    
-                    if (categorySpans.length > 0) {
-                      const categories = [];
-                      categorySpans.forEach((span, index) => {
-                        const categoryName = span.textContent.trim();
-                        if (categoryName) {
-                          const link = span.closest('a');
-                          categories.push({
-                            name: categoryName,
-                            url: link ? link.getAttribute('href') : null,
-                            categoryId: null,
-                            order: index
-                          });
-                        }
-                      });
-                      
-                      await sendLogToServer(`📂 ${storeId}: 상품 ${productId} 카테고리 ${categories.length}개 발견`);
-                      
-                      // 서버로 카테고리 데이터 전송
-                      const categoryData = {
-                        storeId: storeId,
-                        productId: productId,
-                        categories: categories,
-                        pageUrl: product.url,
-                        extractedAt: new Date().toISOString()
-                      };
-                      
-                      try {
-                        await sendLogToServer(`📂 ${storeId}: 상품 ${productId} 카테고리 전송 시작`);
-                        
-                        // ⭐ 기존 categories API 사용 (잘 작동하는 API)
-                        const response = await fetch('http://localhost:8080/api/smartstore/categories', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            storeId: storeId,
-                            categories: categories,
-                            pageUrl: product.url,
-                            extractedAt: new Date().toISOString(),
-                            productId: productId // 상품 ID 추가
-                          })
-                        });
-                        
-                        if (response.ok) {
-                          await sendLogToServer(`✅ ${storeId}: 상품 ${productId} 카테고리 서버 전송 완료`);
-                        } else {
-                          const errorText = await response.text();
-                          await sendLogToServer(`❌ ${storeId}: 상품 ${productId} 카테고리 서버 전송 실패 - ${response.status}: ${errorText}`);
-                        }
-                      } catch (fetchError) {
-                        await sendLogToServer(`❌ ${storeId}: 카테고리 전송 오류 - ${fetchError.message}`);
-                      }
-                      
-                    } else {
-                      await sendLogToServer(`📂 ${storeId}: 상품 ${productId} 카테고리 없음`);
-                    }
-                  } catch (categoryError) {
-                    await sendLogToServer(`❌ ${storeId}: 카테고리 추출 오류 - ${categoryError.message}`);
-                  }
-
                   // ⭐ 상품 이미지 추출
                   try {
                     const mainImage = productTab.document.querySelector('.bd_2DO68') || 
