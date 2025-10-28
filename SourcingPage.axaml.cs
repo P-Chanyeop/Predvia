@@ -442,12 +442,12 @@ namespace Gumaedaehang
                     }
                 }
                 
-                return "카테고리: 정보 없음";
+                return "카테고리: 홈"; // "못찾음" 대신 "홈"으로 표시
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"❌ 카테고리 정보 로드 오류: {ex.Message}");
-                return "카테고리: 로드 실패";
+                return "카테고리: 홈"; // "못찾음" 대신 "홈"으로 표시
             }
         }
 
@@ -512,31 +512,11 @@ namespace Gumaedaehang
             return reviews;
         }
 
-        // 테스트용 카테고리 데이터 생성
+        // 테스트용 카테고리 데이터 생성 (비활성화)
         private void CreateTestCategoryData()
         {
-            try
-            {
-                var testCategoryData = new CategoryData
-                {
-                    StoreId = "teststore",
-                    Categories = new List<CategoryInfo>
-                    {
-                        new CategoryInfo { Name = "생활/건강", Url = "/teststore/category/50000008", Order = 1 },
-                        new CategoryInfo { Name = "주방용품", Url = "/teststore/category/50000061", Order = 2 },
-                        new CategoryInfo { Name = "제과/제빵용품", Url = "/teststore/category/50000893", Order = 3 }
-                    },
-                    PageUrl = "https://smartstore.naver.com/teststore",
-                    ExtractedAt = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-                };
-
-                AddCategoryData(testCategoryData);
-                Debug.WriteLine("✅ 테스트 카테고리 데이터 생성 완료");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"❌ 테스트 카테고리 데이터 생성 오류: {ex.Message}");
-            }
+            // 더미 데이터 생성 비활성화 - 실제 크롤링 데이터만 사용
+            Debug.WriteLine("🚫 더미 카테고리 데이터 생성 비활성화 - 실제 크롤링 데이터만 사용");
         }
 
         // 카테고리 데이터 추가 메서드
@@ -597,7 +577,7 @@ namespace Gumaedaehang
                 };
                 var categoryText = new TextBlock 
                 { 
-                    Text = "카테고리 : 홈 > 가구 > 인테", 
+                    Text = GetCategoryInfo(storeId), 
                     FontSize = 13,
                     FontFamily = new FontFamily("Malgun Gothic"),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
