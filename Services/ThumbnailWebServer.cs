@@ -469,6 +469,13 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ 크롤링 중단 체크 추가
+                if (_shouldStop || !_isCrawlingActive)
+                {
+                    LogWindow.AddLogStatic($"🛑 크롤링 중단됨 - 방문 요청 무시");
+                    return Results.Json(new { success = false, message = "Crawling stopped" });
+                }
+
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
                 
@@ -604,6 +611,13 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ 크롤링 중단 체크 추가
+                if (_shouldStop || !_isCrawlingActive)
+                {
+                    LogWindow.AddLogStatic($"🛑 크롤링 중단됨 - 공구체크 요청 무시");
+                    return Results.Json(new { success = false, message = "Crawling stopped" });
+                }
+
                 // ⭐ 먼저 visiting 상태 체크 - 다른 스토어가 상품 처리 중이면 모든 요청 차단
                 lock (_statesLock)
                 {
@@ -755,6 +769,13 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ 크롤링 중단 체크 추가
+                if (_shouldStop || !_isCrawlingActive)
+                {
+                    LogWindow.AddLogStatic($"🛑 크롤링 중단됨 - 전체상품 요청 무시");
+                    return Results.Json(new { success = false, message = "Crawling stopped" });
+                }
+
                 // ⭐ 먼저 visiting 상태 체크 - 다른 스토어가 상품 처리 중이면 모든 요청 차단
                 lock (_statesLock)
                 {
