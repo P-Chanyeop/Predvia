@@ -1421,6 +1421,7 @@ namespace Gumaedaehang.Services
                     productCount = _totalProductCount,
                     targetCount = TARGET_PRODUCT_COUNT,
                     isRunning = !_shouldStop,
+                    shouldStop = _shouldStop,  // ⭐ Chrome 확장프로그램이 기대하는 필드 추가
                     selectedStores = _selectedStores.Count,
                     progress = _totalProductCount * 100.0 / TARGET_PRODUCT_COUNT,
                     timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
@@ -1550,9 +1551,12 @@ namespace Gumaedaehang.Services
                         
                         if (sourcingPage != null)
                         {
+                            // 🔄 카테고리 캐시 새로고침 먼저 실행
+                            sourcingPage.RefreshCategoryCache();
+                            
                             // LoadCrawledData 직접 호출
                             sourcingPage.LoadCrawledData();
-                            LogWindow.AddLogStatic("✅ 소싱 페이지 새로고침 완료");
+                            LogWindow.AddLogStatic("✅ 소싱 페이지 새로고침 완료 (카테고리 캐시 포함)");
                         }
                         else
                         {
@@ -1753,17 +1757,31 @@ namespace Gumaedaehang.Services
 
                 if (categoryData?.Categories != null && categoryData.Categories.Count > 0)
                 {
+                    LogWindow.AddLogStatic($"🔍 카테고리 데이터 수신: {categoryData.StoreId} - {categoryData.Categories.Count}개");
+                    
                     // ⭐ 개별 상품 카테고리인지 확인 (productId 필드 존재)
                     var jsonDoc = JsonDocument.Parse(requestBody);
                     if (jsonDoc.RootElement.TryGetProperty("productId", out var productIdElement))
                     {
-                        // 개별 상품 카테고리 처리
+                        LogWindow.AddLogStatic($"🔍 개별 상품 카테고리 감지: productId = {productIdElement.GetString()}");
+                        
+                        // 개별 상품 카테고리 처리 - 파일로 저장
                         var productId = productIdElement.GetString();
                         var categoryNames = string.Join(", ", categoryData.Categories.Select(c => c.Name));
                         LogWindow.AddLogStatic($"📂 {categoryData.StoreId}: 상품 {productId} 카테고리 수집 성공 - {categoryNames}");
+                        
+                        // ⭐ 개별 상품 카테고리도 파일로 저장
+                        LogWindow.AddLogStatic($"💾 SaveCategories 호출 시작: {categoryData.StoreId}");
+                        await SaveCategories(categoryData);
+                        LogWindow.AddLogStatic($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
+                        
+                        // 소싱 페이지에 카테고리 데이터 실시간 표시
+                        await UpdateSourcingPageCategories(categoryData);
                     }
                     else
                     {
+                        LogWindow.AddLogStatic($"🔍 전체 카테고리 감지: productId 없음");
+                        
                         // 기존 전체 카테고리 처리
                         await SaveCategories(categoryData);
                         LogWindow.AddLogStatic($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
@@ -1822,7 +1840,10 @@ namespace Gumaedaehang.Services
 
                 Directory.CreateDirectory(categoriesPath);
 
-                var fileName = $"{categoryData.StoreId}_categories.json";
+                // ⭐ 개별 상품 카테고리인지 확인하여 파일명 결정
+                var fileName = categoryData.PageUrl?.Contains("/products/") == true 
+                    ? $"{categoryData.StoreId}_{ExtractProductIdFromUrl(categoryData.PageUrl)}_categories.json"
+                    : $"{categoryData.StoreId}_categories.json";
                 var filePath = Path.Combine(categoriesPath, fileName);
 
                 var json = JsonSerializer.Serialize(categoryData, new JsonSerializerOptions
@@ -1837,6 +1858,22 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 카테고리 저장 오류: {ex.Message}");
+            }
+        }
+
+        // URL에서 상품 ID 추출 헬퍼 메서드
+        private string ExtractProductIdFromUrl(string url)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(url)) return "unknown";
+                
+                var match = System.Text.RegularExpressions.Regex.Match(url, @"/products/(\d+)");
+                return match.Success ? match.Groups[1].Value : "unknown";
+            }
+            catch
+            {
+                return "unknown";
             }
         }
 
