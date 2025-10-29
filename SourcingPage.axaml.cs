@@ -13,6 +13,7 @@ using Avalonia.Layout;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System;
 using System.Text;
 using System.IO;
@@ -38,17 +39,31 @@ namespace Gumaedaehang
     // 카테고리 데이터 구조
     public class CategoryData
     {
+        [JsonPropertyName("storeId")]
         public string StoreId { get; set; } = "";
+        
+        [JsonPropertyName("categories")]
         public List<CategoryInfo> Categories { get; set; } = new();
+        
+        [JsonPropertyName("pageUrl")]
         public string PageUrl { get; set; } = "";
+        
+        [JsonPropertyName("extractedAt")]
         public string ExtractedAt { get; set; } = "";
     }
 
     public class CategoryInfo
     {
+        [JsonPropertyName("name")]
         public string Name { get; set; } = "";
+        
+        [JsonPropertyName("url")]
         public string Url { get; set; } = "";
+        
+        [JsonPropertyName("categoryId")]
         public string CategoryId { get; set; } = "";
+        
+        [JsonPropertyName("order")]
         public int Order { get; set; }
     }
 }
@@ -72,6 +87,9 @@ namespace Gumaedaehang
         
         // 상품별 UI 요소들을 관리하는 딕셔너리
         private Dictionary<int, ProductUIElements> _productElements = new Dictionary<int, ProductUIElements>();
+        
+        // 카테고리 데이터 캐시
+        private Dictionary<string, CategoryData> _categoryDataCache = new Dictionary<string, CategoryData>();
         
         // 네이버 스마트스토어 서비스
         private NaverSmartStoreService? _naverService;
@@ -349,27 +367,49 @@ namespace Gumaedaehang
                 }
 
                 // 카테고리 데이터 먼저 로드
+                Debug.WriteLine($"🔍 카테고리 폴더 확인: {categoriesPath}");
                 if (Directory.Exists(categoriesPath))
                 {
                     var categoryFiles = Directory.GetFiles(categoriesPath, "*_categories.json");
+                    Debug.WriteLine($"🔍 카테고리 파일 개수: {categoryFiles.Length}개");
+                    
                     foreach (var categoryFile in categoryFiles)
                     {
                         try
                         {
+                            Debug.WriteLine($"🔍 카테고리 파일 로드 시도: {System.IO.Path.GetFileName(categoryFile)}");
                             var json = File.ReadAllText(categoryFile, System.Text.Encoding.UTF8);
+                            Debug.WriteLine($"🔍 JSON 내용 길이: {json.Length} 문자");
+                            
                             var categoryData = JsonSerializer.Deserialize<CategoryData>(json);
                             
                             if (categoryData != null)
                             {
                                 _categoryDataCache[categoryData.StoreId] = categoryData;
-                                Debug.WriteLine($"📂 카테고리 데이터 로드: {categoryData.StoreId} - {categoryData.Categories.Count}개");
+                                Debug.WriteLine($"📂 카테고리 데이터 로드 성공: {categoryData.StoreId} - {categoryData.Categories.Count}개");
+                                
+                                // 카테고리 내용도 출력
+                                foreach (var cat in categoryData.Categories)
+                                {
+                                    Debug.WriteLine($"   - {cat.Name} (순서: {cat.Order})");
+                                }
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"❌ 카테고리 데이터 역직렬화 실패: {System.IO.Path.GetFileName(categoryFile)}");
                             }
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"❌ 카테고리 파일 로드 오류: {ex.Message}");
+                            Debug.WriteLine($"❌ 카테고리 파일 로드 오류: {System.IO.Path.GetFileName(categoryFile)} - {ex.Message}");
                         }
                     }
+                    
+                    Debug.WriteLine($"🔍 최종 카테고리 캐시 상태: {_categoryDataCache.Count}개 스토어");
+                }
+                else
+                {
+                    Debug.WriteLine($"⚠️ 카테고리 폴더 없음: {categoriesPath}");
                 }
 
                 var imageFiles = Directory.GetFiles(imagesPath, "*_main.jpg");
@@ -408,14 +448,83 @@ namespace Gumaedaehang
             }
         }
 
-        // 카테고리 정보 가져오기
-        private string GetCategoryInfo(string storeId)
+        // 카테고리 정보 가져오기 - 개별 상품 카테고리 파일에서 직접 읽기
+        private string GetCategoryInfo(string storeId, string productId = null)
         {
-            if (storeId == "iptglobal")
+            try
             {
-                return "생활/건강 > 공구 > 에어공구 > 컴프레서";
+                Debug.WriteLine($"🔍 GetCategoryInfo 호출: storeId = '{storeId}', productId = '{productId}'");
+                
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var categoriesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Categories");
+                
+                // 개별 상품 카테고리 파일 우선 확인
+                if (!string.IsNullOrEmpty(productId))
+                {
+                    var productCategoryFile = System.IO.Path.Combine(categoriesPath, $"{storeId}_{productId}_categories.json");
+                    if (File.Exists(productCategoryFile))
+                    {
+                        Debug.WriteLine($"🔍 개별 상품 카테고리 파일 발견: {productCategoryFile}");
+                        var json = File.ReadAllText(productCategoryFile);
+                        var categoryData = JsonSerializer.Deserialize<CategoryData>(json);
+                        
+                        if (categoryData?.Categories != null)
+                        {
+                            var categoryNames = categoryData.Categories
+                                .Where(c => !string.IsNullOrEmpty(c.Name) && 
+                                           c.Name != "전체상품" && 
+                                           c.Name != "홈" && 
+                                           c.Name != "Home")
+                                .Select(c => c.Name)
+                                .ToList();
+                            
+                            if (categoryNames.Count > 0)
+                            {
+                                var result = string.Join(" > ", categoryNames);
+                                Debug.WriteLine($"✅ 개별 상품 카테고리 결과: '{result}'");
+                                return result;
+                            }
+                        }
+                    }
+                }
+                
+                // 캐시에서 확인 (전체 스토어 카테고리)
+                if (_categoryDataCache.ContainsKey(storeId))
+                {
+                    var cachedData = _categoryDataCache[storeId];
+                    Debug.WriteLine($"🔍 캐시에서 발견: {storeId} - 카테고리 {cachedData.Categories.Count}개");
+                    
+                    var categoryNames = cachedData.Categories
+                        .Where(c => !string.IsNullOrEmpty(c.Name) && 
+                                   c.Name != "전체상품" && 
+                                   c.Name != "홈" && 
+                                   c.Name != "Home")
+                        .Select(c => c.Name)
+                        .ToList();
+                    
+                    Debug.WriteLine($"🔍 필터링된 카테고리: [{string.Join(", ", categoryNames)}]");
+                    
+                    if (categoryNames.Count > 0)
+                    {
+                        var result = string.Join(" > ", categoryNames);
+                        Debug.WriteLine($"✅ 최종 카테고리 결과: '{result}'");
+                        return result;
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"⚠️ {storeId}: 유효한 카테고리 없음 (전체상품만 있음)");
+                        return "카테고리 없음";
+                    }
+                }
+                
+                Debug.WriteLine($"⚠️ {storeId}: 캐시에 카테고리 없음");
+                return "카테고리 로드 안됨";
             }
-            return "";
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 카테고리 오류: {ex.Message}");
+                return "카테고리 오류";
+            }
         }
 
         // 크롤링된 상품명 읽기
@@ -512,8 +621,44 @@ namespace Gumaedaehang
             }
         }
 
-        // 카테고리 데이터 캐시
-        private readonly Dictionary<string, CategoryData> _categoryDataCache = new();
+        // 카테고리 캐시 새로고침 (크롤링 완료 후 호출)
+        public void RefreshCategoryCache()
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var categoriesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Categories");
+                
+                if (Directory.Exists(categoriesPath))
+                {
+                    var categoryFiles = Directory.GetFiles(categoriesPath, "*_categories.json");
+                    Debug.WriteLine($"🔄 카테고리 캐시 새로고침: {categoryFiles.Length}개 파일 발견");
+                    
+                    foreach (var categoryFile in categoryFiles)
+                    {
+                        try
+                        {
+                            var json = File.ReadAllText(categoryFile, System.Text.Encoding.UTF8);
+                            var categoryData = JsonSerializer.Deserialize<CategoryData>(json);
+                            
+                            if (categoryData != null)
+                            {
+                                _categoryDataCache[categoryData.StoreId] = categoryData;
+                                Debug.WriteLine($"🔄 카테고리 캐시 업데이트: {categoryData.StoreId} - {categoryData.Categories.Count}개");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"❌ 카테고리 파일 로드 오류: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 카테고리 캐시 새로고침 오류: {ex.Message}");
+            }
+        }
 
         // 실제 상품 이미지 카드 추가 메서드 (원본 더미데이터와 완전히 똑같이)
         public void AddProductImageCard(string storeId, string productId, string imageUrl)
@@ -544,7 +689,7 @@ namespace Gumaedaehang
                 };
                 var categoryText = new TextBlock 
                 { 
-                    Text = GetCategoryInfo(storeId), 
+                    Text = GetCategoryInfo(storeId, productId), // productId 전달
                     FontSize = 13,
                     FontFamily = new FontFamily("Malgun Gothic"),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
@@ -656,10 +801,10 @@ namespace Gumaedaehang
                 nameInputGrid.Children.Add(byteCountText);
                 nameInputBorder.Child = nameInputGrid;
 
-                // 카테고리 정보 표시 (원상품명 위에 추가)
+                // 카테고리 정보 표시 (원상품명 위에 추가) - 접두사 없이 순수 카테고리만
                 var productCategoryText = new TextBlock 
                 { 
-                    Text = GetCategoryInfo(storeId), 
+                    Text = GetCategoryInfo(storeId, productId), // productId 전달
                     FontSize = 12,
                     FontFamily = new FontFamily("Malgun Gothic"),
                     Foreground = new SolidColorBrush(Color.Parse("#666666")),
