@@ -556,19 +556,33 @@ namespace Gumaedaehang.Services
                     {
                         LogWindow.AddLogStatic($"순차 처리 위반 - 현재 처리할 스토어: {currentStoreId}, 요청 스토어: {visitData.StoreId}");
                         
-                        // ⭐ 이전 스토어 요청이면 즉시 완료 처리하여 다음으로 진행
-                        var prevStoreIndex = _currentStoreIndex - 1;
-                        if (prevStoreIndex >= 0 && prevStoreIndex < _selectedStores.Count)
+                        // ⭐ 현재 스토어 인덱스 강제 업데이트
+                        for (int i = 0; i < _selectedStores.Count; i++)
                         {
-                            var prevStoreId = UrlExtensions.ExtractStoreIdFromUrl(_selectedStores[prevStoreIndex].Url);
-                            if (visitData.StoreId.Equals(prevStoreId, StringComparison.OrdinalIgnoreCase))
+                            if (_selectedStores[i].StoreId.Equals(visitData.StoreId, StringComparison.OrdinalIgnoreCase))
                             {
-                                LogWindow.AddLogStatic($"🔄 이전 스토어 {visitData.StoreId} 요청 - 즉시 완료 처리");
-                                return Results.Ok(new { success = true, message = "이전 스토어 완료 처리됨" });
+                                _currentStoreIndex = i;
+                                LogWindow.AddLogStatic($"🔄 스토어 인덱스 강제 업데이트: {_currentStoreIndex}/{_selectedStores.Count}");
+                                break;
                             }
                         }
                         
-                        return Results.Ok(new { success = false, message = "순차 처리 대기 중" });
+                        // ⭐ 이전 스토어들 모두 완료 처리
+                        for (int i = 0; i < _currentStoreIndex; i++)
+                        {
+                            var prevStoreId = _selectedStores[i].StoreId;
+                            if (_storeStates.ContainsKey(prevStoreId) && _storeStates[prevStoreId].Status != "done")
+                            {
+                                _storeStates[prevStoreId] = new StoreState 
+                                { 
+                                    Status = "done", 
+                                    IsLocked = false, 
+                                    ProductCount = _storeStates[prevStoreId].ProductCount,
+                                    UpdatedAt = DateTime.Now
+                                };
+                                LogWindow.AddLogStatic($"✅ {prevStoreId}: 이전 스토어 자동 완료 처리");
+                            }
+                        }
                     }
                     
                     LogWindow.AddLogStatic($"✅ 순차 처리 승인: {visitData.StoreId} ({_currentStoreIndex + 1}/{_selectedStores.Count})");
@@ -1344,11 +1358,11 @@ namespace Gumaedaehang.Services
                     }
                 }
                 
-                // ⭐ collecting 상태 타임아웃 체크 (3초 이상 collecting 상태면 강제 완료)
+                // ⭐ collecting 상태 타임아웃 체크 (5초 이상 collecting 상태면 강제 완료)
                 if (storeState.State == "collecting" && 
-                    DateTime.Now - storeState.UpdatedAt > TimeSpan.FromSeconds(3))
+                    DateTime.Now - storeState.UpdatedAt > TimeSpan.FromSeconds(5))
                 {
-                    LogWindow.AddLogStatic($"{storeId}: collecting 상태 3초 타임아웃 - 강제 완료 처리");
+                    LogWindow.AddLogStatic($"{storeId}: collecting 상태 5초 타임아웃 - 강제 완료 처리");
                     
                     lock (_statesLock)
                     {
