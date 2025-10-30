@@ -781,14 +781,14 @@ namespace Gumaedaehang
 
                 var nameInputText = new TextBlock 
                 { 
-                    Text = GetOriginalProductName(storeId, productId), 
+                    Text = "", 
                     FontSize = 14,
                     FontFamily = new FontFamily("Malgun Gothic"),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
                 var byteCountText = new TextBlock 
                 { 
-                    Text = "19/50 byte", 
+                    Text = "0/0 byte", 
                     FontSize = 12, 
                     FontFamily = new FontFamily("Malgun Gothic"),
                     Foreground = new SolidColorBrush(Colors.Gray),
@@ -801,33 +801,18 @@ namespace Gumaedaehang
                 nameInputGrid.Children.Add(byteCountText);
                 nameInputBorder.Child = nameInputGrid;
 
-                // 카테고리 정보 표시 (원상품명 위에 추가) - 접두사 없이 순수 카테고리만
-                var productCategoryText = new TextBlock 
-                { 
-                    Text = GetCategoryInfo(storeId, productId), // productId 전달
-                    FontSize = 12,
-                    FontFamily = new FontFamily("Malgun Gothic"),
-                    Foreground = new SolidColorBrush(Color.Parse("#666666")),
-                    Margin = new Thickness(0, 5, 0, 0)
-                };
+                // 중복 카테고리 제거됨
 
                 // 원상품명 (실제 크롤링된 상품명 표시)
                 var originalNameText = new TextBlock 
                 { 
-                    Text = GetOriginalProductName(storeId, productId), 
+                    Text = "원상품명: " + GetOriginalProductName(storeId, productId), 
                     FontSize = 13,
                     FontFamily = new FontFamily("Malgun Gothic")
                 };
 
-                // 키워드 태그들
+                // 키워드 태그들 (더미데이터 제거됨)
                 var keywordPanel = new WrapPanel();
-                var keyword1 = CreateKeywordTag("가베트345", true);
-                var keyword2 = CreateKeywordTag("가베트-553422", true);  
-                var keyword3 = CreateKeywordTag("바나나", false);
-                
-                keywordPanel.Children.Add(keyword1);
-                keywordPanel.Children.Add(keyword2);
-                keywordPanel.Children.Add(keyword3);
 
                 // 키워드 입력 + 추가 버튼
                 var keywordInputPanel = new StackPanel 
@@ -860,7 +845,6 @@ namespace Gumaedaehang
                 // 정보 패널에 모든 요소 추가
                 infoPanel.Children.Add(nameLabel);
                 infoPanel.Children.Add(nameInputBorder);
-                infoPanel.Children.Add(productCategoryText);
                 infoPanel.Children.Add(originalNameText);
                 infoPanel.Children.Add(keywordPanel);
                 infoPanel.Children.Add(keywordInputPanel);
