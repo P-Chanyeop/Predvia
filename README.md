@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.41-orange)
+![Release](https://img.shields.io/badge/Release-v1.45-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,24 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.44 - 카테고리 표시 문제 완전 해결)
+### 🔄 최신 업데이트 (v1.45 - 크롤링 완료 시 Chrome 탭 자동 닫기 및 결과 팝업 표시)
+- [x] **🔥 Chrome 탭 자동 닫기 시스템 구현**
+  - **100개 달성 시 자동 닫기**: 목표 달성 시 모든 Chrome 프로세스 강제 종료
+  - **차단 감지 시 자동 닫기**: 네이버 차단 감지 시 즉시 모든 Chrome 탭 닫기
+  - **CloseAllChromeTabs 메서드**: 안전한 Chrome 프로세스 종료 로직 구현
+  - **Task.Run 비동기 처리**: lock 문 내에서 안전한 비동기 탭 닫기 실행
+- [x] **📊 크롤링 결과 팝업창 표시 시스템**
+  - **최종 수집 개수 표시**: "📊 최종 수집 결과: X/100개 (X.X%)" 형태로 정확한 결과 표시
+  - **중단 사유 표시**: "목표 달성" 또는 "차단 감지로 인한 중단" 사유 명시
+  - **비모달 팝업창**: Show() 방식으로 프로그램 멈춤 없는 결과 표시
+  - **UI 스레드 안전성**: Dispatcher.UIThread.Post로 안전한 UI 업데이트
+- [x] **🔧 시스템 안정성 및 사용자 경험 개선**
+  - **v1.44 기능 완전 보존**: 카테고리 표시 시스템 등 기존 모든 기능 유지
+  - **빌드 오류 완전 해결**: 변수명 중복, lock 문 await 사용 등 모든 컴파일 오류 수정
+  - **최소한의 코드 변경**: 기존 기능에 영향 없는 최소한의 추가 구현
+  - **완벽한 오류 처리**: 모든 예외 상황에 대한 안전한 처리 로직
+
+### 🔄 이전 업데이트 (v1.44 - 카테고리 표시 문제 완전 해결)
 - [x] **🔍 카테고리 표시 문제 완전 해결**
   - **문제 원인 파악**: 개별 상품 카테고리가 동일한 파일명(`{storeId}_categories.json`)으로 저장되어 덮어써지는 문제 발견
   - **개별 상품 카테고리 파일명 수정**: `{storeId}_{productId}_categories.json` 형식으로 변경하여 각 상품별 고유 파일 생성

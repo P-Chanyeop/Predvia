@@ -1081,6 +1081,12 @@ namespace Gumaedaehang.Services
                             _isCrawlingActive = false; // ⭐ 추가: 모든 데이터 처리 중단
                             LogWindow.AddLogStatic($"🎉 목표 달성! 정확히 100개 상품 수집 완료 - 크롤링 중단");
                             
+                            // ⭐ 크롬 탭 닫기
+                            _ = Task.Run(() => CloseAllChromeTabs());
+                            
+                            // ⭐ 팝업창으로 최종 결과 표시
+                            ShowCrawlingResultPopup(_totalProductCount, "목표 달성");
+                            
                             // 🔥 즉시 카드 생성
                             RefreshSourcingPage();
                         }
@@ -1465,8 +1471,12 @@ namespace Gumaedaehang.Services
                 // ⭐ 즉시 크롤링 중단
                 lock (_counterLock)
                 {
+                    // ⭐ 크롤링 중단
                     _shouldStop = true;
                     _isCrawlingActive = false; // ⭐ 추가: 모든 데이터 처리 중단
+                    
+                    // ⭐ 크롬 탭 닫기
+                    _ = Task.Run(() => CloseAllChromeTabs());
                     
                     // ⭐ 실제 파일 개수로 정확한 계산
                     var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -1484,6 +1494,9 @@ namespace Gumaedaehang.Services
                     
                     LogWindow.AddLogStatic($"🛑 네이버 차단 감지로 인한 크롤링 강제 중단");
                     LogWindow.AddLogStatic($"📊 최종 수집 완료: {actualCount}/100개 ({(actualCount * 100.0 / 100):F1}%)");
+                    
+                    // ⭐ 팝업창으로 최종 결과 표시
+                    ShowCrawlingResultPopup(actualCount, "차단 감지로 인한 중단");
                     
                     // ⭐ 80개 미만이면 Chrome 재시작
                     if (_totalProductCount < 80)
@@ -1510,6 +1523,107 @@ namespace Gumaedaehang.Services
                 await context.Response.WriteAsync("{\"success\":false,\"error\":\"Stop API error\"}");
                 
                 return Results.Ok();
+            }
+        }
+
+        // ⭐ 크롬 탭 닫기 메서드
+        private void CloseAllChromeTabs()
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🔥 Chrome 프로세스 종료 시작");
+                
+                var chromeProcesses = System.Diagnostics.Process.GetProcessesByName("chrome");
+                LogWindow.AddLogStatic($"🔍 발견된 Chrome 프로세스: {chromeProcesses.Length}개");
+                
+                foreach (var process in chromeProcesses)
+                {
+                    try
+                    {
+                        if (!process.HasExited)
+                        {
+                            process.Kill();
+                            LogWindow.AddLogStatic($"🔥 Chrome 프로세스 종료: PID {process.Id}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"❌ Chrome 프로세스 종료 실패: PID {process.Id} - {ex.Message}");
+                    }
+                    finally
+                    {
+                        process.Dispose();
+                    }
+                }
+                
+                LogWindow.AddLogStatic("✅ 모든 Chrome 프로세스 종료 완료");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ Chrome 탭 닫기 실행 오류: {ex.Message}");
+            }
+        }
+
+        // ⭐ 크롤링 결과 팝업창 표시
+        private void ShowCrawlingResultPopup(int count, string reason)
+        {
+            try
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    var mainWindow = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                        ? desktop.MainWindow
+                        : null;
+
+                    if (mainWindow != null)
+                    {
+                        var percentage = (count * 100.0 / 100);
+                        var message = $"크롤링이 완료되었습니다!\n\n📊 최종 수집 결과: {count}/100개 ({percentage:F1}%)\n🔄 중단 사유: {reason}";
+                        
+                        var messageBox = new Avalonia.Controls.Window
+                        {
+                            Title = "크롤링 완료",
+                            Width = 400,
+                            Height = 200,
+                            WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
+                            CanResize = false,
+                            Content = new Avalonia.Controls.StackPanel
+                            {
+                                Margin = new Avalonia.Thickness(20),
+                                Children =
+                                {
+                                    new Avalonia.Controls.TextBlock
+                                    {
+                                        Text = message,
+                                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                                        FontSize = 14,
+                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                                    },
+                                    new Avalonia.Controls.Button
+                                    {
+                                        Content = "확인",
+                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                        Margin = new Avalonia.Thickness(0, 20, 0, 0),
+                                        Padding = new Avalonia.Thickness(20, 5)
+                                    }
+                                }
+                            }
+                        };
+
+                        var button = ((Avalonia.Controls.StackPanel)messageBox.Content).Children[1] as Avalonia.Controls.Button;
+                        if (button != null)
+                        {
+                            button.Click += (s, e) => messageBox.Close();
+                        }
+
+                        messageBox.Show();
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 팝업창 표시 오류: {ex.Message}");
             }
         }
 
@@ -1738,6 +1852,13 @@ namespace Gumaedaehang.Services
                 {
                     LogWindow.AddLogStatic("🎉 목표 달성! 100개 상품 수집 완료 - 크롤링 중단");
                     _isCrawlingActive = false;
+                    
+                    // ⭐ 크롬 탭 닫기
+                    _ = Task.Run(() => CloseAllChromeTabs());
+                    
+                    // ⭐ 팝업창으로 최종 결과 표시
+                    ShowCrawlingResultPopup(_productCount, "목표 달성");
+                    
                     return;
                 }
             }
