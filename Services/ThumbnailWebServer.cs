@@ -104,7 +104,7 @@ namespace Gumaedaehang.Services
                 _app.MapGet("/api/smartstore/state", HandleGetStoreState);
                 _app.MapPost("/api/smartstore/progress", HandleStoreProgress);
                 
-                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (13개)");
+                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (14개)");
 
                 // ⭐ 서버 변수 초기화
                 lock (_counterLock)
@@ -2232,6 +2232,9 @@ namespace Gumaedaehang.Services
         
         [JsonPropertyName("seller")]
         public string Seller { get; set; } = string.Empty;
+        
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
     }
 
     // 스마트스토어 방문 요청 데이터 모델
@@ -2357,14 +2360,23 @@ namespace Gumaedaehang.Services
         [JsonPropertyName("state")]
         public string State { get; set; } = string.Empty; // collecting, visiting, done
         
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = string.Empty; // collecting, visiting, done
+        
         [JsonPropertyName("lock")]
         public bool Lock { get; set; } = false;
+        
+        [JsonPropertyName("isLocked")]
+        public bool IsLocked { get; set; } = false;
         
         [JsonPropertyName("expected")]
         public int Expected { get; set; } = 0;
         
         [JsonPropertyName("progress")]
         public int Progress { get; set; } = 0;
+        
+        [JsonPropertyName("productCount")]
+        public int ProductCount { get; set; } = 0;
         
         [JsonPropertyName("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.Now;

@@ -19,6 +19,7 @@ using System.Text;
 using System.IO;
 using System.Threading.Tasks;
 using System.Text.Json;
+using System.Net.Http;
 using Gumaedaehang.Services;
 
 namespace Gumaedaehang
@@ -178,6 +179,9 @@ namespace Gumaedaehang
                 
                 // 크롤링된 데이터 자동 로드
                 LoadCrawledData();
+                
+                // 테스트 로그 추가
+                LogWindow.AddLogStatic("🔥 SourcingPage 초기화 완료 - 버튼 테스트 준비됨");
             }
             catch (Exception ex)
             {
@@ -839,6 +843,14 @@ namespace Gumaedaehang
                     Foreground = new SolidColorBrush(Colors.White),
                     HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
                 };
+                
+                // 🔥 즉시 이벤트 연결 (버튼 생성 직후)
+                var currentProductId = _currentProductId;
+                addButton.Click += (s, e) => {
+                    LogWindow.AddLogStatic($"🔥🔥🔥 추가 버튼 클릭 감지됨! ProductId: {currentProductId}");
+                    AddKeywordButton_Click(currentProductId);
+                };
+                
                 keywordInputPanel.Children.Add(keywordInput);
                 keywordInputPanel.Children.Add(addButton);
 
@@ -1019,6 +1031,21 @@ namespace Gumaedaehang
 
                 container.Children.Add(productContainer);
 
+                // ProductUIElements 생성 및 저장
+                var currentId = _currentProductId; // 지역 변수로 고정
+                var productElement = new ProductUIElements
+                {
+                    ProductId = currentId,
+                    KeywordInputBox = keywordInput,
+                    AddKeywordButton = addButton
+                };
+                
+                _productElements[currentId] = productElement;
+                
+                LogWindow.AddLogStatic($"✅ 상품 카드 생성 완료 - ProductId: {currentId}");
+                
+                _currentProductId++;
+
                 Debug.WriteLine($"✅ 원본과 완전히 똑같은 카드 추가: {storeId}_{productId}");
             }
             catch (Exception ex)
@@ -1193,12 +1220,29 @@ namespace Gumaedaehang
         }
         
         // 키워드 추가 버튼 클릭 이벤트
-        private void AddKeywordButton_Click(int productId)
+        private async void AddKeywordButton_Click(int productId)
         {
+            LogWindow.AddLogStatic($"🔥 키워드 추가 버튼 클릭됨 - 상품 ID: {productId}");
+            
             if (_productElements.TryGetValue(productId, out var product))
             {
                 AddKeywordFromInput(productId);
                 Debug.WriteLine($"상품 {productId} 키워드 추가 버튼 클릭됨");
+                
+                // 키워드 입력 박스에서 키워드 가져와서 네이버 가격비교 검색
+                if (product.KeywordInputBox?.Text?.Trim() is { Length: > 0 } keyword)
+                {
+                    LogWindow.AddLogStatic($"🔍 입력된 키워드: {keyword}");
+                    await SearchNaverPriceComparison(keyword);
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("❌ 키워드가 입력되지 않았습니다.");
+                }
+            }
+            else
+            {
+                LogWindow.AddLogStatic($"❌ 상품 ID {productId}를 찾을 수 없습니다.");
             }
         }
         
@@ -1241,7 +1285,7 @@ namespace Gumaedaehang
         }
         
         // 입력창에서 키워드 추가
-        private void AddKeywordFromInput(int productId)
+        private async void AddKeywordFromInput(int productId)
         {
             if (_productElements.TryGetValue(productId, out var product) && 
                 product.KeywordInputBox != null && 
@@ -1258,6 +1302,9 @@ namespace Gumaedaehang
                     UpdateProductNameKeywordDisplay(productId);
                     UpdateProductKeywordDisplay(productId);
                     product.KeywordInputBox.Text = "";
+                    
+                    // 🔍 네이버 가격비교에서 키워드 검색
+                    await SearchNaverPriceComparison(keyword);
                 }
             }
         }
@@ -1643,9 +1690,11 @@ namespace Gumaedaehang
         }
         
         // 기타 이벤트 핸들러들
-        private void AddMoreLink_Click(object? sender, PointerPressedEventArgs e)
+        private async void AddMoreLink_Click(object? sender, PointerPressedEventArgs e)
         {
+            LogWindow.AddLogStatic("🔥 추가하기+ 버튼 클릭됨!");
             Debug.WriteLine("추가하기+ 링크 클릭됨");
+            await SearchNaverPriceComparison("테스트키워드");
         }
         
         private void TestDataButton_Click(object? sender, RoutedEventArgs e)
@@ -1947,6 +1996,32 @@ namespace Gumaedaehang
         private async void MainProductButton_Click(object? sender, RoutedEventArgs e)
         {
             await HandlePairingButtonClick(_mainProductTextBox, _mainProductButton, "메인상품");
+        }
+        
+        // 네이버 가격비교 검색 메서드
+        private async Task SearchNaverPriceComparison(string keyword = "무선이어폰")
+        {
+            try
+            {
+                LogWindow.AddLogStatic($"🔍 네이버 가격비교 검색 시작: {keyword}");
+                
+                // URL 인코딩
+                var encodedKeyword = Uri.EscapeDataString(keyword);
+                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}";
+                
+                LogWindow.AddLogStatic($"🌐 검색 URL: {searchUrl}");
+                
+                // Chrome 확장프로그램 서비스 초기화
+                _extensionService ??= new ChromeExtensionService();
+                
+                // Chrome 확장프로그램을 통해 새 탭에서 검색 실행
+                await _extensionService.OpenNaverPriceComparison(searchUrl);
+                LogWindow.AddLogStatic("✅ 네이버 가격비교 페이지가 새 탭에서 열렸습니다.");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 네이버 가격비교 검색 오류: {ex.Message}");
+            }
         }
         
         // 페어링 버튼 공통 처리 메서드

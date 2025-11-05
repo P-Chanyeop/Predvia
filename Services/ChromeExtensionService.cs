@@ -80,6 +80,38 @@ namespace Gumaedaehang.Services
             }
         }
         
+        public Task<bool> OpenNaverPriceComparison(string searchUrl)
+        {
+            try
+            {
+                // Chrome을 확장프로그램과 함께 실행하면서 네이버 가격비교 페이지로 이동
+                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --new-tab \"{searchUrl}\"";
+                
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = GetChromePath(),
+                    Arguments = chromeArgs,
+                    UseShellExecute = false,
+                    CreateNoWindow = false
+                };
+                
+                var process = Process.Start(processInfo);
+                
+                if (process != null)
+                {
+                    Debug.WriteLine($"네이버 가격비교 페이지 열기: {searchUrl}");
+                    return Task.FromResult(true);
+                }
+                
+                return Task.FromResult(false);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"네이버 가격비교 페이지 열기 실패: {ex.Message}");
+                return Task.FromResult(false);
+            }
+        }
+        
         private string GetChromePath()
         {
             // Chrome 설치 경로 찾기
