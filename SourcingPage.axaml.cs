@@ -1224,6 +1224,9 @@ namespace Gumaedaehang
         {
             LogWindow.AddLogStatic($"🔥 키워드 추가 버튼 클릭됨 - 상품 ID: {productId}");
             
+            // ⭐ 추가 버튼은 크롤링 플래그 리셋
+            await ResetCrawlingAllowed();
+            
             if (_productElements.TryGetValue(productId, out var product))
             {
                 AddKeywordFromInput(productId);
@@ -1232,7 +1235,7 @@ namespace Gumaedaehang
                 // 키워드 입력 박스에서 키워드 가져와서 네이버 가격비교 검색
                 if (product.KeywordInputBox?.Text?.Trim() is { Length: > 0 } keyword)
                 {
-                    LogWindow.AddLogStatic($"🔍 입력된 키워드: {keyword}");
+                    LogWindow.AddLogStatic($"🔍 입력된 키워드: {keyword} (크롤링 비활성화)");
                     await SearchNaverPriceComparison(keyword);
                 }
                 else
@@ -1694,7 +1697,27 @@ namespace Gumaedaehang
         {
             LogWindow.AddLogStatic("🔥 추가하기+ 버튼 클릭됨!");
             Debug.WriteLine("추가하기+ 링크 클릭됨");
-            await SearchNaverPriceComparison("테스트키워드");
+            
+            // ⭐ 추가 버튼은 크롤링 플래그 리셋 후 페이지만 열기
+            try
+            {
+                // 크롤링 플래그 리셋
+                await ResetCrawlingAllowed();
+                
+                var keyword = "테스트키워드";
+                var encodedKeyword = Uri.EscapeDataString(keyword);
+                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}";
+                
+                LogWindow.AddLogStatic($"🌐 페이지만 열기 (크롤링 비활성화): {searchUrl}");
+                
+                _extensionService ??= new ChromeExtensionService();
+                await _extensionService.OpenNaverPriceComparison(searchUrl);
+                LogWindow.AddLogStatic("✅ 네이버 가격비교 페이지가 새 탭에서 열렸습니다 (크롤링 없음).");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 페이지 열기 오류: {ex.Message}");
+            }
         }
         
         private void TestDataButton_Click(object? sender, RoutedEventArgs e)
@@ -2047,6 +2070,9 @@ namespace Gumaedaehang
                     return;
                 }
                 
+                // ⭐ 크롤링 허용 플래그 설정
+                await SetCrawlingAllowed();
+                
                 _extensionService ??= new ChromeExtensionService();
                 var success = await _extensionService.SearchWithExtension(searchText);
                 
@@ -2074,6 +2100,35 @@ namespace Gumaedaehang
                     button.IsEnabled = true;
                     button.Content = "페어링";
                 }
+            }
+        }
+
+        // ⭐ 크롤링 허용 플래그 설정 메서드
+        private async Task SetCrawlingAllowed()
+        {
+            try
+            {
+                using var client = new HttpClient();
+                await client.PostAsync("http://localhost:8080/api/crawling/allow", null);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"크롤링 허용 설정 오류: {ex.Message}");
+            }
+        }
+
+        // ⭐ 크롤링 플래그 리셋 메서드
+        private async Task ResetCrawlingAllowed()
+        {
+            try
+            {
+                using var client = new HttpClient();
+                await client.DeleteAsync("http://localhost:8080/api/crawling/allow");
+                LogWindow.AddLogStatic("🔄 크롤링 플래그 리셋 완료");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"크롤링 플래그 리셋 오류: {ex.Message}");
             }
         }
         
