@@ -69,6 +69,26 @@ if (document.readyState === 'loading') {
 async function initializeExtension() {
   console.log('🆕 Predvia 스마트스토어 링크 수집 초기화 시작');
   
+  // ⭐ 서버에서 크롤링 허용 상태 확인
+  try {
+    const response = await fetch('http://localhost:8080/api/crawling/allowed');
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`🔍 서버 플래그 확인 결과: allowed = ${data.allowed}`);
+      if (!data.allowed) {
+        console.log('🔒 크롤링이 허용되지 않았습니다. 대기 상태로 전환합니다.');
+        return;
+      }
+      console.log('🔥 크롤링이 허용되었습니다. 크롤링을 시작합니다.');
+    } else {
+      console.log('❌ 크롤링 허용 상태 확인 실패');
+      return;
+    }
+  } catch (error) {
+    console.log('❌ 서버 연결 실패:', error.message);
+    return;
+  }
+  
   // 차단 복구 데이터 정리
   localStorage.removeItem('blockedStore');
   
@@ -146,6 +166,14 @@ async function scrollAndCollectLinks() {
   
   // 서버로 전송
   await sendSmartStoreLinksToServer(smartStoreLinks);
+  
+  // ⭐ 크롤링 완료 후 플래그 리셋
+  try {
+    await fetch('http://localhost:8080/api/crawling/allow', { method: 'DELETE' });
+    console.log('🔄 크롤링 허용 플래그 리셋 완료');
+  } catch (error) {
+    console.log('❌ 플래그 리셋 오류:', error.message);
+  }
 }
 
 // 유효한 스마트스토어 링크인지 확인

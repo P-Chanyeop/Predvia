@@ -46,6 +46,10 @@ namespace Gumaedaehang.Services
         
         // ⭐ 중복 처리 방지를 위한 처리된 스토어 추적
         private readonly HashSet<string> _processedStores = new HashSet<string>();
+        
+        // ⭐ 크롤링 허용 플래그
+        private bool _crawlingAllowed = false;
+        private readonly object _crawlingLock = new object();
 
         public ThumbnailWebServer()
         {
@@ -63,6 +67,13 @@ namespace Gumaedaehang.Services
             try
             {
                 LogWindow.AddLogStatic("🚀 웹서버 시작 중...");
+                
+                // ⭐ 크롤링 플래그 강제 초기화
+                lock (_crawlingLock)
+                {
+                    _crawlingAllowed = false;
+                }
+                LogWindow.AddLogStatic("🔄 크롤링 플래그 초기화 완료 (false)");
                 
                 // ⭐ 기존 데이터 초기화
                 ClearPreviousData();
@@ -104,7 +115,12 @@ namespace Gumaedaehang.Services
                 _app.MapGet("/api/smartstore/state", HandleGetStoreState);
                 _app.MapPost("/api/smartstore/progress", HandleStoreProgress);
                 
-                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (14개)");
+                // ⭐ 크롤링 플래그 API 추가
+                _app.MapGet("/api/crawling/allowed", HandleGetCrawlingAllowed);
+                _app.MapPost("/api/crawling/allow", HandleAllowCrawling);
+                _app.MapDelete("/api/crawling/allow", HandleResetCrawling);
+                
+                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (17개)");
 
                 // ⭐ 서버 변수 초기화
                 lock (_counterLock)
@@ -2201,6 +2217,38 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 데이터 초기화 오류: {ex.Message}");
+            }
+        }
+        
+        // ⭐ 크롤링 허용 상태 조회 API
+        private async Task<IResult> HandleGetCrawlingAllowed()
+        {
+            await Task.CompletedTask;
+            lock (_crawlingLock)
+            {
+                return Results.Json(new { allowed = _crawlingAllowed });
+            }
+        }
+        
+        // ⭐ 크롤링 허용 설정 API
+        private async Task<IResult> HandleAllowCrawling()
+        {
+            await Task.CompletedTask;
+            lock (_crawlingLock)
+            {
+                _crawlingAllowed = true;
+                return Results.Json(new { success = true });
+            }
+        }
+
+        // ⭐ 크롤링 플래그 리셋 API
+        private async Task<IResult> HandleResetCrawling()
+        {
+            await Task.CompletedTask;
+            lock (_crawlingLock)
+            {
+                _crawlingAllowed = false;
+                return Results.Json(new { success = true });
             }
         }
     }
