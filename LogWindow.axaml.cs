@@ -80,7 +80,7 @@ namespace Gumaedaehang
                             }
                             
                             // 스크롤을 맨 아래로
-                            _logTextBox.CaretIndex = _logTextBox.Text.Length;
+                            _logTextBox.CaretIndex = _logTextBox.Text?.Length ?? 0;
                         }
                     });
                 }
