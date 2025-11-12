@@ -18,8 +18,8 @@ using System;
 using System.Text;
 using System.IO;
 using System.Threading.Tasks;
-using System.Text.Json;
 using System.Net.Http;
+using System.Text.Json;
 using Gumaedaehang.Services;
 
 namespace Gumaedaehang
@@ -453,7 +453,7 @@ namespace Gumaedaehang
         }
 
         // 카테고리 정보 가져오기 - 개별 상품 카테고리 파일에서 직접 읽기
-        private string GetCategoryInfo(string storeId, string productId = null)
+        private string GetCategoryInfo(string storeId, string productId = "")
         {
             try
             {
@@ -1706,13 +1706,19 @@ namespace Gumaedaehang
                 
                 var keyword = "테스트키워드";
                 var encodedKeyword = Uri.EscapeDataString(keyword);
-                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}";
+                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=overseas";
                 
                 LogWindow.AddLogStatic($"🌐 페이지만 열기 (크롤링 비활성화): {searchUrl}");
                 
                 _extensionService ??= new ChromeExtensionService();
                 await _extensionService.OpenNaverPriceComparison(searchUrl);
                 LogWindow.AddLogStatic("✅ 네이버 가격비교 페이지가 새 탭에서 열렸습니다 (크롤링 없음).");
+                
+                // ⭐ 키워드 태그 생성을 위해 잠시 대기 후 서버에서 키워드 받아오기
+                LogWindow.AddLogStatic("⏳ Chrome 확장프로그램 상품명 전송 대기 중...");
+                await Task.Delay(5000); // 5초로 증가
+                LogWindow.AddLogStatic("🏷️ 키워드 태그 생성 시작");
+                await CreateKeywordTagsFromServer();
             }
             catch (Exception ex)
             {
@@ -2030,7 +2036,7 @@ namespace Gumaedaehang
                 
                 // URL 인코딩
                 var encodedKeyword = Uri.EscapeDataString(keyword);
-                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}";
+                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=overseas";
                 
                 LogWindow.AddLogStatic($"🌐 검색 URL: {searchUrl}");
                 
@@ -2130,6 +2136,215 @@ namespace Gumaedaehang
             {
                 Debug.WriteLine($"크롤링 플래그 리셋 오류: {ex.Message}");
             }
+        }
+
+        // ⭐ 서버에서 키워드를 받아와서 태그 생성
+        public async Task CreateKeywordTagsFromServer()
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🏷️ 키워드 태그 생성 시작");
+                
+                // ⭐ 실제 서버에서 키워드 받아오기 (임시로 빈 요청 - 실제로는 마지막 처리된 키워드 조회)
+                var keywords = await GetLatestKeywordsFromServer();
+                
+                if (keywords != null && keywords.Count > 0)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        CreateKeywordTags(keywords);
+                    });
+                    
+                    LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 생성 완료");
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("❌ 서버에서 키워드를 받아오지 못했습니다.");
+                    
+                    // 임시로 테스트 키워드 사용
+                    var testKeywords = new List<string> { "원목", "사다리", "그네", "방문", "문틀", "가정용", "어린이용", "접이식" };
+                    
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        CreateKeywordTags(testKeywords);
+                    });
+                    
+                    LogWindow.AddLogStatic($"✅ 테스트 키워드 태그 {testKeywords.Count}개 생성 완료");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 태그 생성 오류: {ex.Message}");
+            }
+        }
+
+        // ⭐ 서버에서 최신 키워드 받아오기
+        private async Task<List<string>?> GetLatestKeywordsFromServer()
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🌐 서버에서 키워드 조회 중...");
+                using var client = new HttpClient();
+                var response = await client.GetAsync("http://localhost:8080/api/smartstore/latest-keywords");
+                
+                LogWindow.AddLogStatic($"📡 서버 응답 상태: {response.StatusCode}");
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonContent = await response.Content.ReadAsStringAsync();
+                    LogWindow.AddLogStatic($"📄 서버 응답 내용: {jsonContent.Substring(0, Math.Min(100, jsonContent.Length))}...");
+                    
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var result = JsonSerializer.Deserialize<KeywordResponse>(jsonContent, options);
+                    
+                    if (result?.Keywords != null)
+                    {
+                        LogWindow.AddLogStatic($"✅ 키워드 {result.Keywords.Count}개 수신: {string.Join(", ", result.Keywords.Take(5))}");
+                        return result.Keywords;
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic("❌ 키워드 데이터가 null입니다.");
+                    }
+                }
+                else
+                {
+                    LogWindow.AddLogStatic($"❌ 서버 응답 실패: {response.StatusCode}");
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 서버에서 키워드 받아오기 오류: {ex.Message}");
+                Debug.WriteLine($"서버에서 키워드 받아오기 오류: {ex.Message}");
+                return null;
+            }
+        }
+
+        // ⭐ 키워드 태그 UI 생성 (39.png 스타일)
+        private void CreateKeywordTags(List<string> keywords)
+        {
+            try
+            {
+                LogWindow.AddLogStatic($"🏷️ {keywords.Count}개 키워드 태그 생성 시작");
+                
+                // 현재 화면 상단에 키워드 태그 표시 (스크롤 없이 바로 보이도록)
+                var mainGrid = this.FindControl<Grid>("MainGrid");
+                if (mainGrid == null)
+                {
+                    LogWindow.AddLogStatic("❌ MainGrid를 찾을 수 없습니다.");
+                    return;
+                }
+
+                // 기존 키워드 태그 제거
+                var existingKeywordPanel = mainGrid.Children.OfType<StackPanel>()
+                    .FirstOrDefault(sp => sp.Name == "KeywordTagPanel");
+                if (existingKeywordPanel != null)
+                {
+                    mainGrid.Children.Remove(existingKeywordPanel);
+                }
+
+                // 키워드 태그 컨테이너 생성 (현재 화면 상단)
+                var keywordPanel = new StackPanel
+                {
+                    Name = "KeywordTagPanel",
+                    Orientation = Orientation.Vertical,
+                    Margin = new Thickness(10, 10, 10, 10),
+                    Background = new SolidColorBrush(Color.Parse("#FFF5E6")), // 연한 주황색 배경
+                    ZIndex = 1000 // 다른 요소 위에 표시
+                };
+
+                var keywordContainer = new WrapPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Margin = new Thickness(5)
+                };
+
+                // 제목 추가
+                var titleText = new TextBlock
+                {
+                    Text = "🏷️ 추출된 키워드:",
+                    FontSize = 16,
+                    FontWeight = FontWeight.Bold,
+                    Margin = new Thickness(5, 5, 5, 10),
+                    Foreground = new SolidColorBrush(Color.Parse("#E67E22"))
+                };
+
+                keywordPanel.Children.Add(titleText);
+                keywordPanel.Children.Add(keywordContainer);
+
+                // 키워드 태그 생성
+                foreach (var keyword in keywords.Take(10)) // 최대 10개만 표시
+                {
+                    var keywordTag = CreateKeywordTag(keyword);
+                    keywordContainer.Children.Add(keywordTag);
+                }
+
+                // 현재 화면 상단에 추가 (스크롤 없이 바로 보임)
+                mainGrid.Children.Add(keywordPanel);
+                
+                LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 현재 화면에 표시 완료");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 태그 생성 오류: {ex.Message}");
+                Debug.WriteLine($"키워드 태그 생성 오류: {ex.Message}");
+            }
+        }
+
+        // ⭐ 39.png 스타일의 키워드 태그 생성
+        private Border CreateKeywordTag(string keyword)
+        {
+            var tag = new Border
+            {
+                Background = new SolidColorBrush(Color.Parse("#E67E22")), // 주황색 배경
+                CornerRadius = new CornerRadius(12), // 둥근 모서리
+                Padding = new Thickness(8, 4),
+                Margin = new Thickness(0, 0, 5, 5),
+                Child = new TextBlock
+                {
+                    Text = keyword,
+                    Foreground = Brushes.White, // 흰색 텍스트
+                    FontSize = 12,
+                    FontWeight = FontWeight.Medium,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+
+            return tag;
+        }
+
+        // ⭐ 키워드 컨테이너 찾기
+        private Panel? FindKeywordContainer(Control parent)
+        {
+            // 상품 카드에서 키워드 태그를 표시할 WrapPanel 찾기
+            if (parent is Panel panel)
+            {
+                foreach (var child in panel.Children)
+                {
+                    if (child is WrapPanel wrapPanel)
+                    {
+                        return wrapPanel;
+                    }
+                    else if (child is Control control)
+                    {
+                        var found = FindKeywordContainer(control);
+                        if (found != null) return found;
+                    }
+                }
+            }
+            else if (parent is ContentControl contentControl && contentControl.Content is Control childControl)
+            {
+                return FindKeywordContainer(childControl);
+            }
+            else if (parent is Border border && border.Child is Control borderChild)
+            {
+                return FindKeywordContainer(borderChild);
+            }
+
+            return null;
         }
         
         // 리소스 정리
@@ -2244,4 +2459,17 @@ public static class ControlExtensions
             FindAllRecursive(borderChild, result);
         }
     }
+}
+
+// ⭐ 키워드 응답 모델
+public class KeywordResponse
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+    
+    [JsonPropertyName("keywords")]
+    public List<string> Keywords { get; set; } = new();
+    
+    [JsonPropertyName("filteredCount")]
+    public int FilteredCount { get; set; }
 }

@@ -69,24 +69,31 @@ if (document.readyState === 'loading') {
 async function initializeExtension() {
   console.log('🆕 Predvia 스마트스토어 링크 수집 초기화 시작');
   
-  // ⭐ 서버에서 크롤링 허용 상태 확인
-  try {
-    const response = await fetch('http://localhost:8080/api/crawling/allowed');
-    if (response.ok) {
-      const data = await response.json();
-      console.log(`🔍 서버 플래그 확인 결과: allowed = ${data.allowed}`);
-      if (!data.allowed) {
-        console.log('🔒 크롤링이 허용되지 않았습니다. 대기 상태로 전환합니다.');
+  // ⭐ 네이버 가격비교 페이지가 아닌 경우 (스마트스토어 페이지) 플래그 확인 건너뛰기
+  if (!window.location.href.includes('search.shopping.naver.com')) {
+    console.log('🔥 스마트스토어 페이지 - 플래그 확인 건너뛰고 크롤링 진행');
+  } else {
+    // ⭐ 네이버 가격비교 페이지에서만 플래그 확인
+    try {
+      const response = await fetch('http://localhost:8080/api/crawling/allowed');
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`🔍 서버 플래그 확인 결과: allowed = ${data.allowed}`);
+        if (!data.allowed) {
+          console.log('🔒 크롤링이 허용되지 않았습니다. 상품명만 추출합니다.');
+          // ⭐ "추가" 버튼 모드: 상품명만 추출
+          await extractAndSendProductNames();
+          return;
+        }
+        console.log('🔥 크롤링이 허용되었습니다. 크롤링을 시작합니다.');
+      } else {
+        console.log('❌ 크롤링 허용 상태 확인 실패');
         return;
       }
-      console.log('🔥 크롤링이 허용되었습니다. 크롤링을 시작합니다.');
-    } else {
-      console.log('❌ 크롤링 허용 상태 확인 실패');
+    } catch (error) {
+      console.log('❌ 서버 연결 실패:', error.message);
       return;
     }
-  } catch (error) {
-    console.log('❌ 서버 연결 실패:', error.message);
-    return;
   }
   
   // 차단 복구 데이터 정리
@@ -295,6 +302,125 @@ function extractSmartStoreLinks() {
   
   console.log(`🔥🔥🔥 총 ${smartStoreLinks.length}개 스마트스토어 링크 추출 완료`);
   return smartStoreLinks;
+}
+
+// ⭐ "추가" 버튼 전용: 상품명만 추출하고 전송
+async function extractAndSendProductNames() {
+  try {
+    console.log('📝 "추가" 버튼 모드: 상품명만 추출 시작');
+    
+    // ⭐ 크롤링처럼 페이지 끝까지 스크롤 (1페이지 전체 상품명 수집)
+    console.log('📜 페이지 끝까지 스크롤 - 상품명 수집');
+    
+    let scrollCount = 0;
+    let lastHeight = 0;
+    
+    while (scrollCount < 10) { // 최대 10회 스크롤
+      window.scrollTo(0, document.body.scrollHeight);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const currentHeight = document.body.scrollHeight;
+      console.log(`📍 스크롤 ${scrollCount + 1}회 - 높이: ${currentHeight}px`);
+      
+      if (currentHeight === lastHeight) {
+        break; // 더 이상 스크롤할 내용이 없음
+      }
+      
+      lastHeight = currentHeight;
+      scrollCount++;
+    }
+    
+    console.log(`📜 스크롤 완료 - 총 ${scrollCount}회 스크롤`);
+    
+    // 최종 대기 후 상품명 수집
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // ⭐ 페이지 구조 분석 (디버깅용)
+    console.log('🔍 페이지 구조 분석 시작');
+    const allLinks = document.querySelectorAll('a');
+    const allDivs = document.querySelectorAll('div');
+    const allSpans = document.querySelectorAll('span');
+    console.log(`📊 전체 요소: a태그 ${allLinks.length}개, div태그 ${allDivs.length}개, span태그 ${allSpans.length}개`);
+    
+    // 상품명 추출
+    const productNames = extractAllProductNames();
+    
+    if (productNames.length > 0) {
+      console.log(`📝 ${productNames.length}개 상품명 추출 완료`);
+      console.log('📝 추출된 상품명 샘플:', productNames.slice(0, 5));
+      await sendProductNamesToServer(productNames);
+    } else {
+      console.log('❌ 추출된 상품명이 없습니다.');
+      
+      // ⭐ 대안: 모든 텍스트에서 상품명 추출 시도
+      console.log('🔍 대안 방법: 모든 텍스트에서 상품명 추출 시도');
+      const allText = document.body.innerText;
+      const lines = allText.split('\n').filter(line => 
+        line.trim().length > 5 && 
+        !line.includes('네이버') && 
+        !line.includes('쇼핑') &&
+        !line.includes('광고') &&
+        line.includes('원') // 가격이 포함된 라인 근처에 상품명이 있을 가능성
+      );
+      console.log('🔍 가능한 상품명 후보:', lines.slice(0, 10));
+    }
+    
+  } catch (error) {
+    console.error('❌ 상품명 추출 오류:', error);
+  }
+}
+
+// ⭐ 네이버 가격비교 페이지에서 모든 상품명 추출
+function extractAllProductNames() {
+  console.log('🔍 상품명 추출 시작');
+  
+  const productNames = [];
+  
+  // title 속성에서 상품명 추출
+  const elementsWithTitle = document.querySelectorAll('[title]');
+  console.log(`🔍 title 속성을 가진 요소: ${elementsWithTitle.length}개 발견`);
+  
+  elementsWithTitle.forEach(element => {
+    const title = element.getAttribute('title');
+    if (title && 
+        title.length > 10 && // 충분히 긴 제목만
+        /[가-힣]/.test(title) && // 한글 포함
+        !title.includes('광고') && 
+        !title.includes('AD') &&
+        !title.includes('스폰서') &&
+        !title.includes('네이버') &&
+        !title.includes('쇼핑') &&
+        !title.includes('가격비교') &&
+        (title.includes('망치') || title.includes('사다리') || title.includes('원목') || 
+         title.includes('어린이') || title.includes('가정용') || title.includes('접이식') ||
+         /\d+g|\d+mm|\d+개/.test(title) || title.includes('원'))) { // 상품 스펙이 포함된 것
+      productNames.push(title);
+      console.log(`📝 상품명 발견: "${title}"`);
+    }
+  });
+  
+  // 추가로 일반적인 상품 링크에서도 title 확인
+  const productLinks = document.querySelectorAll('a[href*="smartstore"], a[href*="product"], a[data-nclick]');
+  console.log(`🔍 상품 링크: ${productLinks.length}개 발견`);
+  
+  productLinks.forEach(link => {
+    const title = link.getAttribute('title');
+    if (title && 
+        title.length > 10 && 
+        /[가-힣]/.test(title) && 
+        !title.includes('광고') &&
+        !productNames.includes(title)) {
+      productNames.push(title);
+      console.log(`📝 링크에서 상품명 발견: "${title}"`);
+    }
+  });
+  
+  console.log(`✅ 총 ${productNames.length}개 상품명 추출 완료`);
+  if (productNames.length > 0) {
+    console.log('📝 추출된 상품명 샘플:', productNames.slice(0, 3));
+  }
+  
+  return productNames;
 }
 
 // 상품명 추출 함수
@@ -999,6 +1125,51 @@ async function notifyServerLinkVisited(link, currentIndex, totalCount) {
 }
 
 console.log('🎯 Predvia 스마트스토어 링크 수집 확장프로그램 로드 완료');
+
+// ⭐ 상품명을 서버로 전송하는 함수
+async function sendProductNamesToServer(productNames) {
+  try {
+    console.log(`📝 상품명 ${productNames.length}개 서버 전송 시작`);
+    
+    const data = {
+      productNames: productNames,
+      pageUrl: window.location.href,
+      timestamp: new Date().toISOString()
+    };
+    
+    const response = await fetch('http://localhost:8080/api/smartstore/product-names', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'chrome-extension'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (response.ok) {
+      console.log(`✅ 상품명 ${productNames.length}개 서버 전송 완료`);
+      
+      // ⭐ 키워드 태그 실시간 표시 요청
+      console.log('🏷️ 키워드 태그 실시간 표시 요청 전송');
+      try {
+        await fetch('http://localhost:8080/api/smartstore/trigger-keywords', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'show_keywords' })
+        });
+        console.log('✅ 키워드 태그 표시 요청 완료');
+      } catch (triggerError) {
+        console.log('❌ 키워드 태그 표시 요청 실패:', triggerError);
+      }
+      
+    } else {
+      console.log(`❌ 상품명 서버 전송 실패: ${response.status}`);
+    }
+    
+  } catch (error) {
+    console.error('❌ 상품명 전송 오류:', error);
+  }
+}
 
 // ⭐ 서버로 로그 전송 함수
 async function sendLogToServer(message) {

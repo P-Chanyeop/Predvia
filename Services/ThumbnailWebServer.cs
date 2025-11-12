@@ -51,6 +51,10 @@ namespace Gumaedaehang.Services
         private bool _crawlingAllowed = false;
         private readonly object _crawlingLock = new object();
 
+        // ⭐ 최신 키워드 저장
+        private List<string> _latestKeywords = new();
+        private readonly object _keywordsLock = new object();
+
         public ThumbnailWebServer()
         {
             _thumbnailService = new ThumbnailService();
@@ -120,7 +124,12 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/crawling/allow", HandleAllowCrawling);
                 _app.MapDelete("/api/crawling/allow", HandleResetCrawling);
                 
-                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (17개)");
+                // ⭐ 상품명 처리 API 추가
+                _app.MapPost("/api/smartstore/product-names", HandleProductNames);
+                _app.MapGet("/api/smartstore/latest-keywords", HandleGetLatestKeywords);
+                _app.MapPost("/api/smartstore/trigger-keywords", HandleTriggerKeywords);
+                
+                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (19개)");
 
                 // ⭐ 서버 변수 초기화
                 lock (_counterLock)
@@ -973,7 +982,7 @@ namespace Gumaedaehang.Services
                 {
                     if (_shouldStop)
                     {
-                        LogWindow.AddLogStatic($"🛑 크롤링 중단됨 - {productData.StoreId} 데이터 무시");
+                        LogWindow.AddLogStatic($"🛑 크롤링 중단됨 - {productData.StoreId ?? "Unknown"} 데이터 무시");
                         return Results.Json(new { 
                             success = true,
                             stop = true,
@@ -2241,6 +2250,129 @@ namespace Gumaedaehang.Services
             }
         }
 
+        // ⭐ 상품명 처리 API
+        private async Task<IResult> HandleProductNames(HttpContext context)
+        {
+            try
+            {
+                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                var request = JsonSerializer.Deserialize<ProductNamesRequest>(body);
+                
+                if (request?.ProductNames == null || request.ProductNames.Count == 0)
+                {
+                    return Results.Json(new { success = false, message = "상품명이 없습니다." });
+                }
+                
+                LogWindow.AddLogStatic($"📝 상품명 {request.ProductNames.Count}개 수신");
+                
+                // 한글만 추출 및 중복 제거
+                var koreanKeywords = ExtractKoreanKeywords(request.ProductNames);
+                
+                // ⭐ 최신 키워드 저장
+                lock (_keywordsLock)
+                {
+                    _latestKeywords = koreanKeywords;
+                }
+                
+                LogWindow.AddLogStatic($"✅ 한글 키워드 {koreanKeywords.Count}개 추출 완료");
+                
+                return Results.Json(new { 
+                    success = true, 
+                    originalCount = request.ProductNames.Count,
+                    filteredCount = koreanKeywords.Count,
+                    keywords = koreanKeywords 
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 상품명 처리 오류: {ex.Message}");
+                return Results.Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // ⭐ 한글 키워드 추출 및 중복 제거
+        private List<string> ExtractKoreanKeywords(List<string> productNames)
+        {
+            var keywords = new HashSet<string>();
+            
+            foreach (var productName in productNames)
+            {
+                if (string.IsNullOrWhiteSpace(productName)) continue;
+                
+                // ⭐ 공백으로 단어 분리 후 각 단어에서 한글만 추출
+                var words = productName.Split(new char[] { ' ', '\t', '\n', '-', '/', '(', ')', '[', ']' }, 
+                    StringSplitOptions.RemoveEmptyEntries);
+                
+                foreach (var word in words)
+                {
+                    // 각 단어에서 한글만 추출 (2글자 이상)
+                    var cleanWord = System.Text.RegularExpressions.Regex.Replace(word, @"[^가-힣]", "");
+                    if (cleanWord.Length >= 2)
+                    {
+                        keywords.Add(cleanWord);
+                    }
+                }
+            }
+            
+            return keywords.ToList();
+        }
+
+        // ⭐ 키워드 태그 표시 트리거 API
+        private async Task<IResult> HandleTriggerKeywords(HttpContext context)
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🏷️ 키워드 태그 표시 트리거 수신");
+                
+                // 소싱 페이지에 키워드 태그 표시 요청
+                await TriggerKeywordTagsDisplay();
+                
+                return Results.Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 태그 트리거 오류: {ex.Message}");
+                return Results.Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // ⭐ 소싱 페이지에 키워드 태그 표시 요청
+        private async Task TriggerKeywordTagsDisplay()
+        {
+            try
+            {
+                // MainWindow를 통해 SourcingPage에 키워드 태그 표시 요청
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                    {
+                        var mainWindow = desktop.MainWindow as MainWindow;
+                        if (mainWindow != null)
+                        {
+                            await mainWindow.TriggerKeywordTagsDisplay();
+                            LogWindow.AddLogStatic("✅ 소싱 페이지 키워드 태그 표시 완료");
+                        }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 태그 표시 오류: {ex.Message}");
+            }
+        }
+        private async Task<IResult> HandleGetLatestKeywords()
+        {
+            await Task.CompletedTask;
+            lock (_keywordsLock)
+            {
+                return Results.Json(new { 
+                    success = true,
+                    keywords = _latestKeywords,
+                    filteredCount = _latestKeywords.Count
+                });
+            }
+        }
+
         // ⭐ 크롤링 플래그 리셋 API
         private async Task<IResult> HandleResetCrawling()
         {
@@ -2622,5 +2754,18 @@ public class ProductCategoryData
                 return "unknown";
             }
         }
+    }
+
+    // ⭐ 상품명 요청 데이터 모델
+    public class ProductNamesRequest
+    {
+        [JsonPropertyName("productNames")]
+        public List<string> ProductNames { get; set; } = new();
+        
+        [JsonPropertyName("pageUrl")]
+        public string PageUrl { get; set; } = string.Empty;
+        
+        [JsonPropertyName("timestamp")]
+        public string Timestamp { get; set; } = string.Empty;
     }
 }

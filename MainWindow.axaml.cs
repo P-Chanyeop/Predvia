@@ -572,5 +572,21 @@ namespace Gumaedaehang
             
             base.OnClosed(e);
         }
+
+        // ⭐ 키워드 태그 표시 트리거 (서버에서 호출)
+        public async Task TriggerKeywordTagsDisplay()
+        {
+            try
+            {
+                if (_sourcingContent?.Content is SourcingPage sourcingPage)
+                {
+                    await sourcingPage.CreateKeywordTagsFromServer();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"키워드 태그 표시 트리거 오류: {ex.Message}");
+            }
+        }
     }
 }
