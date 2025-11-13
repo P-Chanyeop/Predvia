@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.53-orange)
+![Release](https://img.shields.io/badge/Release-v1.54-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,20 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.53 - 키워드 태그 특정 상품 표시 시스템 완성)
+### 🔄 최신 업데이트 (v1.54 - 키워드 태그 스크롤 박스 UI 개선)
+- [x] **📦 키워드 태그 스크롤 가능한 박스 구현**
+  - **리뷰 박스와 동일한 스타일**: 주황색 테두리 + 둥근 모서리 일관된 디자인
+  - **고정 높이 설정**: 120px 고정으로 3-4줄만 표시하여 화면 공간 절약
+  - **스크롤 기능 추가**: ScrollViewer로 세로 스크롤 가능, 모든 키워드 접근 가능
+  - **UI 가독성 대폭 개선**: 기존 20줄(600px) → 3-4줄(120px)로 80% 공간 절약
+  - **사용자 경험 향상**: 징그럽고 불편했던 긴 키워드 목록을 깔끔한 박스로 정리
+- [x] **🔧 기존 기능 완전 보존**
+  - **키워드 생성 로직 유지**: 기존 키워드 태그 생성 및 배치 로직 그대로 보존
+  - **WrapPanel 효과 유지**: 행별 키워드 배치 및 자동 줄바꿈 기능 유지
+  - **특정 상품 표시**: v1.53의 특정 상품에만 키워드 표시 기능 완전 보존
+  - **스크롤바 공간 고려**: maxRowWidth를 750px로 조정하여 스크롤바와 겹치지 않도록 최적화
+
+### 🔄 이전 업데이트 (v1.53 - 키워드 태그 특정 상품 표시 시스템 완성)
 - [x] **🎯 키워드 태그 정확한 상품별 표시 시스템 구현**
   - **카드 ID 시스템 개선**: 카드 생성 순서대로 1, 2, 3... 정확한 ID 부여
   - **키워드 생성 상품 추적**: `_keywordSourceProductId` 변수로 키워드를 생성한 상품 ID 정확히 추적

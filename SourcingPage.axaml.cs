@@ -2369,13 +2369,31 @@ namespace Gumaedaehang
                     targetProductCard.Children.Remove(existingKeywordPanel);
                 }
 
-                // ⭐ 키워드 태그 패널 생성 (39.png 스타일)
+                // ⭐ 키워드 태그 패널 생성 (스크롤 가능한 박스)
                 var keywordPanel = new StackPanel
                 {
                     Name = "KeywordTagPanel",
                     Orientation = Orientation.Vertical,
                     Margin = new Thickness(0, 15, 0, 15),
                     Spacing = 10
+                };
+
+                // 키워드 박스 (리뷰 박스와 동일한 스타일)
+                var keywordBorder = new Border
+                {
+                    BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46")), // 주황색 테두리
+                    BorderThickness = new Thickness(2),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(15, 10),
+                    Height = 120, // 3-4줄 높이로 고정
+                    Background = new SolidColorBrush(Colors.Transparent)
+                };
+
+                // 스크롤 가능한 영역
+                var keywordScrollViewer = new ScrollViewer
+                {
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
                 };
 
                 // 키워드 태그들을 여러 줄로 배치 (WrapPanel 효과)
@@ -2392,7 +2410,7 @@ namespace Gumaedaehang
                 };
 
                 double currentRowWidth = 0;
-                const double maxRowWidth = 800; // 최대 행 너비
+                const double maxRowWidth = 750; // 스크롤바 공간 고려하여 조금 줄임
 
                 // 키워드 태그 생성 (전체)
                 foreach (var keyword in keywords)
@@ -2438,7 +2456,10 @@ namespace Gumaedaehang
                     keywordWrapPanel.Children.Add(currentRow);
                 }
 
-                keywordPanel.Children.Add(keywordWrapPanel);
+                // 스크롤 영역에 키워드 패널 추가
+                keywordScrollViewer.Content = keywordWrapPanel;
+                keywordBorder.Child = keywordScrollViewer;
+                keywordPanel.Children.Add(keywordBorder);
 
                 // ⭐ 리뷰 Border 찾기 (간단하게 - 인덱스 2번이 리뷰 Border)
                 var insertIndex = -1;
