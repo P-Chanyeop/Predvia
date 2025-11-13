@@ -870,12 +870,48 @@ namespace Gumaedaehang
                 keywordInputPanel.Children.Add(keywordInput);
                 keywordInputPanel.Children.Add(addButton);
 
+                // 상품명 직접 입력 + 첨부 버튼
+                var nameDirectInputPanel = new StackPanel 
+                { 
+                    Orientation = Orientation.Horizontal, 
+                    Spacing = 8
+                };
+                var nameDirectInput = new TextBox 
+                { 
+                    Width = 120, 
+                    Height = 30,
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Watermark = "키워드 입력"
+                };
+                var attachButton = new Button 
+                { 
+                    Content = "첨부", 
+                    Width = 50, 
+                    Height = 30,
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Background = new SolidColorBrush(Color.Parse("#FF8A46")),
+                    Foreground = new SolidColorBrush(Colors.White),
+                    HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                };
+                
+                // 첨부 버튼 이벤트 연결
+                attachButton.Click += (s, e) => {
+                    LogWindow.AddLogStatic($"📎 첨부 버튼 클릭 감지됨! CardId: {cardId}");
+                    AttachNameButton_Click(cardId, nameDirectInput);
+                };
+                
+                nameDirectInputPanel.Children.Add(nameDirectInput);
+                nameDirectInputPanel.Children.Add(attachButton);
+
                 // 정보 패널에 모든 요소 추가
                 infoPanel.Children.Add(nameLabel);
                 infoPanel.Children.Add(nameInputBorder);
                 infoPanel.Children.Add(originalNameText);
                 infoPanel.Children.Add(keywordPanel);
                 infoPanel.Children.Add(keywordInputPanel);
+                infoPanel.Children.Add(nameDirectInputPanel); // 새로운 첨부 패널 추가
 
                 // 우측 버튼들 (세로 배치)
                 var buttonPanel = new StackPanel 
@@ -2548,6 +2584,37 @@ namespace Gumaedaehang
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 바이트 계산 오류: {ex.Message}");
+            }
+        }
+
+        // ⭐ 첨부 버튼 클릭 이벤트 핸들러
+        private void AttachNameButton_Click(int productId, TextBox nameDirectInput)
+        {
+            try
+            {
+                if (_productElements.TryGetValue(productId, out var product) && 
+                    product.NameInputBox != null)
+                {
+                    var inputText = nameDirectInput.Text?.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(inputText))
+                    {
+                        // 상품명 입력박스에 직접 설정 (기존 내용 덮어쓰기)
+                        product.NameInputBox.Text = inputText;
+                        
+                        // 입력박스 내용 지우기
+                        nameDirectInput.Text = "";
+                        
+                        LogWindow.AddLogStatic($"📎 상품명 '{inputText}' 첨부됨 - 상품 ID: {productId}");
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic("❌ 첨부할 내용이 없습니다.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 첨부 버튼 처리 오류: {ex.Message}");
             }
         }
 
