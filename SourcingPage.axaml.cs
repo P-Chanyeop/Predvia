@@ -795,12 +795,14 @@ namespace Gumaedaehang
                 nameInputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 nameInputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-                var nameInputText = new TextBlock 
+                var nameInputText = new TextBox 
                 { 
                     Text = "", 
                     FontSize = 14,
                     FontFamily = new FontFamily("Malgun Gothic"),
-                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    Background = Brushes.Transparent,
+                    BorderThickness = new Thickness(0)
                 };
                 var byteCountText = new TextBlock 
                 { 
@@ -810,6 +812,9 @@ namespace Gumaedaehang
                     Foreground = new SolidColorBrush(Colors.Gray),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
+
+                // 바이트 계산 이벤트 연결
+                nameInputText.TextChanged += (s, e) => UpdateByteCount(cardId, nameInputText, byteCountText);
 
                 Grid.SetColumn(nameInputText, 0);
                 Grid.SetColumn(byteCountText, 1);
@@ -1046,6 +1051,8 @@ namespace Gumaedaehang
                 var productElement = new ProductUIElements
                 {
                     ProductId = cardId,
+                    NameInputBox = nameInputText,
+                    ByteCountTextBlock = byteCountText,
                     KeywordInputBox = keywordInput,
                     AddKeywordButton = addButton
                 };
@@ -2385,7 +2392,7 @@ namespace Gumaedaehang
                     BorderThickness = new Thickness(2),
                     CornerRadius = new CornerRadius(8),
                     Padding = new Thickness(15, 10),
-                    Height = 120, // 3-4줄 높이로 고정
+                    Height = 170, // 4줄 적절한 높이로 조정
                     Background = new SolidColorBrush(Colors.Transparent)
                 };
 
@@ -2420,6 +2427,7 @@ namespace Gumaedaehang
                         Background = new SolidColorBrush(Color.Parse("#E67E22")), // 주황색
                         CornerRadius = new CornerRadius(12), // 둥근 모서리
                         Padding = new Thickness(10, 5),
+                        Cursor = new Cursor(StandardCursorType.Hand), // 클릭 가능 표시
                         Child = new TextBlock
                         {
                             Text = keyword,
@@ -2429,6 +2437,9 @@ namespace Gumaedaehang
                             FontFamily = new FontFamily("Malgun Gothic")
                         }
                     };
+
+                    // 키워드 태그 클릭 이벤트 추가
+                    keywordTag.PointerPressed += (s, e) => OnKeywordTagClicked(keyword, targetProductId);
 
                     // 예상 태그 너비 계산 (대략적)
                     double tagWidth = keyword.Length * 8 + 30; // 글자당 8px + 패딩
@@ -2489,6 +2500,54 @@ namespace Gumaedaehang
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 키워드 태그 생성 오류: {ex.Message}");
+            }
+        }
+
+        // ⭐ 키워드 태그 클릭 이벤트 핸들러
+        private void OnKeywordTagClicked(string keyword, int productId)
+        {
+            try
+            {
+                if (_productElements.TryGetValue(productId, out var product) && 
+                    product.NameInputBox != null)
+                {
+                    // 현재 텍스트에 키워드 추가 (띄어쓰기 포함)
+                    var currentText = product.NameInputBox.Text ?? "";
+                    var newText = string.IsNullOrEmpty(currentText) ? keyword : currentText + " " + keyword;
+                    
+                    product.NameInputBox.Text = newText;
+                    LogWindow.AddLogStatic($"🏷️ 키워드 '{keyword}' 추가됨 - 상품 ID: {productId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 클릭 처리 오류: {ex.Message}");
+            }
+        }
+
+        // ⭐ 바이트 계산 및 표시 업데이트
+        private void UpdateByteCount(int productId, TextBox nameInputBox, TextBlock byteCountText)
+        {
+            try
+            {
+                var text = nameInputBox.Text ?? "";
+                var byteCount = System.Text.Encoding.UTF8.GetByteCount(text);
+                
+                byteCountText.Text = $"{byteCount}/50 byte";
+                
+                // 50바이트 초과 시 빨간색으로 변경
+                if (byteCount > 50)
+                {
+                    byteCountText.Foreground = Brushes.Red;
+                }
+                else
+                {
+                    byteCountText.Foreground = new SolidColorBrush(Colors.Gray);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 바이트 계산 오류: {ex.Message}");
             }
         }
 
@@ -2616,6 +2675,7 @@ namespace Gumaedaehang
         public Ellipse? CategoryStatusIndicator { get; set; }
         public Ellipse? NameStatusIndicator { get; set; }
         public WrapPanel? NameKeywordPanel { get; set; }
+        public TextBox? NameInputBox { get; set; } // 상품명 입력박스 추가
         public TextBlock? ByteCountTextBlock { get; set; }
         public WrapPanel? KeywordPanel { get; set; }
         public TextBox? KeywordInputBox { get; set; }

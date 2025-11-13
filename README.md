@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.54-orange)
+![Release](https://img.shields.io/badge/Release-v1.55-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,21 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.54 - 키워드 태그 스크롤 박스 UI 개선)
+### 🔄 최신 업데이트 (v1.55 - 키워드 태그 클릭 상품명 입력 시스템 구현)
+- [x] **🏷️ 키워드 태그 클릭 → 상품명 입력 시스템 완전 구현**
+  - **키워드 태그 클릭 기능**: 키워드 태그 클릭 시 상품명 입력박스에 자동 입력
+  - **상품명 입력박스 개선**: TextBlock → TextBox로 변경하여 편집 가능한 입력 필드 구현
+  - **실시간 바이트 계산**: UTF-8 기준 정확한 바이트 수 실시간 계산 및 표시
+  - **50바이트 초과 시 빨간색 경고**: 50바이트 초과 시 바이트 표시 숫자가 빨간색으로 변경
+  - **띄어쓰기 자동 추가**: 키워드 클릭 시 자동으로 띄어쓰기 추가하여 자연스러운 상품명 생성
+- [x] **🔧 사용자 경험 및 편의성 대폭 향상**
+  - **직관적인 상품명 생성**: 키워드 태그를 클릭만으로 쉽게 상품명 조합 가능
+  - **실시간 피드백**: 바이트 수 실시간 표시로 상품명 길이 즉시 확인
+  - **시각적 경고 시스템**: 50바이트 초과 시 빨간색으로 명확한 시각적 피드백
+  - **자유로운 편집**: 50바이트 초과해도 입력 가능, 단순 시각적 경고만 제공
+  - **ProductUIElements 확장**: NameInputBox, ByteCountTextBlock 추가로 완전한 UI 요소 관리
+
+### 🔄 이전 업데이트 (v1.54 - 키워드 태그 스크롤 박스 UI 개선)
 - [x] **📦 키워드 태그 스크롤 가능한 박스 구현**
   - **리뷰 박스와 동일한 스타일**: 주황색 테두리 + 둥근 모서리 일관된 디자인
   - **고정 높이 설정**: 120px 고정으로 3-4줄만 표시하여 화면 공간 절약
