@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.52-orange)
+![Release](https://img.shields.io/badge/Release-v1.53-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,21 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.52 - 키워드 태그 위치 문제 해결)
+### 🔄 최신 업데이트 (v1.53 - 키워드 태그 특정 상품 표시 시스템 완성)
+- [x] **🎯 키워드 태그 정확한 상품별 표시 시스템 구현**
+  - **카드 ID 시스템 개선**: 카드 생성 순서대로 1, 2, 3... 정확한 ID 부여
+  - **키워드 생성 상품 추적**: `_keywordSourceProductId` 변수로 키워드를 생성한 상품 ID 정확히 추적
+  - **특정 상품에만 키워드 표시**: 27번째 상품에서 키워드 생성 시 27번째 상품에만 키워드 태그 표시
+  - **모든 카드 중복 표시 문제 해결**: 기존 모든 카드에 동일 키워드가 나오던 문제 완전 해결
+  - **정확한 카드 매칭**: `productCards[targetProductId - 1]`로 1-based ID를 0-based 인덱스로 정확 변환
+- [x] **🔧 시스템 안정성 및 코드 품질 향상**
+  - **변수 스코프 최적화**: `cardId` 계산을 컨테이너 추가 전에 완료하여 정확성 보장
+  - **변수명 명확화**: `_currentProductId` → `_lastActiveProductId`로 용도 명확화
+  - **완벽한 예외 처리**: 카드 찾기 실패, 인덱스 범위 초과 등 모든 예외 상황 대응
+  - **메모리 관리 최적화**: 람다 캡처 및 이벤트 핸들러 안전한 처리
+  - **로그 시스템 강화**: 카드 ID 생성, 키워드 생성 상품 추적 등 상세한 디버깅 정보 제공
+
+### 🔄 이전 업데이트 (v1.52 - 키워드 태그 위치 문제 해결)
 - [x] **🏷️ 키워드 태그 위치 정확성 개선**
   - **UI 구조 분석**: 상품 카드 구조 정확히 파악 (categoryPanel → mainGrid → reviewBorder → pairingPanel)
   - **삽입 위치 최적화**: 복잡한 색상 비교 대신 인덱스 기반 정확한 위치 식별

@@ -84,11 +84,12 @@ namespace Gumaedaehang
         
         // 한글 입력 처리를 위한 타이머
         private DispatcherTimer? _inputTimer;
-        private int _currentProductId = 0;
+        private int _lastActiveProductId = 1; // 마지막으로 활성화된 상품 ID
         
         // 키워드 태그 자동 생성을 위한 타이머
         private DispatcherTimer? _keywordCheckTimer;
         private bool _keywordTagsCreated = false;
+        private int _keywordSourceProductId = -1; // 키워드를 생성한 상품 ID 추적
         private ChromeExtensionService? _extensionService;
         
         // 상품별 UI 요소들을 관리하는 딕셔너리
@@ -679,6 +680,10 @@ namespace Gumaedaehang
                 var container = this.FindControl<StackPanel>("RealDataContainer");
                 if (container == null) return;
 
+                // ⭐ 카드 순서 기반 ID 생성 (1부터 시작) - 추가 전에 미리 계산
+                var cardId = container.Children.OfType<StackPanel>().Count() + 1;
+                LogWindow.AddLogStatic($"🆔 새 카드 ID 생성: {cardId}");
+
                 // 전체 상품 컨테이너
                 var productContainer = new StackPanel { Spacing = 0, Margin = new Thickness(0, 0, 0, 40) };
 
@@ -852,10 +857,9 @@ namespace Gumaedaehang
                 };
                 
                 // 🔥 즉시 이벤트 연결 (버튼 생성 직후)
-                var currentProductId = _currentProductId;
                 addButton.Click += (s, e) => {
-                    LogWindow.AddLogStatic($"🔥🔥🔥 추가 버튼 클릭 감지됨! ProductId: {currentProductId}");
-                    AddKeywordButton_Click(currentProductId);
+                    LogWindow.AddLogStatic($"🔥🔥🔥 추가 버튼 클릭 감지됨! CardId: {cardId}");
+                    AddKeywordButton_Click(cardId);
                 };
                 
                 keywordInputPanel.Children.Add(keywordInput);
@@ -1039,19 +1043,16 @@ namespace Gumaedaehang
                 container.Children.Add(productContainer);
 
                 // ProductUIElements 생성 및 저장
-                var currentId = _currentProductId; // 지역 변수로 고정
                 var productElement = new ProductUIElements
                 {
-                    ProductId = currentId,
+                    ProductId = cardId,
                     KeywordInputBox = keywordInput,
                     AddKeywordButton = addButton
                 };
                 
-                _productElements[currentId] = productElement;
+                _productElements[cardId] = productElement;
                 
-                LogWindow.AddLogStatic($"✅ 상품 카드 생성 완료 - ProductId: {currentId}");
-                
-                _currentProductId++;
+                LogWindow.AddLogStatic($"✅ 상품 카드 생성 완료 - CardId: {cardId}");
 
                 Debug.WriteLine($"✅ 원본과 완전히 똑같은 카드 추가: {storeId}_{productId}");
             }
@@ -1127,7 +1128,7 @@ namespace Gumaedaehang
                 {
                     if (e.Property == TextBox.TextProperty)
                     {
-                        _currentProductId = product.ProductId;
+                        _lastActiveProductId = product.ProductId;
                         _inputTimer?.Stop();
                         _inputTimer?.Start();
                     }
@@ -1231,6 +1232,9 @@ namespace Gumaedaehang
         {
             LogWindow.AddLogStatic($"🔥 키워드 추가 버튼 클릭됨 - 상품 ID: {productId}");
             
+            // ⭐ 키워드 생성한 상품 ID 저장
+            _keywordSourceProductId = productId;
+            
             // ⭐ 추가 버튼은 크롤링 플래그 리셋
             await ResetCrawlingAllowed();
             
@@ -1261,7 +1265,7 @@ namespace Gumaedaehang
         {
             _inputTimer?.Stop();
             
-            if (_productElements.TryGetValue(_currentProductId, out var product) && 
+            if (_productElements.TryGetValue(_lastActiveProductId, out var product) && 
                 product.KeywordInputBox != null)
             {
                 var text = product.KeywordInputBox.Text;
@@ -2197,7 +2201,7 @@ namespace Gumaedaehang
                     
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        CreateKeywordTags(keywords);
+                        CreateKeywordTags(keywords, _keywordSourceProductId);
                         _keywordTagsCreated = true; // 한 번만 생성
                         _keywordCheckTimer?.Stop(); // 타이머 중지
                     });
@@ -2245,7 +2249,7 @@ namespace Gumaedaehang
                     
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        CreateKeywordTags(keywords);
+                        CreateKeywordTags(keywords, _keywordSourceProductId);
                     });
                     
                     LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 UI 생성 완료");
@@ -2260,7 +2264,7 @@ namespace Gumaedaehang
                     
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        CreateKeywordTags(testKeywords);
+                        CreateKeywordTags(testKeywords, _keywordSourceProductId);
                     });
                     
                     LogWindow.AddLogStatic($"✅ 테스트 키워드 태그 {testKeywords.Count}개 생성 완료");
@@ -2316,12 +2320,12 @@ namespace Gumaedaehang
             }
         }
 
-        // ⭐ 키워드 태그 UI 생성 (39.png 스타일 - 리뷰와 원상품명 사이)
-        private void CreateKeywordTags(List<string> keywords)
+        // ⭐ 키워드 태그 UI 생성 (특정 상품 카드에만)
+        private void CreateKeywordTags(List<string> keywords, int targetProductId = -1)
         {
             try
             {
-                LogWindow.AddLogStatic($"🏷️ {keywords.Count}개 키워드 태그 생성 시작");
+                LogWindow.AddLogStatic($"🏷️ {keywords.Count}개 키워드 태그 생성 시작 (상품 ID: {targetProductId})");
                 
                 // ⭐ RealDataContainer에서 상품 카드들을 찾아서 키워드 태그 추가
                 var container = this.FindControl<StackPanel>("RealDataContainer");
@@ -2331,132 +2335,135 @@ namespace Gumaedaehang
                     return;
                 }
 
-                // 각 상품 카드에 키워드 태그 추가 (리뷰와 원상품명 사이)
-                foreach (var child in container.Children.OfType<StackPanel>())
+                StackPanel? targetProductCard = null;
+
+                // 특정 상품 ID가 지정된 경우 해당 상품 카드 찾기
+                if (targetProductId > 0)
                 {
-                    // 기존 키워드 패널 제거
-                    var existingKeywordPanel = child.Children.OfType<StackPanel>()
-                        .FirstOrDefault(sp => sp.Name == "KeywordTagPanel");
-                    if (existingKeywordPanel != null)
+                    // 상품 카드들을 순회하면서 해당 productId의 카드 찾기
+                    var productCards = container.Children.OfType<StackPanel>().ToList();
+                    if (targetProductId <= productCards.Count)
                     {
-                        child.Children.Remove(existingKeywordPanel);
-                    }
-
-                    // ⭐ 키워드 태그 패널 생성 (39.png 스타일)
-                    var keywordPanel = new StackPanel
-                    {
-                        Name = "KeywordTagPanel",
-                        Orientation = Orientation.Vertical,
-                        Margin = new Thickness(0, 15, 0, 15),
-                        Spacing = 10
-                    };
-
-                    // 키워드 태그들을 여러 줄로 배치 (WrapPanel 효과)
-                    var keywordWrapPanel = new StackPanel
-                    {
-                        Orientation = Orientation.Vertical,
-                        Spacing = 5
-                    };
-
-                    var currentRow = new StackPanel
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Spacing = 8
-                    };
-
-                    double currentRowWidth = 0;
-                    const double maxRowWidth = 800; // 최대 행 너비
-
-                    // 키워드 태그 생성 (전체)
-                    foreach (var keyword in keywords)
-                    {
-                        var keywordTag = new Border
-                        {
-                            Background = new SolidColorBrush(Color.Parse("#E67E22")), // 주황색
-                            CornerRadius = new CornerRadius(12), // 둥근 모서리
-                            Padding = new Thickness(10, 5),
-                            Child = new TextBlock
-                            {
-                                Text = keyword,
-                                Foreground = Brushes.White,
-                                FontSize = 11,
-                                FontWeight = FontWeight.Medium,
-                                FontFamily = new FontFamily("Malgun Gothic")
-                            }
-                        };
-
-                        // 예상 태그 너비 계산 (대략적)
-                        double tagWidth = keyword.Length * 8 + 30; // 글자당 8px + 패딩
-
-                        // 현재 행에 추가할 수 있는지 확인
-                        if (currentRowWidth + tagWidth > maxRowWidth && currentRow.Children.Count > 0)
-                        {
-                            // 현재 행을 완료하고 새 행 시작
-                            keywordWrapPanel.Children.Add(currentRow);
-                            currentRow = new StackPanel
-                            {
-                                Orientation = Orientation.Horizontal,
-                                Spacing = 8
-                            };
-                            currentRowWidth = 0;
-                        }
-
-                        currentRow.Children.Add(keywordTag);
-                        currentRowWidth += tagWidth;
-                    }
-
-                    // 마지막 행 추가
-                    if (currentRow.Children.Count > 0)
-                    {
-                        keywordWrapPanel.Children.Add(currentRow);
-                    }
-
-                    keywordPanel.Children.Add(keywordWrapPanel);
-
-                    // ⭐ 디버깅: 모든 자식 요소 확인
-                    LogWindow.AddLogStatic($"🔍 상품 카드 자식 요소 개수: {child.Children.Count}");
-                    for (int i = 0; i < child.Children.Count; i++)
-                    {
-                        var element = child.Children[i];
-                        LogWindow.AddLogStatic($"🔍 [{i}] {element.GetType().Name}: {element}");
-                        
-                        // Grid 내부도 확인
-                        if (element is Grid grid)
-                        {
-                            LogWindow.AddLogStatic($"🔍 Grid 내부 요소 개수: {grid.Children.Count}");
-                            for (int j = 0; j < grid.Children.Count; j++)
-                            {
-                                var gridChild = grid.Children[j];
-                                LogWindow.AddLogStatic($"🔍 Grid[{j}] {gridChild.GetType().Name}: {gridChild}");
-                            }
-                        }
-                    }
-
-                    // ⭐ 리뷰 Border 찾기 (간단하게 - 인덱스 2번이 리뷰 Border)
-                    var insertIndex = -1;
-                    
-                    // 로그에서 확인: 인덱스 2번이 항상 Border (리뷰)
-                    if (child.Children.Count > 2 && child.Children[2] is Border)
-                    {
-                        insertIndex = 2; // 리뷰 Border 바로 앞에 삽입
-                        LogWindow.AddLogStatic($"🎯 리뷰 Border(인덱스 2) 발견! 삽입 예정");
-                    }
-
-                    // 키워드 태그 삽입
-                    if (insertIndex >= 0 && insertIndex <= child.Children.Count)
-                    {
-                        child.Children.Insert(insertIndex, keywordPanel);
-                        LogWindow.AddLogStatic($"✅ 키워드 태그를 {insertIndex}번째 위치에 삽입 완료");
-                    }
-                    else
-                    {
-                        // 찾지 못하면 맨 끝에 추가
-                        child.Children.Add(keywordPanel);
-                        LogWindow.AddLogStatic($"❌ 삽입 위치를 찾지 못해 맨 끝에 추가");
+                        targetProductCard = productCards[targetProductId - 1]; // 1-based index
+                        LogWindow.AddLogStatic($"🎯 상품 ID {targetProductId}에 해당하는 카드 발견");
                     }
                 }
+                else
+                {
+                    // 기본값: 첫 번째 상품 카드
+                    targetProductCard = container.Children.OfType<StackPanel>().FirstOrDefault();
+                    LogWindow.AddLogStatic("🎯 기본값으로 첫 번째 상품 카드 선택");
+                }
 
-                LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 UI 생성 완료 (리뷰 위에 배치)");
+                if (targetProductCard == null)
+                {
+                    LogWindow.AddLogStatic("❌ 대상 상품 카드를 찾을 수 없습니다.");
+                    return;
+                }
+
+                // 기존 키워드 패널 제거
+                var existingKeywordPanel = targetProductCard.Children.OfType<StackPanel>()
+                    .FirstOrDefault(sp => sp.Name == "KeywordTagPanel");
+                if (existingKeywordPanel != null)
+                {
+                    targetProductCard.Children.Remove(existingKeywordPanel);
+                }
+
+                // ⭐ 키워드 태그 패널 생성 (39.png 스타일)
+                var keywordPanel = new StackPanel
+                {
+                    Name = "KeywordTagPanel",
+                    Orientation = Orientation.Vertical,
+                    Margin = new Thickness(0, 15, 0, 15),
+                    Spacing = 10
+                };
+
+                // 키워드 태그들을 여러 줄로 배치 (WrapPanel 효과)
+                var keywordWrapPanel = new StackPanel
+                {
+                    Orientation = Orientation.Vertical,
+                    Spacing = 5
+                };
+
+                var currentRow = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 8
+                };
+
+                double currentRowWidth = 0;
+                const double maxRowWidth = 800; // 최대 행 너비
+
+                // 키워드 태그 생성 (전체)
+                foreach (var keyword in keywords)
+                {
+                    var keywordTag = new Border
+                    {
+                        Background = new SolidColorBrush(Color.Parse("#E67E22")), // 주황색
+                        CornerRadius = new CornerRadius(12), // 둥근 모서리
+                        Padding = new Thickness(10, 5),
+                        Child = new TextBlock
+                        {
+                            Text = keyword,
+                            Foreground = Brushes.White,
+                            FontSize = 11,
+                            FontWeight = FontWeight.Medium,
+                            FontFamily = new FontFamily("Malgun Gothic")
+                        }
+                    };
+
+                    // 예상 태그 너비 계산 (대략적)
+                    double tagWidth = keyword.Length * 8 + 30; // 글자당 8px + 패딩
+
+                    // 현재 행에 추가할 수 있는지 확인
+                    if (currentRowWidth + tagWidth > maxRowWidth && currentRow.Children.Count > 0)
+                    {
+                        // 현재 행을 완료하고 새 행 시작
+                        keywordWrapPanel.Children.Add(currentRow);
+                        currentRow = new StackPanel
+                        {
+                            Orientation = Orientation.Horizontal,
+                            Spacing = 8
+                        };
+                        currentRowWidth = 0;
+                    }
+
+                    currentRow.Children.Add(keywordTag);
+                    currentRowWidth += tagWidth;
+                }
+
+                // 마지막 행 추가
+                if (currentRow.Children.Count > 0)
+                {
+                    keywordWrapPanel.Children.Add(currentRow);
+                }
+
+                keywordPanel.Children.Add(keywordWrapPanel);
+
+                // ⭐ 리뷰 Border 찾기 (간단하게 - 인덱스 2번이 리뷰 Border)
+                var insertIndex = -1;
+                
+                // 로그에서 확인: 인덱스 2번이 항상 Border (리뷰)
+                if (targetProductCard.Children.Count > 2 && targetProductCard.Children[2] is Border)
+                {
+                    insertIndex = 2; // 리뷰 Border 바로 앞에 삽입
+                    LogWindow.AddLogStatic($"🎯 리뷰 Border(인덱스 2) 발견! 삽입 예정");
+                }
+
+                // 키워드 태그 삽입
+                if (insertIndex >= 0 && insertIndex <= targetProductCard.Children.Count)
+                {
+                    targetProductCard.Children.Insert(insertIndex, keywordPanel);
+                    LogWindow.AddLogStatic($"✅ 키워드 태그를 상품 ID {targetProductId}의 {insertIndex}번째 위치에 삽입 완료");
+                }
+                else
+                {
+                    // 찾지 못하면 맨 끝에 추가
+                    targetProductCard.Children.Add(keywordPanel);
+                    LogWindow.AddLogStatic($"❌ 삽입 위치를 찾지 못해 상품 ID {targetProductId} 맨 끝에 추가");
+                }
+
+                LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 UI 생성 완료 (상품 ID: {targetProductId})");
             }
             catch (Exception ex)
             {
