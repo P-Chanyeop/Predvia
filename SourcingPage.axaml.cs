@@ -86,6 +86,11 @@ namespace Gumaedaehang
         private DispatcherTimer? _inputTimer;
         private int _currentProductId = 0;
         
+        // 키워드 태그 자동 생성을 위한 타이머
+        private DispatcherTimer? _keywordCheckTimer;
+        private bool _keywordTagsCreated = false;
+        private ChromeExtensionService? _extensionService;
+        
         // 상품별 UI 요소들을 관리하는 딕셔너리
         private Dictionary<int, ProductUIElements> _productElements = new Dictionary<int, ProductUIElements>();
         
@@ -94,7 +99,6 @@ namespace Gumaedaehang
         
         // 네이버 스마트스토어 서비스
         private NaverSmartStoreService? _naverService;
-        private ChromeExtensionService? _extensionService;
         
         // UI 요소 참조
         private TextBox? _manualSourcingTextBox;
@@ -152,6 +156,9 @@ namespace Gumaedaehang
                 // UI 요소 참조 가져오기
                 _noDataView = this.FindControl<Grid>("NoDataView");
                 _dataAvailableView = this.FindControl<Grid>("DataAvailableView");
+                
+                // 키워드 체크 타이머는 "추가" 버튼 클릭 시에만 시작
+                // StartKeywordCheckTimer(); // 제거
                 _addMoreLink = this.FindControl<TextBlock>("AddMoreLink");
                 _testDataButton = this.FindControl<Button>("TestDataButton");
                 _testDataButton2 = this.FindControl<Button>("TestDataButton2");
@@ -1716,9 +1723,15 @@ namespace Gumaedaehang
                 
                 // ⭐ 키워드 태그 생성을 위해 잠시 대기 후 서버에서 키워드 받아오기
                 LogWindow.AddLogStatic("⏳ Chrome 확장프로그램 상품명 전송 대기 중...");
-                await Task.Delay(5000); // 5초로 증가
+                await Task.Delay(3000); // 3초 대기
                 LogWindow.AddLogStatic("🏷️ 키워드 태그 생성 시작");
-                await CreateKeywordTagsFromServer();
+                
+                // ⭐ 키워드 태그 자동 생성 (5초마다 3번 시도)
+                for (int i = 0; i < 3; i++)
+                {
+                    await CreateKeywordTagsFromServer();
+                    await Task.Delay(2000); // 2초 간격으로 재시도
+                }
             }
             catch (Exception ex)
             {
@@ -2034,6 +2047,12 @@ namespace Gumaedaehang
             {
                 LogWindow.AddLogStatic($"🔍 네이버 가격비교 검색 시작: {keyword}");
                 
+                // ⭐ "추가" 버튼 클릭 시 키워드 타이머 시작
+                if (_keywordCheckTimer == null)
+                {
+                    StartKeywordCheckTimer();
+                }
+                
                 // URL 인코딩
                 var encodedKeyword = Uri.EscapeDataString(keyword);
                 var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=overseas";
@@ -2138,28 +2157,103 @@ namespace Gumaedaehang
             }
         }
 
-        // ⭐ 서버에서 키워드를 받아와서 태그 생성
+        // ⭐ 키워드 체크 타이머 시작
+        private void StartKeywordCheckTimer()
+        {
+            try
+            {
+                _keywordCheckTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(2) // 2초마다 체크
+                };
+                
+                _keywordCheckTimer.Tick += async (sender, e) =>
+                {
+                    if (!_keywordTagsCreated)
+                    {
+                        await CheckAndCreateKeywordTags();
+                    }
+                };
+                
+                _keywordCheckTimer.Start();
+                LogWindow.AddLogStatic("🔄 키워드 자동 체크 타이머 시작 (2초 간격)");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 체크 타이머 시작 오류: {ex.Message}");
+            }
+        }
+
+        // ⭐ 키워드 체크 및 태그 생성
+        private async Task CheckAndCreateKeywordTags()
+        {
+            try
+            {
+                var keywords = await GetLatestKeywordsFromServer();
+                
+                if (keywords != null && keywords.Count > 0 && !_keywordTagsCreated)
+                {
+                    LogWindow.AddLogStatic($"🏷️ 키워드 {keywords.Count}개 발견 - 태그 생성 시작");
+                    
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        CreateKeywordTags(keywords);
+                        _keywordTagsCreated = true; // 한 번만 생성
+                        _keywordCheckTimer?.Stop(); // 타이머 중지
+                    });
+                    
+                    LogWindow.AddLogStatic("✅ 키워드 태그 자동 생성 완료");
+                }
+                else if (_keywordTagsCreated)
+                {
+                    // 이미 키워드 태그가 생성되었으면 타이머 중지
+                    _keywordCheckTimer?.Stop();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 체크 오류: {ex.Message}");
+            }
+        }
+
+        // ⭐ 키워드 타이머 완전 중단 (크롤링 완료 시 호출)
+        public void StopKeywordTimer()
+        {
+            try
+            {
+                _keywordCheckTimer?.Stop();
+                _keywordCheckTimer = null;
+                LogWindow.AddLogStatic("🛑 키워드 자동 체크 타이머 완전 중단");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 타이머 중단 오류: {ex.Message}");
+            }
+        }
         public async Task CreateKeywordTagsFromServer()
         {
             try
             {
-                LogWindow.AddLogStatic("🏷️ 키워드 태그 생성 시작");
+                LogWindow.AddLogStatic("🏷️ SourcingPage - 키워드 태그 생성 시작");
                 
-                // ⭐ 실제 서버에서 키워드 받아오기 (임시로 빈 요청 - 실제로는 마지막 처리된 키워드 조회)
+                // ⭐ 실제 서버에서 키워드 받아오기
                 var keywords = await GetLatestKeywordsFromServer();
                 
                 if (keywords != null && keywords.Count > 0)
                 {
+                    LogWindow.AddLogStatic($"🏷️ 서버에서 키워드 {keywords.Count}개 수신: {string.Join(", ", keywords.Take(5))}...");
+                    
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         CreateKeywordTags(keywords);
                     });
                     
-                    LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 생성 완료");
+                    LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 UI 생성 완료");
                 }
                 else
                 {
                     LogWindow.AddLogStatic("❌ 서버에서 키워드를 받아오지 못했습니다.");
+                    LogWindow.AddLogStatic("🔄 테스트 키워드로 대체합니다.");
                     
                     // 임시로 테스트 키워드 사용
                     var testKeywords = new List<string> { "원목", "사다리", "그네", "방문", "문틀", "가정용", "어린이용", "접이식" };
@@ -2174,7 +2268,7 @@ namespace Gumaedaehang
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 키워드 태그 생성 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ SourcingPage 키워드 태그 생성 오류: {ex.Message}");
             }
         }
 
@@ -2222,74 +2316,114 @@ namespace Gumaedaehang
             }
         }
 
-        // ⭐ 키워드 태그 UI 생성 (39.png 스타일)
+        // ⭐ 키워드 태그 UI 생성 (39.png 스타일 - 리뷰와 원상품명 사이)
         private void CreateKeywordTags(List<string> keywords)
         {
             try
             {
                 LogWindow.AddLogStatic($"🏷️ {keywords.Count}개 키워드 태그 생성 시작");
                 
-                // 현재 화면 상단에 키워드 태그 표시 (스크롤 없이 바로 보이도록)
-                var mainGrid = this.FindControl<Grid>("MainGrid");
-                if (mainGrid == null)
+                // ⭐ RealDataContainer에서 상품 카드들을 찾아서 키워드 태그 추가
+                var container = this.FindControl<StackPanel>("RealDataContainer");
+                if (container == null)
                 {
-                    LogWindow.AddLogStatic("❌ MainGrid를 찾을 수 없습니다.");
+                    LogWindow.AddLogStatic("❌ RealDataContainer를 찾을 수 없습니다.");
                     return;
                 }
 
-                // 기존 키워드 태그 제거
-                var existingKeywordPanel = mainGrid.Children.OfType<StackPanel>()
-                    .FirstOrDefault(sp => sp.Name == "KeywordTagPanel");
-                if (existingKeywordPanel != null)
+                // 각 상품 카드에 키워드 태그 추가 (리뷰와 원상품명 사이)
+                foreach (var child in container.Children.OfType<StackPanel>())
                 {
-                    mainGrid.Children.Remove(existingKeywordPanel);
+                    // 기존 키워드 패널 제거
+                    var existingKeywordPanel = child.Children.OfType<StackPanel>()
+                        .FirstOrDefault(sp => sp.Name == "KeywordTagPanel");
+                    if (existingKeywordPanel != null)
+                    {
+                        child.Children.Remove(existingKeywordPanel);
+                    }
+
+                    // ⭐ 키워드 태그 패널 생성 (39.png 스타일)
+                    var keywordPanel = new StackPanel
+                    {
+                        Name = "KeywordTagPanel",
+                        Orientation = Orientation.Vertical,
+                        Margin = new Thickness(0, 15, 0, 15),
+                        Spacing = 10
+                    };
+
+                    // 키워드 태그들을 가로로 배치
+                    var keywordRow = new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 8
+                    };
+
+                    // 키워드 태그 생성 (전체)
+                    foreach (var keyword in keywords)
+                    {
+                        var keywordTag = new Border
+                        {
+                            Background = new SolidColorBrush(Color.Parse("#E67E22")), // 주황색
+                            CornerRadius = new CornerRadius(12), // 둥근 모서리
+                            Padding = new Thickness(10, 5),
+                            Child = new TextBlock
+                            {
+                                Text = keyword,
+                                Foreground = Brushes.White,
+                                FontSize = 11,
+                                FontWeight = FontWeight.Medium,
+                                FontFamily = new FontFamily("Malgun Gothic")
+                            }
+                        };
+
+                        keywordRow.Children.Add(keywordTag);
+                    }
+
+                    keywordPanel.Children.Add(keywordRow);
+
+                    // ⭐ 원상품명과 리뷰 영역 사이에 키워드 태그 삽입
+                    var reviewBorderIndex = -1;
+                    var originalNameIndex = -1;
+                    
+                    for (int i = 0; i < child.Children.Count; i++)
+                    {
+                        // 원상품명 찾기 (TextBlock with "원상품명:")
+                        if (child.Children[i] is TextBlock tb && tb.Text?.Contains("원상품명:") == true)
+                        {
+                            originalNameIndex = i;
+                        }
+                        // 리뷰 영역 찾기 (주황색 테두리)
+                        else if (child.Children[i] is Border border && 
+                            border.BorderBrush is SolidColorBrush brush &&
+                            brush.Color.ToString().Contains("FF8A46"))
+                        {
+                            reviewBorderIndex = i;
+                            break;
+                        }
+                    }
+
+                    // 원상품명 다음, 리뷰 앞에 키워드 태그 삽입
+                    if (originalNameIndex >= 0 && reviewBorderIndex >= 0)
+                    {
+                        child.Children.Insert(reviewBorderIndex, keywordPanel);
+                    }
+                    else if (reviewBorderIndex >= 0)
+                    {
+                        // 원상품명을 못 찾으면 리뷰 앞에 삽입
+                        child.Children.Insert(reviewBorderIndex, keywordPanel);
+                    }
+                    else
+                    {
+                        // 리뷰 영역을 못 찾으면 맨 끝에 추가
+                        child.Children.Add(keywordPanel);
+                    }
                 }
 
-                // 키워드 태그 컨테이너 생성 (현재 화면 상단)
-                var keywordPanel = new StackPanel
-                {
-                    Name = "KeywordTagPanel",
-                    Orientation = Orientation.Vertical,
-                    Margin = new Thickness(10, 10, 10, 10),
-                    Background = new SolidColorBrush(Color.Parse("#FFF5E6")), // 연한 주황색 배경
-                    ZIndex = 1000 // 다른 요소 위에 표시
-                };
-
-                var keywordContainer = new WrapPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Margin = new Thickness(5)
-                };
-
-                // 제목 추가
-                var titleText = new TextBlock
-                {
-                    Text = "🏷️ 추출된 키워드:",
-                    FontSize = 16,
-                    FontWeight = FontWeight.Bold,
-                    Margin = new Thickness(5, 5, 5, 10),
-                    Foreground = new SolidColorBrush(Color.Parse("#E67E22"))
-                };
-
-                keywordPanel.Children.Add(titleText);
-                keywordPanel.Children.Add(keywordContainer);
-
-                // 키워드 태그 생성
-                foreach (var keyword in keywords.Take(10)) // 최대 10개만 표시
-                {
-                    var keywordTag = CreateKeywordTag(keyword);
-                    keywordContainer.Children.Add(keywordTag);
-                }
-
-                // 현재 화면 상단에 추가 (스크롤 없이 바로 보임)
-                mainGrid.Children.Add(keywordPanel);
-                
-                LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 현재 화면에 표시 완료");
+                LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 UI 생성 완료 (리뷰 위에 배치)");
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 키워드 태그 생성 오류: {ex.Message}");
-                Debug.WriteLine($"키워드 태그 생성 오류: {ex.Message}");
             }
         }
 

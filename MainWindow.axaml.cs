@@ -578,15 +578,30 @@ namespace Gumaedaehang
         {
             try
             {
+                LogWindow.AddLogStatic("🏷️ MainWindow - 키워드 태그 표시 트리거 수신");
+                
                 if (_sourcingContent?.Content is SourcingPage sourcingPage)
                 {
+                    LogWindow.AddLogStatic("🏷️ SourcingPage 찾음 - 키워드 태그 생성 시작");
                     await sourcingPage.CreateKeywordTagsFromServer();
+                    LogWindow.AddLogStatic("✅ SourcingPage 키워드 태그 생성 완료");
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("❌ SourcingPage를 찾을 수 없음");
                 }
             }
             catch (Exception ex)
             {
+                LogWindow.AddLogStatic($"❌ MainWindow 키워드 태그 표시 트리거 오류: {ex.Message}");
                 Debug.WriteLine($"키워드 태그 표시 트리거 오류: {ex.Message}");
             }
+        }
+        
+        // ⭐ SourcingPage 인스턴스 반환 메서드
+        public SourcingPage? GetSourcingPage()
+        {
+            return _sourcingContent?.Content as SourcingPage;
         }
     }
 }
