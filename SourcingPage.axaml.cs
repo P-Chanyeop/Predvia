@@ -2351,12 +2351,21 @@ namespace Gumaedaehang
                         Spacing = 10
                     };
 
-                    // 키워드 태그들을 가로로 배치
-                    var keywordRow = new StackPanel
+                    // 키워드 태그들을 여러 줄로 배치 (WrapPanel 효과)
+                    var keywordWrapPanel = new StackPanel
+                    {
+                        Orientation = Orientation.Vertical,
+                        Spacing = 5
+                    };
+
+                    var currentRow = new StackPanel
                     {
                         Orientation = Orientation.Horizontal,
                         Spacing = 8
                     };
+
+                    double currentRowWidth = 0;
+                    const double maxRowWidth = 800; // 최대 행 너비
 
                     // 키워드 태그 생성 (전체)
                     foreach (var keyword in keywords)
@@ -2376,46 +2385,74 @@ namespace Gumaedaehang
                             }
                         };
 
-                        keywordRow.Children.Add(keywordTag);
+                        // 예상 태그 너비 계산 (대략적)
+                        double tagWidth = keyword.Length * 8 + 30; // 글자당 8px + 패딩
+
+                        // 현재 행에 추가할 수 있는지 확인
+                        if (currentRowWidth + tagWidth > maxRowWidth && currentRow.Children.Count > 0)
+                        {
+                            // 현재 행을 완료하고 새 행 시작
+                            keywordWrapPanel.Children.Add(currentRow);
+                            currentRow = new StackPanel
+                            {
+                                Orientation = Orientation.Horizontal,
+                                Spacing = 8
+                            };
+                            currentRowWidth = 0;
+                        }
+
+                        currentRow.Children.Add(keywordTag);
+                        currentRowWidth += tagWidth;
                     }
 
-                    keywordPanel.Children.Add(keywordRow);
+                    // 마지막 행 추가
+                    if (currentRow.Children.Count > 0)
+                    {
+                        keywordWrapPanel.Children.Add(currentRow);
+                    }
 
-                    // ⭐ 원상품명과 리뷰 영역 사이에 키워드 태그 삽입
-                    var reviewBorderIndex = -1;
-                    var originalNameIndex = -1;
-                    
+                    keywordPanel.Children.Add(keywordWrapPanel);
+
+                    // ⭐ 디버깅: 모든 자식 요소 확인
+                    LogWindow.AddLogStatic($"🔍 상품 카드 자식 요소 개수: {child.Children.Count}");
                     for (int i = 0; i < child.Children.Count; i++)
                     {
-                        // 원상품명 찾기 (TextBlock with "원상품명:")
-                        if (child.Children[i] is TextBlock tb && tb.Text?.Contains("원상품명:") == true)
+                        var element = child.Children[i];
+                        LogWindow.AddLogStatic($"🔍 [{i}] {element.GetType().Name}: {element}");
+                        
+                        // Grid 내부도 확인
+                        if (element is Grid grid)
                         {
-                            originalNameIndex = i;
-                        }
-                        // 리뷰 영역 찾기 (주황색 테두리)
-                        else if (child.Children[i] is Border border && 
-                            border.BorderBrush is SolidColorBrush brush &&
-                            brush.Color.ToString().Contains("FF8A46"))
-                        {
-                            reviewBorderIndex = i;
-                            break;
+                            LogWindow.AddLogStatic($"🔍 Grid 내부 요소 개수: {grid.Children.Count}");
+                            for (int j = 0; j < grid.Children.Count; j++)
+                            {
+                                var gridChild = grid.Children[j];
+                                LogWindow.AddLogStatic($"🔍 Grid[{j}] {gridChild.GetType().Name}: {gridChild}");
+                            }
                         }
                     }
 
-                    // 원상품명 다음, 리뷰 앞에 키워드 태그 삽입
-                    if (originalNameIndex >= 0 && reviewBorderIndex >= 0)
+                    // ⭐ 리뷰 Border 찾기 (간단하게 - 인덱스 2번이 리뷰 Border)
+                    var insertIndex = -1;
+                    
+                    // 로그에서 확인: 인덱스 2번이 항상 Border (리뷰)
+                    if (child.Children.Count > 2 && child.Children[2] is Border)
                     {
-                        child.Children.Insert(reviewBorderIndex, keywordPanel);
+                        insertIndex = 2; // 리뷰 Border 바로 앞에 삽입
+                        LogWindow.AddLogStatic($"🎯 리뷰 Border(인덱스 2) 발견! 삽입 예정");
                     }
-                    else if (reviewBorderIndex >= 0)
+
+                    // 키워드 태그 삽입
+                    if (insertIndex >= 0 && insertIndex <= child.Children.Count)
                     {
-                        // 원상품명을 못 찾으면 리뷰 앞에 삽입
-                        child.Children.Insert(reviewBorderIndex, keywordPanel);
+                        child.Children.Insert(insertIndex, keywordPanel);
+                        LogWindow.AddLogStatic($"✅ 키워드 태그를 {insertIndex}번째 위치에 삽입 완료");
                     }
                     else
                     {
-                        // 리뷰 영역을 못 찾으면 맨 끝에 추가
+                        // 찾지 못하면 맨 끝에 추가
                         child.Children.Add(keywordPanel);
+                        LogWindow.AddLogStatic($"❌ 삽입 위치를 찾지 못해 맨 끝에 추가");
                     }
                 }
 

@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.47-orange)
+![Release](https://img.shields.io/badge/Release-v1.52-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,19 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.51 - 키워드 태그 표시 개선)
+### 🔄 최신 업데이트 (v1.52 - 키워드 태그 위치 문제 해결)
+- [x] **🏷️ 키워드 태그 위치 정확성 개선**
+  - **UI 구조 분석**: 상품 카드 구조 정확히 파악 (categoryPanel → mainGrid → reviewBorder → pairingPanel)
+  - **삽입 위치 최적화**: 복잡한 색상 비교 대신 인덱스 기반 정확한 위치 식별
+  - **리뷰 Border 식별**: 인덱스 2번 위치의 Border를 리뷰 영역으로 정확히 식별
+  - **키워드 태그 정확한 배치**: 원상품명과 리뷰 사이(인덱스 2)에 키워드 태그 정확히 삽입
+  - **디버깅 시스템 강화**: 상품 카드 구조 분석을 위한 상세한 로그 시스템 구현
+- [x] **🔧 시스템 안정성 강화**
+  - **간단하고 확실한 로직**: 복잡한 조건문 대신 위치 기반 간단한 식별 방식 적용
+  - **완벽한 오류 처리**: 모든 예외 상황에 대한 안전한 처리 로직
+  - **v1.51 기능 완전 보존**: 키워드 개수 제한 해제 등 기존 모든 기능 유지
+
+### 🔄 이전 업데이트 (v1.51 - 키워드 태그 표시 개선)
 - [x] **🏷️ 키워드 태그 표시 시스템 개선**
   - **키워드 개수 제한 해제**: 기존 10개 제한 → 전체 키워드 표시 (195개 등 모든 키워드)
   - **정확한 위치 배치**: 원상품명과 리뷰 박스 사이에 키워드 태그 정확히 배치
