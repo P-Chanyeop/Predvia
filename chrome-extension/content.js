@@ -1158,6 +1158,19 @@ async function sendProductNamesToServer(productNames) {
           body: JSON.stringify({ action: 'show_keywords' })
         });
         console.log('✅ 키워드 태그 표시 요청 완료');
+        
+        // ⭐ 잠시 후 SourcingPage에서 키워드를 가져가도록 추가 요청
+        setTimeout(async () => {
+          try {
+            await fetch('http://localhost:8080/api/smartstore/latest-keywords', {
+              method: 'GET'
+            });
+            console.log('✅ 키워드 가져가기 신호 전송 완료');
+          } catch (fetchError) {
+            console.log('❌ 키워드 가져가기 신호 실패:', fetchError);
+          }
+        }, 1000);
+        
       } catch (triggerError) {
         console.log('❌ 키워드 태그 표시 요청 실패:', triggerError);
       }

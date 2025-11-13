@@ -1131,6 +1131,7 @@ namespace Gumaedaehang.Services
                             // ⭐ 크롬 탭 닫기
                             _ = Task.Run(() => CloseAllChromeTabs());
                             
+
                             // ⭐ 팝업창으로 최종 결과 표시
                             ShowCrawlingResultPopup(_totalProductCount, "목표 달성");
                             
@@ -2299,8 +2300,14 @@ namespace Gumaedaehang.Services
             {
                 if (string.IsNullOrWhiteSpace(productName)) continue;
                 
+                // ⭐ 한글이 포함된 상품명만 처리
+                if (!System.Text.RegularExpressions.Regex.IsMatch(productName, @"[가-힣]"))
+                {
+                    continue; // 한글이 없으면 스킵
+                }
+                
                 // ⭐ 공백으로 단어 분리 후 각 단어에서 한글만 추출
-                var words = productName.Split(new char[] { ' ', '\t', '\n', '-', '/', '(', ')', '[', ']' }, 
+                var words = productName.Split(new char[] { ' ', '\t', '\n', '-', '/', '(', ')', '[', ']', ',', '.' }, 
                     StringSplitOptions.RemoveEmptyEntries);
                 
                 foreach (var word in words)
@@ -2314,6 +2321,7 @@ namespace Gumaedaehang.Services
                 }
             }
             
+            LogWindow.AddLogStatic($"🏷️ 한글 키워드 추출: {string.Join(", ", keywords.Take(10))}...");
             return keywords.ToList();
         }
 
@@ -2324,10 +2332,28 @@ namespace Gumaedaehang.Services
             {
                 LogWindow.AddLogStatic("🏷️ 키워드 태그 표시 트리거 수신");
                 
-                // 소싱 페이지에 키워드 태그 표시 요청
-                await TriggerKeywordTagsDisplay();
+                // ⭐ 즉시 키워드 태그 생성 요청
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(500); // 0.5초 대기
+                    LogWindow.AddLogStatic("🏷️ 키워드 태그 자동 생성 시작");
+                    
+                    // 키워드가 있는지 확인하고 로그에 알림
+                    lock (_keywordsLock)
+                    {
+                        if (_latestKeywords != null && _latestKeywords.Count > 0)
+                        {
+                            LogWindow.AddLogStatic($"🏷️ 키워드 {_latestKeywords.Count}개 준비됨 - UI 생성 필요");
+                            LogWindow.AddLogStatic("🔔 소싱 페이지에서 키워드를 가져가세요!");
+                        }
+                        else
+                        {
+                            LogWindow.AddLogStatic("❌ 준비된 키워드가 없습니다");
+                        }
+                    }
+                });
                 
-                return Results.Json(new { success = true });
+                return Results.Json(new { success = true, message = "키워드 태그 생성 요청 완료" });
             }
             catch (Exception ex)
             {
@@ -2341,17 +2367,40 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                LogWindow.AddLogStatic("🏷️ 키워드 태그 표시 트리거 시작");
+                
                 // MainWindow를 통해 SourcingPage에 키워드 태그 표시 요청
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
-                    if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                    try
                     {
-                        var mainWindow = desktop.MainWindow as MainWindow;
-                        if (mainWindow != null)
+                        // Application.Current를 통해 MainWindow 찾기
+                        var app = Application.Current;
+                        if (app?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
                         {
-                            await mainWindow.TriggerKeywordTagsDisplay();
-                            LogWindow.AddLogStatic("✅ 소싱 페이지 키워드 태그 표시 완료");
+                            var mainWindow = desktop.MainWindow;
+                            LogWindow.AddLogStatic($"🔍 ApplicationLifetime 타입: {desktop.GetType().Name}");
+                            LogWindow.AddLogStatic($"🔍 MainWindow 타입: {mainWindow?.GetType().Name}");
+                            
+                            if (mainWindow is MainWindow predviaMainWindow)
+                            {
+                                LogWindow.AddLogStatic("🏷️ MainWindow 찾음 - 키워드 태그 표시 요청");
+                                await predviaMainWindow.TriggerKeywordTagsDisplay();
+                                LogWindow.AddLogStatic("✅ 소싱 페이지 키워드 태그 표시 완료");
+                            }
+                            else
+                            {
+                                LogWindow.AddLogStatic($"❌ MainWindow 타입 불일치: {mainWindow?.GetType().Name}");
+                            }
                         }
+                        else
+                        {
+                            LogWindow.AddLogStatic($"❌ ApplicationLifetime 타입 불일치: {app?.ApplicationLifetime?.GetType().Name}");
+                        }
+                    }
+                    catch (Exception innerEx)
+                    {
+                        LogWindow.AddLogStatic($"❌ UI 스레드 내부 오류: {innerEx.Message}");
                     }
                 });
             }
