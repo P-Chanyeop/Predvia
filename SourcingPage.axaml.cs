@@ -1137,7 +1137,7 @@ namespace Gumaedaehang
                 _testDataButton.Click += TestDataButton_Click;
                 
             if (_testDataButton2 != null)
-                _testDataButton2.Click += TestDataButton_Click;
+                _testDataButton2.Click += TestDataButton2_Click;
                 
             if (_selectAllCheckBox != null)
             {
@@ -1805,6 +1805,22 @@ namespace Gumaedaehang
             catch (Exception ex)
             {
                 Debug.WriteLine($"❌ 테스트 데이터 버튼 오류: {ex.Message}");
+            }
+        }
+        
+        private void TestDataButton2_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 카드는 그대로 두고 화면 전환만
+                _hasData = false;
+                UpdateViewVisibility();
+                
+                Debug.WriteLine("✅ 데이터 없는 화면으로 전환 완료 (카드 유지)");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 데이터 없는 화면 전환 오류: {ex.Message}");
             }
         }
         

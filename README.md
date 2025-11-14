@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.57-orange)
+![Release](https://img.shields.io/badge/Release-v1.58-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,20 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.57 - 로딩창 시스템 완전 구현)
+### 🔄 최신 업데이트 (v1.58 - 크롤링 완료 감지 시스템 개선)
+- [x] **🎯 모든 스토어 방문 완료 감지 시스템 구현**
+  - **완료 감지 API**: `/api/smartstore/all-stores-completed` 엔드포인트 추가
+  - **자동 팝업 표시**: 10개 스토어 방문 완료 시 자동으로 결과 팝업창 표시
+  - **CheckAllStoresCompleted 메서드**: 현재 상품 수 확인 후 팝업창 표시 로직
+  - **로딩창 자동 숨김**: 모든 스토어 완료 시 로딩창 자동 해제
+  - **Chrome 탭 자동 닫기**: 크롤링 완료 시 모든 Chrome 프로세스 종료
+
+- [x] **🔧 테스트 버튼 기능 개선**
+  - **TestDataButton2_Click 메서드**: "데이터 없는 화면 보기" 버튼 기능 구현
+  - **화면 전환 최적화**: 카드 데이터 유지하면서 화면만 전환
+  - **사용자 경험 개선**: 데이터 보기 ↔ 페어링 화면 자유로운 전환
+
+### 🔄 이전 업데이트 (v1.57 - 로딩창 시스템 완전 구현)
 - [x] **🔄 깔끔한 로딩창 시스템 완전 구현**
   - **간단한 디자인**: "데이터 불러오는 중..." 문구 + 프로그레스바만 표시
   - **프로그램 전체 덮기**: Grid.RowSpan="4" + ZIndex="9999"로 전체 화면 덮음
@@ -920,11 +933,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.57 (로딩창 시스템 완전 구현)
-  - 페어링 버튼 클릭 시 "데이터 불러오는 중..." 로딩창 표시
-  - 크롤링 완료/중단/차단 시 로딩창 자동 숨김
-  - 프로그램 전체 화면을 덮는 완벽한 로딩 UX
-  - MainWindow 찾기 문제 해결로 안정적인 UI 제어 시스템
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.58 (크롤링 완료 감지 시스템 개선)
+  - 10개 스토어 방문 완료 시 자동 팝업창 표시
+  - 모든 스토어 완료 감지 API 엔드포인트 추가
+  - 테스트 버튼 기능 개선으로 화면 전환 최적화
+  - Chrome 탭 자동 닫기 및 로딩창 해제 시스템 완성
 
 #### ⚙️ 설정 (Settings)
 - **완전한 15.png/16.png 구현**: 라이트/다크모드 설정 페이지 완벽 재현
