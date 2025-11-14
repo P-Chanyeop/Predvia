@@ -128,6 +128,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/product-names", HandleProductNames);
                 _app.MapGet("/api/smartstore/latest-keywords", HandleGetLatestKeywords);
                 _app.MapPost("/api/smartstore/trigger-keywords", HandleTriggerKeywords);
+                _app.MapPost("/api/smartstore/all-stores-completed", HandleAllStoresCompleted); // ⭐ 모든 스토어 완료 API 추가
                 
                 LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (19개)");
 
@@ -1615,6 +1616,69 @@ namespace Gumaedaehang.Services
             }
         }
 
+        // ⭐ 모든 스토어 완료 처리
+        private async Task<IResult> HandleAllStoresCompleted(HttpContext context)
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🎉 모든 스토어 완료 신호 수신");
+                
+                // 모든 스토어 완료 체크 및 팝업 표시
+                CheckAllStoresCompleted();
+                
+                return Results.Ok(new { success = true, message = "All stores completed popup shown" });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 모든 스토어 완료 처리 오류: {ex.Message}");
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+        
+        // ⭐ 모든 스토어 완료 체크 및 팝업 표시
+        private void CheckAllStoresCompleted()
+        {
+            try
+            {
+                // 현재 상품 수 확인
+                var currentCount = GetCurrentProductCount();
+                
+                // 100개 달성하지 못했지만 모든 스토어 완료된 경우
+                if (currentCount < TARGET_PRODUCT_COUNT)
+                {
+                    LogWindow.AddLogStatic($"🎉 모든 스토어 방문 완료! 최종 수집: {currentCount}/100개");
+                    
+                    // 로딩창 숨김
+                    LoadingHelper.HideLoadingFromSourcingPage();
+                    
+                    // 팝업창 표시
+                    ShowCrawlingResultPopup(currentCount, "모든 스토어 방문 완료");
+                    
+                    // 크롬 탭 닫기
+                    _ = Task.Run(() => CloseAllChromeTabs());
+                }
+                else
+                {
+                    LogWindow.AddLogStatic($"🎯 이미 100개 달성됨: {currentCount}/100개");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 모든 스토어 완료 체크 오류: {ex.Message}");
+            }
+        }
+        
+        // ⭐ 테스트용: 10초 후 자동으로 모든 스토어 완료 체크
+        private void StartAutoCompleteTimer()
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(10000); // 10초 대기
+                LogWindow.AddLogStatic("🧪 테스트: 10초 후 자동 완료 체크 실행");
+                CheckAllStoresCompleted();
+            });
+        }
+        
         // ⭐ 크롤링 결과 팝업창 표시
         private void ShowCrawlingResultPopup(int count, string reason)
         {
