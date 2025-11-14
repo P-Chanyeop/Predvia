@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.56-orange)
+![Release](https://img.shields.io/badge/Release-v1.57-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,17 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.56 - 상품명 직접 입력 첨부 시스템 구현)
+### 🔄 최신 업데이트 (v1.57 - 로딩창 시스템 완전 구현)
+- [x] **🔄 깔끔한 로딩창 시스템 완전 구현**
+  - **간단한 디자인**: "데이터 불러오는 중..." 문구 + 프로그레스바만 표시
+  - **프로그램 전체 덮기**: Grid.RowSpan="4" + ZIndex="9999"로 전체 화면 덮음
+  - **페어링 버튼 연동**: 페어링 시작 시 로딩창 표시, 크롤링 완료 시 자동 숨김
+  - **크롤링 완료 감지**: 100개 달성, 차단 감지, 모든 스토어 완료 시 로딩창 자동 숨김
+  - **MainWindow 찾기 문제 해결**: desktop.Windows 컬렉션 순회로 안정적인 MainWindow 접근
+  - **UI 스레드 안전성**: Dispatcher.UIThread.Post()로 안전한 UI 업데이트
+  - **완벽한 오류 처리**: 모든 예외 상황에서 안전한 로딩창 제어
+
+### 🔄 이전 업데이트 (v1.56 - 상품명 직접 입력 첨부 시스템 구현)
 - [x] **📎 상품명 직접 입력 + 첨부 버튼 시스템 완전 구현**
   - **새로운 입력 패널 추가**: 키워드 입력 패널 하단에 상품명 직접 입력 패널 추가
   - **첨부 버튼 기능**: 입력된 내용을 상품명 칸에 바로 첨부 (덮어쓰기 방식)
@@ -910,11 +920,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.50 (키워드 추출 시스템 완전 구현)
-  - 네이버 가격비교 페이지 전체 스크롤로 모든 상품명 수집
-  - 단어별 키워드 분리: "나무 송곳 망치" → "나무", "송곳", "망치" 개별 태그
-  - Chrome 확장프로그램 → 서버 → 소싱 페이지 실시간 키워드 태그 표시
-  - 완벽한 한글 필터링 및 실시간 UI 업데이트 시스템
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.57 (로딩창 시스템 완전 구현)
+  - 페어링 버튼 클릭 시 "데이터 불러오는 중..." 로딩창 표시
+  - 크롤링 완료/중단/차단 시 로딩창 자동 숨김
+  - 프로그램 전체 화면을 덮는 완벽한 로딩 UX
+  - MainWindow 찾기 문제 해결로 안정적인 UI 제어 시스템
 
 #### ⚙️ 설정 (Settings)
 - **완전한 15.png/16.png 구현**: 라이트/다크모드 설정 페이지 완벽 재현

@@ -1128,6 +1128,9 @@ namespace Gumaedaehang.Services
                             _isCrawlingActive = false; // ⭐ 추가: 모든 데이터 처리 중단
                             LogWindow.AddLogStatic($"🎉 목표 달성! 정확히 100개 상품 수집 완료 - 크롤링 중단");
                             
+                            // 🔄 로딩창 숨김 - 소싱 페이지에서 직접 처리
+                            LoadingHelper.HideLoadingFromSourcingPage();
+                            
                             // ⭐ 크롬 탭 닫기
                             _ = Task.Run(() => CloseAllChromeTabs());
                             
@@ -1617,6 +1620,9 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // 🔄 팝업창 표시 전에 로딩창 먼저 숨김 - 소싱 페이지에서 직접 처리
+                LoadingHelper.HideLoadingFromSourcingPage();
+                
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
                     var mainWindow = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
@@ -1948,6 +1954,9 @@ namespace Gumaedaehang.Services
                 {
                     LogWindow.AddLogStatic("🎉 목표 달성! 100개 상품 수집 완료 - 크롤링 중단");
                     _isCrawlingActive = false;
+                    
+                    // 🔄 로딩창 숨김 - 소싱 페이지에서 직접 처리
+                    LoadingHelper.HideLoadingFromSourcingPage();
                     
                     // ⭐ 크롬 탭 닫기
                     _ = Task.Run(() => CloseAllChromeTabs());
@@ -2816,5 +2825,40 @@ public class ProductCategoryData
         
         [JsonPropertyName("timestamp")]
         public string Timestamp { get; set; } = string.Empty;
+    }
+    
+    // 🔄 소싱 페이지에서 직접 로딩창 숨김
+    public static class LoadingHelper
+    {
+        public static void HideLoadingFromSourcingPage()
+        {
+            try
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    // 모든 윈도우에서 SourcingPage 찾기
+                    foreach (var window in Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop 
+                        ? desktop.Windows : new List<Avalonia.Controls.Window>())
+                    {
+                        if (window is MainWindow mainWindow)
+                        {
+                            mainWindow.HideLoading();
+                            LogWindow.AddLogStatic("✅ 로딩창 숨김 완료 (소싱페이지 경로)");
+                            return;
+                        }
+                    }
+                    LogWindow.AddLogStatic("❌ MainWindow를 찾을 수 없음 (소싱페이지 경로)");
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 로딩창 숨김 오류: {ex.Message}");
+            }
+        }
+
+        public static void HideLoadingOverlay()
+        {
+            HideLoadingFromSourcingPage();
+        }
     }
 }

@@ -308,5 +308,16 @@
                 </ContentControl>
             </Grid>
         </Grid>
-    </Grid>
+        
+        <!-- 🔄 로딩창 -->
+        <Grid x:Name="LoadingOverlay" IsVisible="False" Background="#CC000000" ZIndex="9999" Grid.RowSpan="4">
+            <Border Background="White" CornerRadius="12" Width="300" Height="120" 
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="데이터 불러오는 중..." FontSize="18" FontWeight="Medium" 
+                               HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                    <ProgressBar IsIndeterminate="True" Width="200" Height="6"/>
+                </StackPanel>
+            </Border>
+        </Grid>    </Grid>
 </Window>

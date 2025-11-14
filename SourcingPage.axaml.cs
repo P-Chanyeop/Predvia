@@ -2129,8 +2129,13 @@ namespace Gumaedaehang
                 return;
             }
             
+            var mainWindow = (MainWindow?)this.VisualRoot;
+            
             try
             {
+                // 🔄 로딩창 표시
+                mainWindow?.ShowLoading();
+                
                 button.IsEnabled = false;
                 button.Content = "연결 중...";
                 
