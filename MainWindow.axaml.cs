@@ -603,5 +603,18 @@ namespace Gumaedaehang
         {
             return _sourcingContent?.Content as SourcingPage;
         }
+        
+        // 🔄 간단한 로딩창 제어
+        public void ShowLoading()
+        {
+            var overlay = this.FindControl<Grid>("LoadingOverlay");
+            if (overlay != null) overlay.IsVisible = true;
+        }
+        
+        public void HideLoading()
+        {
+            var overlay = this.FindControl<Grid>("LoadingOverlay");
+            if (overlay != null) overlay.IsVisible = false;
+        }
     }
 }
