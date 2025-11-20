@@ -128,6 +128,7 @@ namespace Gumaedaehang.Services
                 _app.MapGet("/api/smartstore/latest-keywords", HandleGetLatestKeywords);
                 _app.MapPost("/api/smartstore/trigger-keywords", HandleTriggerKeywords);
                 _app.MapPost("/api/smartstore/all-stores-completed", HandleAllStoresCompleted); // ⭐ 모든 스토어 완료 API 추가
+                _app.MapGet("/api/smartstore/crawling-status", HandleGetCrawlingStatus); // ⭐ 크롤링 상태 확인 API 추가
                 
                 LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (19개)");
 
@@ -563,8 +564,8 @@ namespace Gumaedaehang.Services
                         var finalCount = GetCurrentProductCount();
                         ShowCrawlingResultPopup(finalCount, "모든 스토어 처리 완료");
                         
-                        // ⭐ 크롬 탭 닫기
-                        _ = Task.Run(() => CloseAllChromeTabs());
+                        // ⭐ 크롬 탭 자동 닫기 제거 (테스트용)
+                        // _ = Task.Run(() => CloseAllChromeTabs());
                         
                         return Results.Ok(new { success = false, message = "모든 스토어 처리 완료" });
                     }
@@ -1077,6 +1078,13 @@ namespace Gumaedaehang.Services
                     _storeStates[key] = storeState;
                 }
                 
+                // ⭐ 스토어가 완료(done) 상태가 되면 모든 스토어 완료 체크
+                if (state == "done")
+                {
+                    LogWindow.AddLogStatic($"✅ {storeId}: 완료 상태로 변경됨 - 전체 완료 체크 시작");
+                    CheckAllStoresCompletedFromServer();
+                }
+                
                 LogWindow.AddLogStatic($"{storeId}: 상태 설정 - {state} (lock: {lockValue}, {progress}/{expected})");
                 
                 return Results.Ok(new { success = true, storeId, runId, state });
@@ -1323,8 +1331,8 @@ namespace Gumaedaehang.Services
                     _shouldStop = true;
                     _isCrawlingActive = false; // ⭐ 추가: 모든 데이터 처리 중단
                     
-                    // ⭐ 크롬 탭 닫기
-                    _ = Task.Run(() => CloseAllChromeTabs());
+                    // ⭐ 크롬 탭 자동 닫기 제거 (테스트용)
+                    // _ = Task.Run(() => CloseAllChromeTabs());
                     
                     // ⭐ 실제 파일 개수로 정확한 계산
                     var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -1411,7 +1419,74 @@ namespace Gumaedaehang.Services
                 LogWindow.AddLogStatic($"❌ Chrome 탭 닫기 실행 오류: {ex.Message}");
             }
         }
+        
+        // ⭐ 서버에서 모든 스토어 완료 체크
+        private void CheckAllStoresCompletedFromServer()
+        {
+            try
+            {
+                var currentCount = GetCurrentProductCount();
+                var totalStores = _selectedStores?.Count ?? 0;
+                
+                if (totalStores == 0)
+                {
+                    LogWindow.AddLogStatic("⚠️ 선택된 스토어가 없어서 완료 체크 건너뜀");
+                    return;
+                }
+                
+                // done 상태인 스토어 개수 확인
+                int completedStores = 0;
+                lock (_statesLock)
+                {
+                    completedStores = _storeStates.Values
+                        .Where(s => s.State == "done")
+                        .Select(s => s.StoreId)
+                        .Distinct()
+                        .Count();
+                }
+                
+                LogWindow.AddLogStatic($"📊 완료 상태 체크: {completedStores}/{totalStores} 스토어 완료, {currentCount}/100개 수집");
+                
+                // 모든 스토어가 완료된 경우
+                if (completedStores >= totalStores)
+                {
+                    LogWindow.AddLogStatic($"🎉 모든 스토어 완료 감지! 최종 수집: {currentCount}/100개");
+                    
+                    // 로딩창 숨김
+                    LoadingHelper.HideLoadingFromSourcingPage();
+                    
+                    // 팝업창 표시
+                    ShowCrawlingResultPopup(currentCount, "모든 스토어 방문 완료");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 서버 측 모든 스토어 완료 체크 오류: {ex.Message}");
+            }
+        }
 
+        // ⭐ 크롤링 상태 확인 API
+        private async Task<IResult> HandleGetCrawlingStatus(HttpContext context)
+        {
+            try
+            {
+                var currentCount = GetCurrentProductCount();
+                var processedStores = _processedStores.Count;
+                var totalStores = _selectedStores?.Count ?? 0;
+                
+                return Results.Ok(new { 
+                    currentCount = currentCount,
+                    processedStores = processedStores,
+                    totalStores = totalStores,
+                    isCompleted = currentCount >= TARGET_PRODUCT_COUNT || processedStores >= totalStores
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+        
         // ⭐ 모든 스토어 완료 처리
         private async Task<IResult> HandleAllStoresCompleted(HttpContext context)
         {
@@ -1450,8 +1525,8 @@ namespace Gumaedaehang.Services
                     // 팝업창 표시
                     ShowCrawlingResultPopup(currentCount, "모든 스토어 방문 완료");
                     
-                    // 크롬 탭 닫기
-                    _ = Task.Run(() => CloseAllChromeTabs());
+                    // 크롬 탭 자동 닫기 제거 (테스트용)
+                    // _ = Task.Run(() => CloseAllChromeTabs());
                 }
                 else
                 {
@@ -1813,13 +1888,16 @@ namespace Gumaedaehang.Services
                 if (_productCount >= 100)
                 {
                     LogWindow.AddLogStatic("🎉 목표 달성! 100개 상품 수집 완료 - 크롤링 중단");
+                    
+                    // ⭐ 크롤링 완전 중단 신호 설정
+                    _shouldStop = true;
                     _isCrawlingActive = false;
                     
                     // 🔄 로딩창 숨김 - 소싱 페이지에서 직접 처리
                     LoadingHelper.HideLoadingFromSourcingPage();
                     
-                    // ⭐ 크롬 탭 닫기
-                    _ = Task.Run(() => CloseAllChromeTabs());
+                    // ⭐ 크롬 탭 자동 닫기 제거 (테스트용)
+                    // _ = Task.Run(() => CloseAllChromeTabs());
                     
                     // ⭐ 팝업창으로 최종 결과 표시
                     ShowCrawlingResultPopup(_productCount, "목표 달성");

@@ -1311,3 +1311,53 @@ if (window.location.href.includes('smartstore.naver.com') && window.location.hre
     }, 3000);
   }
 }
+
+// ⭐ 네이버 가격비교 페이지에서 모든 스토어 완료 감지 시작
+if (window.location.href.includes('shopping.naver.com/overseas')) {
+  console.log('🔍 네이버 가격비교 페이지 - 모든 스토어 완료 감지 시작');
+  startAllStoresCompletionCheck();
+}
+
+// ⭐ 모든 스토어 완료 감지 시스템
+function startAllStoresCompletionCheck() {
+  console.log('🔍 모든 스토어 완료 감지 시작...');
+  
+  // 30초마다 체크
+  const checkInterval = setInterval(async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/smartstore/crawling-status');
+      const status = await response.json();
+      
+      console.log(`📊 크롤링 상태: ${status.processedStores}/${status.totalStores} 스토어 완료, ${status.currentCount}/100개 수집`);
+      
+      // 모든 스토어가 완료된 경우 (100개 달성 여부와 관계없이)
+      if (status.processedStores >= status.totalStores && status.totalStores > 0) {
+        console.log('🎉 모든 스토어 완료 감지! 서버에 알림 전송...');
+        clearInterval(checkInterval);
+        
+        // 서버에 모든 스토어 완료 알림
+        await fetch('http://localhost:8080/api/smartstore/all-stores-completed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            message: '모든 스토어 방문 완료',
+            finalCount: status.currentCount 
+          })
+        });
+        
+        console.log('✅ 모든 스토어 완료 알림 전송 완료');
+        return;
+      }
+      
+      // 100개 달성 시에도 체크 중단
+      if (status.currentCount >= 100) {
+        console.log('🎯 100개 달성으로 완료 체크 중단');
+        clearInterval(checkInterval);
+        return;
+      }
+      
+    } catch (error) {
+      console.error('❌ 완료 상태 체크 오류:', error);
+    }
+  }, 30000); // 30초마다 체크
+}
