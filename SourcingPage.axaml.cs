@@ -731,23 +731,12 @@ namespace Gumaedaehang
                 };
                 Grid.SetColumn(imageBorder, 0);
 
-                var image = new Image { Stretch = Stretch.Uniform, Margin = new Thickness(10) };
-                try
-                {
-                    if (File.Exists(imageUrl))
-                    {
-                        var bitmap = new Avalonia.Media.Imaging.Bitmap(imageUrl);
-                        image.Source = bitmap;
-                    }
-                    else
-                    {
-                        image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
-                    }
-                }
-                catch
-                {
-                    image.Source = new Avalonia.Media.Imaging.Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
-                }
+                var image = new LazyImage 
+                { 
+                    Stretch = Stretch.Uniform, 
+                    Margin = new Thickness(10),
+                    ImagePath = imageUrl
+                };
                 imageBorder.Child = image;
 
                 // 중간 정보 패널

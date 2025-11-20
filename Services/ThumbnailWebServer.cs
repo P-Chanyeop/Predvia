@@ -35,7 +35,6 @@ namespace Gumaedaehang.Services
         // ⭐ 상품 카운터 및 랜덤 선택 관련 변수
         private int _productCount = 0;
         private bool _isCrawlingActive = false;
-        private int _totalProductCount = 0;
         private const int TARGET_PRODUCT_COUNT = 100;
         private const int MAX_STORES_TO_VISIT = 10;
         private List<SmartStoreLink> _selectedStores = new();
@@ -135,7 +134,7 @@ namespace Gumaedaehang.Services
                 // ⭐ 서버 변수 초기화
                 lock (_counterLock)
                 {
-                    _totalProductCount = 0;
+                    _productCount = 0;
                     _shouldStop = false;
                 }
                 
@@ -374,7 +373,7 @@ namespace Gumaedaehang.Services
                 // 상품 카운터 초기화
                 lock (_counterLock)
                 {
-                    _totalProductCount = 0;
+                    _productCount = 0;
                     _shouldStop = false;
                     _processedStores.Clear(); // ⭐ 처리된 스토어 목록도 초기화
                     LogWindow.AddLogStatic($"🔄 상품 카운터 초기화: 0/{TARGET_PRODUCT_COUNT}개");
@@ -617,24 +616,24 @@ namespace Gumaedaehang.Services
                 // ⭐ 목표 달성 시 중단
                 lock (_counterLock)
                 {
-                    if (_shouldStop || _totalProductCount >= TARGET_PRODUCT_COUNT)
+                    if (_shouldStop || _productCount >= TARGET_PRODUCT_COUNT)
                     {
-                        LogWindow.AddLogStatic($"목표 달성으로 크롤링 중단: {_totalProductCount}/{TARGET_PRODUCT_COUNT}");
+                        LogWindow.AddLogStatic($"목표 달성으로 크롤링 중단: {_productCount}/{TARGET_PRODUCT_COUNT}");
                         return Results.Ok(new { 
                             success = true, 
                             stop = true,
-                            totalProducts = _totalProductCount,
+                            totalProducts = _productCount,
                             message = "Target reached, stopping crawl" 
                         });
                     }
                 }
 
                 LogWindow.AddLogStatic($"[{visitData.CurrentIndex}/{visitData.TotalCount}] 스마트스토어 공구탭 접속: {visitData.Title}");
-                LogWindow.AddLogStatic($"현재 상품 수: {_totalProductCount}/{TARGET_PRODUCT_COUNT}");
+                LogWindow.AddLogStatic($"현재 상품 수: {_productCount}/{TARGET_PRODUCT_COUNT}");
 
                 var response = new { 
                     success = true,
-                    currentProducts = _totalProductCount,
+                    currentProducts = _productCount,
                     targetProducts = TARGET_PRODUCT_COUNT,
                     message = "Visit logged successfully" 
                 };
@@ -946,21 +945,6 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                // ⭐ v1.39 수정: 100개 목표 달성 시 즉시 중단
-                lock (_counterLock)
-                {
-                    if (_shouldStop || _totalProductCount >= TARGET_PRODUCT_COUNT)
-                    {
-                        LogWindow.AddLogStatic($"🛑 100개 목표 달성으로 추가 상품 처리 중단 (현재: {_totalProductCount}/100)");
-                        return Results.Json(new { 
-                            success = true,
-                            stop = true,
-                            totalProducts = _totalProductCount,
-                            message = "Target reached, stopping crawling" 
-                        });
-                    }
-                }
-                
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
                 
@@ -978,202 +962,14 @@ namespace Gumaedaehang.Services
                     }, statusCode: 400);
                 }
                 
-                // ⭐ 크롤링 중단 체크 - 차단 시 즉시 중단
-                lock (_counterLock)
-                {
-                    if (_shouldStop)
-                    {
-                        LogWindow.AddLogStatic($"🛑 크롤링 중단됨 - {productData.StoreId ?? "Unknown"} 데이터 무시");
-                        return Results.Json(new { 
-                            success = true,
-                            stop = true,
-                            totalProducts = _totalProductCount,
-                            message = "Crawling stopped" 
-                        });
-                    }
-                }
-                
                 if (productData != null)
                 {
-                    // ⭐ 선택된 스토어인지 엄격하게 확인
-                    var selectedStoreIds = new List<string>();
-                    foreach (var store in _selectedStores)
-                    {
-                        var url = store.Url;
-                        if (url.Contains("smartstore.naver.com/"))
-                        {
-                            var decoded = Uri.UnescapeDataString(url);
-                            // ⭐ inflow URL에서 실제 스토어 ID 추출
-                            if (decoded.Contains("inflow/outlink/url?url="))
-                            {
-                                var innerUrlMatch = System.Text.RegularExpressions.Regex.Match(decoded, @"url=([^&]+)");
-                                if (innerUrlMatch.Success)
-                                {
-                                    var innerUrl = Uri.UnescapeDataString(innerUrlMatch.Groups[1].Value);
-                                    var storeMatch = System.Text.RegularExpressions.Regex.Match(innerUrl, @"smartstore\.naver\.com/([^/&?]+)");
-                                    if (storeMatch.Success)
-                                    {
-                                        selectedStoreIds.Add(storeMatch.Groups[1].Value);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // 일반 smartstore URL
-                                var match = System.Text.RegularExpressions.Regex.Match(decoded, @"smartstore\.naver\.com/([^/&?]+)");
-                                if (match.Success)
-                                {
-                                    selectedStoreIds.Add(match.Groups[1].Value);
-                                }
-                            }
-                        }
-                    }
-                    
-                    var isSelectedStore = selectedStoreIds.Contains(productData.StoreId, StringComparer.OrdinalIgnoreCase);
-                    
-                    LogWindow.AddLogStatic($"🔍 스토어 확인: {productData.StoreId} -> {(isSelectedStore ? "✅선택됨" : "❌선택안됨")}");
-                    LogWindow.AddLogStatic($"🔍 선택된 스토어들: {string.Join(", ", selectedStoreIds)}");
-                    
-                    if (!isSelectedStore)
-                    {
-                        LogWindow.AddLogStatic($"❌ 선택되지 않은 스토어 상품 데이터 완전 무시: {productData.StoreId}");
-                        return Results.Json(new { 
-                            success = true,
-                            skip = true,
-                            message = "Store not selected, data completely ignored" 
-                        });
-                    }
-                    
-                    // ⭐ 순차 처리 체크 - 현재 처리할 스토어가 아니면 차단
-                    lock (_storeProcessLock)
-                    {
-                        if (_currentStoreIndex < _selectedStores.Count)
-                        {
-                            var currentStore = _selectedStores[_currentStoreIndex];
-                            var currentStoreId = UrlExtensions.ExtractStoreIdFromUrl(currentStore.Url);
-                            
-                            if (!productData.StoreId.Equals(currentStoreId, StringComparison.OrdinalIgnoreCase))
-                            {
-                                LogWindow.AddLogStatic($"🚫 순차 처리 위반 - 현재: {currentStoreId}, 상품 데이터: {productData.StoreId} 차단");
-                                return Results.Json(new { 
-                                    success = true,
-                                    skip = true,
-                                    message = "순차 처리 대기 중" 
-                                });
-                            }
-                        }
-                    }
-                    
-                    // ⭐ 100개 초과 방지 - 미리 체크
-                    lock (_counterLock)
-                    {
-                        if (_shouldStop || _totalProductCount >= TARGET_PRODUCT_COUNT)
-                        {
-                            LogWindow.AddLogStatic($"🛑 이미 목표 달성으로 추가 상품 무시: {productData.StoreId} (현재: {_totalProductCount}/100)");
-                            return Results.Json(new { 
-                                success = true,
-                                stop = true,
-                                totalProducts = _totalProductCount,
-                                message = "Target already reached, ignoring additional products" 
-                            });
-                        }
-                    }
-                    
-                    // ⭐ 상품 카운터 업데이트 (정확히 100개까지만)
-                    lock (_counterLock)
-                    {
-                        // ⭐ 중복 처리 방지 체크
-                        if (_processedStores.Contains(productData.StoreId))
-                        {
-                            LogWindow.AddLogStatic($"🔄 이미 처리된 스토어 중복 요청 무시: {productData.StoreId}");
-                            return Results.Json(new { 
-                                success = true,
-                                duplicate = true,
-                                totalProducts = _totalProductCount,
-                                message = "Store already processed, ignoring duplicate request" 
-                            });
-                        }
-                        
-                        // ⭐ 처리된 스토어로 등록
-                        _processedStores.Add(productData.StoreId);
-                        
-                        var previousCount = _totalProductCount;
-                        var productsToAdd = Math.Min(productData.ProductCount, TARGET_PRODUCT_COUNT - _totalProductCount);
-                        
-                        if (productsToAdd <= 0)
-                        {
-                            LogWindow.AddLogStatic($"🛑 더 이상 추가할 수 없음: {productData.StoreId} (현재: {_totalProductCount}/100)");
-                            return Results.Json(new { 
-                                success = true,
-                                stop = true,
-                                totalProducts = _totalProductCount,
-                                message = "Cannot add more products, target reached" 
-                            });
-                        }
-                        
-                        // ⭐ 실시간 진행률 표시 (1/100 형태)
-                        for (int i = 1; i <= productsToAdd; i++)
-                        {
-                            var currentCount = previousCount + i;
-                            LogWindow.AddLogStatic($"📊 실시간 진행률: {currentCount}/100개 ({(currentCount * 100.0 / TARGET_PRODUCT_COUNT):F1}%)");
-                        }
-                        
-                        _totalProductCount += productsToAdd;
-                        
-                        LogWindow.AddLogStatic($"✅ {productData.StoreId}: {productsToAdd}개 상품 추가 완료 (요청: {productData.ProductCount}개, 전체: {_totalProductCount}/100)");
-                        
-                        // ⭐ 정확히 100개 달성 시 중단
-                        if (_totalProductCount >= TARGET_PRODUCT_COUNT)
-                        {
-                            _shouldStop = true;
-                            _isCrawlingActive = false; // ⭐ 추가: 모든 데이터 처리 중단
-                            LogWindow.AddLogStatic($"🎉 목표 달성! 정확히 100개 상품 수집 완료 - 크롤링 중단");
-                            
-                            // 🔄 로딩창 숨김 - 소싱 페이지에서 직접 처리
-                            LoadingHelper.HideLoadingFromSourcingPage();
-                            
-                            // ⭐ 크롬 탭 닫기
-                            _ = Task.Run(() => CloseAllChromeTabs());
-                            
-
-                            // ⭐ 팝업창으로 최종 결과 표시
-                            ShowCrawlingResultPopup(_totalProductCount, "목표 달성");
-                            
-                            // 🔥 즉시 카드 생성
-                            RefreshSourcingPage();
-                        }
-                    }
-                    
-                    // 상품 정보 로그 (처음 3개만)
-                    for (int i = 0; i < Math.Min(3, productData.Products.Count); i++)
-                    {
-                        var product = productData.Products[i];
-                        LogWindow.AddLogStatic($"  [{i + 1}] {product.Name} - {product.Price}");
-                    }
-                    
-                    if (productData.Products.Count > 3)
-                    {
-                        LogWindow.AddLogStatic($"  ... 외 {productData.Products.Count - 3}개 상품");
-                    }
-                    
-                    // ⭐ 스토어 완료 처리 - 다음 스토어로 이동
-                    lock (_storeProcessLock)
-                    {
-                        _currentStoreIndex++;
-                        LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
-                    }
-                }
-
-                // ⭐ 상품 데이터 처리 완료 - 무조건 다음 스토어로 이동
-                lock (_storeProcessLock)
-                {
-                    _currentStoreIndex++;
-                    LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                    LogWindow.AddLogStatic($"📊 {productData.StoreId}: {productData.ProductCount}개 상품 데이터 수신");
                 }
 
                 return Results.Json(new { 
                     success = true,
-                    totalProducts = _totalProductCount,
+                    totalProducts = _productCount,
                     targetProducts = TARGET_PRODUCT_COUNT,
                     shouldStop = _shouldStop,
                     message = "상품 데이터 수집 완료"
@@ -1476,12 +1272,12 @@ namespace Gumaedaehang.Services
                 var status = new
                 {
                     success = true,
-                    productCount = _totalProductCount,
+                    productCount = _productCount,
                     targetCount = TARGET_PRODUCT_COUNT,
                     isRunning = !_shouldStop,
                     shouldStop = _shouldStop,  // ⭐ Chrome 확장프로그램이 기대하는 필드 추가
                     selectedStores = _selectedStores.Count,
-                    progress = _totalProductCount * 100.0 / TARGET_PRODUCT_COUNT,
+                    progress = _productCount * 100.0 / TARGET_PRODUCT_COUNT,
                     timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                 };
                 
@@ -1551,7 +1347,7 @@ namespace Gumaedaehang.Services
                     ShowCrawlingResultPopup(actualCount, "차단 감지로 인한 중단");
                     
                     // ⭐ 80개 미만이면 Chrome 재시작
-                    if (_totalProductCount < 80)
+                    if (_productCount < 80)
                     {
                         LogWindow.AddLogStatic($"🔄 80개 미만 수집 - 크롤링 완료");
                     }
