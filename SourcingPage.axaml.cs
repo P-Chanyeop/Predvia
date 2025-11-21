@@ -90,10 +90,8 @@ namespace Gumaedaehang
         private DispatcherTimer? _keywordCheckTimer;
         private bool _keywordTagsCreated = false;
         private int _keywordSourceProductId = -1; // 키워드를 생성한 상품 ID 추적
+        private Dictionary<int, List<string>> _productKeywords = new(); // 상품별 키워드 저장
         private ChromeExtensionService? _extensionService;
-        
-        // 키워드 저장용 딕셔너리 추가
-        private Dictionary<int, List<string>> _savedKeywords = new Dictionary<int, List<string>>();
         
         // 상품별 UI 요소들을 관리하는 딕셔너리
         private Dictionary<int, ProductUIElements> _productElements = new Dictionary<int, ProductUIElements>();
@@ -1821,7 +1819,7 @@ namespace Gumaedaehang
         {
             try
             {
-                _savedKeywords.Clear();
+                _productKeywords.Clear();
                 
                 var container = this.FindControl<StackPanel>("RealDataContainer");
                 if (container == null) return;
@@ -1864,12 +1862,12 @@ namespace Gumaedaehang
                     
                     if (keywords.Count > 0)
                     {
-                        _savedKeywords[productId] = keywords;
+                        _productKeywords[productId] = keywords;
                         Debug.WriteLine($"✅ 상품 {productId}: {keywords.Count}개 크롤링 키워드 저장");
                     }
                 }
                 
-                Debug.WriteLine($"✅ 전체 키워드 저장 완료: {_savedKeywords.Count}개 상품");
+                Debug.WriteLine($"✅ 전체 키워드 저장 완료: {_productKeywords.Count}개 상품");
             }
             catch (Exception ex)
             {
@@ -1882,9 +1880,9 @@ namespace Gumaedaehang
         {
             try
             {
-                Debug.WriteLine($"🔄 키워드 복원 시작: {_savedKeywords.Count}개 상품");
+                Debug.WriteLine($"🔄 키워드 복원 시작: {_productKeywords.Count}개 상품");
                 
-                foreach (var kvp in _savedKeywords)
+                foreach (var kvp in _productKeywords)
                 {
                     var productId = kvp.Key;
                     var keywords = kvp.Value;
@@ -2382,7 +2380,8 @@ namespace Gumaedaehang
         {
             try
             {
-                var keywords = await GetLatestKeywordsFromServer();
+                var currentProductId = _keywordSourceProductId;
+                var keywords = await GetLatestKeywordsFromServer(currentProductId);
                 
                 if (keywords != null && keywords.Count > 0 && !_keywordTagsCreated)
                 {
@@ -2390,7 +2389,7 @@ namespace Gumaedaehang
                     
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        CreateKeywordTags(keywords, _keywordSourceProductId);
+                        CreateKeywordTags(keywords, currentProductId);
                         _keywordTagsCreated = true; // 한 번만 생성
                         _keywordCheckTimer?.Stop(); // 타이머 중지
                     });
@@ -2427,36 +2426,32 @@ namespace Gumaedaehang
         {
             try
             {
-                LogWindow.AddLogStatic("🏷️ SourcingPage - 키워드 태그 생성 시작");
+                // ⭐ 현재 상품 ID를 로컬 변수로 캡처 (전역 변수가 변경되어도 안전)
+                var currentProductId = _keywordSourceProductId;
+                LogWindow.AddLogStatic($"🏷️ SourcingPage - 키워드 태그 생성 시작 (상품 ID: {currentProductId})");
                 
-                // ⭐ 실제 서버에서 키워드 받아오기
-                var keywords = await GetLatestKeywordsFromServer();
+                // ⭐ 실제 서버에서 키워드 받아오기 (상품 ID 전달)
+                var keywords = await GetLatestKeywordsFromServer(currentProductId);
                 
                 if (keywords != null && keywords.Count > 0)
                 {
                     LogWindow.AddLogStatic($"🏷️ 서버에서 키워드 {keywords.Count}개 수신: {string.Join(", ", keywords.Take(5))}...");
                     
+                    // ⭐ 상품별로 키워드 저장
+                    _productKeywords[currentProductId] = keywords;
+                    
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        CreateKeywordTags(keywords, _keywordSourceProductId);
+                        CreateKeywordTags(keywords, currentProductId);
+                        _keywordTagsCreated = true; // ⭐ 플래그 설정
+                        _keywordCheckTimer?.Stop(); // ⭐ 타이머 중지
                     });
                     
-                    LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 UI 생성 완료");
+                    LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 UI 생성 완료 (상품 ID: {currentProductId})");
                 }
                 else
                 {
                     LogWindow.AddLogStatic("❌ 서버에서 키워드를 받아오지 못했습니다.");
-                    LogWindow.AddLogStatic("🔄 테스트 키워드로 대체합니다.");
-                    
-                    // 임시로 테스트 키워드 사용
-                    var testKeywords = new List<string> { "원목", "사다리", "그네", "방문", "문틀", "가정용", "어린이용", "접이식" };
-                    
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        CreateKeywordTags(testKeywords, _keywordSourceProductId);
-                    });
-                    
-                    LogWindow.AddLogStatic($"✅ 테스트 키워드 태그 {testKeywords.Count}개 생성 완료");
                 }
             }
             catch (Exception ex)
@@ -2466,13 +2461,13 @@ namespace Gumaedaehang
         }
 
         // ⭐ 서버에서 최신 키워드 받아오기
-        private async Task<List<string>?> GetLatestKeywordsFromServer()
+        private async Task<List<string>?> GetLatestKeywordsFromServer(int productId)
         {
             try
             {
-                LogWindow.AddLogStatic("🌐 서버에서 키워드 조회 중...");
+                LogWindow.AddLogStatic($"🌐 서버에서 키워드 조회 중... (상품 ID: {productId})");
                 using var client = new HttpClient();
-                var response = await client.GetAsync("http://localhost:8080/api/smartstore/latest-keywords");
+                var response = await client.GetAsync($"http://localhost:8080/api/smartstore/latest-keywords?productId={productId}");
                 
                 LogWindow.AddLogStatic($"📡 서버 응답 상태: {response.StatusCode}");
                 

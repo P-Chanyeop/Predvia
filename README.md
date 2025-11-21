@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.61-orange)
+![Release](https://img.shields.io/badge/Release-v1.62-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,25 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.61 - 키워드 시스템 완전 개선)
+### 🔄 최신 업데이트 (v1.62 - 상품별 독립 키워드 시스템 완전 구현)
+- [x] **🏷️ 상품별 독립 키워드 저장 시스템 구현**: 각 상품마다 고유한 키워드를 저장하고 관리
+  - **Dictionary<int, List<string>> 구조**: 상품 ID를 키로 사용하여 각 상품의 키워드 독립 저장
+  - **타이밍 문제 해결**: 비동기 키워드 조회 시 로컬 변수 캡처로 race condition 방지
+  - **상품 1 → 징크스, 상품 2 → 망치**: 각 상품이 자신만의 키워드를 정확히 유지
+- [x] **🔧 Results.Json() 버그 우회**: ASP.NET Core Results.Json()이 빈 응답을 보내는 문제 해결
+  - **HttpContext.Response.WriteAsync() 직접 사용**: JSON 직렬화 후 직접 응답 작성
+  - **명시적 Content-Type 설정**: "application/json; charset=utf-8" 헤더 추가
+  - **빈 응답 문제 완전 해결**: 클라이언트가 정상적으로 JSON 데이터 수신
+- [x] **⚡ 최신 키워드 초기화 시스템**: 키워드 밀림 현상 완전 해결
+  - **_latestKeywords 변수 추가**: 가장 최근 검색 키워드만 별도 저장
+  - **자동 초기화**: 클라이언트가 키워드 조회 후 자동으로 _latestKeywords 초기화
+  - **키워드 밀림 방지**: 상품 2 검색 시 상품 1 키워드가 나오던 문제 완전 해결
+- [x] **📊 상세한 디버깅 로그 시스템**: 키워드 저장/조회 과정의 모든 단계 추적
+  - **타임스탬프 로깅**: 키워드 저장 시간 정확히 기록 (HH:mm:ss.fff)
+  - **저장된 키워드 현황**: 각 상품별 키워드 개수 실시간 표시
+  - **복사 및 초기화 로그**: 키워드 복사 및 초기화 과정 명확히 추적
+
+### 🔄 이전 업데이트 (v1.61 - 키워드 시스템 완전 개선)
 - [x] **🏷️ 크롤링 키워드 저장/복원 시스템 구현**: 사용자 입력 키워드가 아닌 크롤링된 키워드만 저장 및 복원
   - **SaveCurrentKeywords 개선**: KeywordTagPanel에서 크롤링된 키워드 태그 추출 및 저장
   - **RestoreSavedKeywords 개선**: CreateKeywordTags 메서드 재사용으로 완벽한 UI 복원
