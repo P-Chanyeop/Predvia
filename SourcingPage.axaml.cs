@@ -92,6 +92,9 @@ namespace Gumaedaehang
         private int _keywordSourceProductId = -1; // 키워드를 생성한 상품 ID 추적
         private ChromeExtensionService? _extensionService;
         
+        // 키워드 저장용 딕셔너리 추가
+        private Dictionary<int, List<string>> _savedKeywords = new Dictionary<int, List<string>>();
+        
         // 상품별 UI 요소들을 관리하는 딕셔너리
         private Dictionary<int, ProductUIElements> _productElements = new Dictionary<int, ProductUIElements>();
         
@@ -1078,6 +1081,7 @@ namespace Gumaedaehang
                     ProductId = cardId,
                     NameInputBox = nameInputText,
                     ByteCountTextBlock = byteCountText,
+                    KeywordPanel = keywordPanel,
                     KeywordInputBox = keywordInput,
                     AddKeywordButton = addButton
                 };
@@ -1267,6 +1271,9 @@ namespace Gumaedaehang
             // ⭐ 키워드 생성한 상품 ID 저장
             _keywordSourceProductId = productId;
             
+            // ⭐ 키워드 태그 생성 플래그 리셋 (새 검색 허용)
+            _keywordTagsCreated = false;
+            
             // ⭐ 추가 버튼은 크롤링 플래그 리셋
             await ResetCrawlingAllowed();
             
@@ -1330,7 +1337,7 @@ namespace Gumaedaehang
             }
         }
         
-        // 입력창에서 키워드 추가
+        // 입력창에서 키워드 추가 (UI 표시 안 함, 검색만)
         private async void AddKeywordFromInput(int productId)
         {
             if (_productElements.TryGetValue(productId, out var product) && 
@@ -1341,15 +1348,11 @@ namespace Gumaedaehang
                 var rawText = product.KeywordInputBox.Text.Trim();
                 var keyword = rawText.Normalize(System.Text.NormalizationForm.FormC);
                 
-                if (!string.IsNullOrEmpty(keyword) && !product.ProductNameKeywords.Contains(keyword))
+                if (!string.IsNullOrEmpty(keyword))
                 {
-                    product.ProductNameKeywords.Add(keyword);
-                    product.SelectedKeywords.Add(keyword);
-                    UpdateProductNameKeywordDisplay(productId);
-                    UpdateProductKeywordDisplay(productId);
                     product.KeywordInputBox.Text = "";
                     
-                    // 🔍 네이버 가격비교에서 키워드 검색
+                    // 🔍 네이버 가격비교에서 키워드 검색만 (UI 표시 안 함)
                     await SearchNaverPriceComparison(keyword);
                 }
             }
@@ -1741,6 +1744,16 @@ namespace Gumaedaehang
             LogWindow.AddLogStatic("🔥 추가하기+ 버튼 클릭됨!");
             Debug.WriteLine("추가하기+ 링크 클릭됨");
             
+            // ⭐ 데이터 있는 화면으로 전환 + 키워드 복원
+            _hasData = true;
+            UpdateViewVisibility();
+            
+            // ⭐ 키워드 복원 (지연 실행)
+            Dispatcher.UIThread.Post(() =>
+            {
+                RestoreSavedKeywords();
+            }, DispatcherPriority.Background);
+            
             // ⭐ 추가 버튼은 크롤링 플래그 리셋 후 페이지만 열기
             try
             {
@@ -1789,6 +1802,12 @@ namespace Gumaedaehang
                 // 크롤링된 실제 데이터 로드
                 LoadCrawledData();
                 
+                // ⭐ 카드 생성 완료 후 키워드 복원 (지연 실행)
+                Dispatcher.UIThread.Post(() =>
+                {
+                    RestoreSavedKeywords();
+                }, DispatcherPriority.Background);
+                
                 Debug.WriteLine("✅ 실제 크롤링 데이터 로드 완료");
             }
             catch (Exception ex)
@@ -1797,10 +1816,125 @@ namespace Gumaedaehang
             }
         }
         
+        // 현재 키워드 저장 (크롤링 키워드 포함)
+        private void SaveCurrentKeywords()
+        {
+            try
+            {
+                _savedKeywords.Clear();
+                
+                var container = this.FindControl<StackPanel>("RealDataContainer");
+                if (container == null) return;
+                
+                var productCards = container.Children.OfType<StackPanel>().ToList();
+                
+                for (int i = 0; i < productCards.Count; i++)
+                {
+                    var productId = i + 1; // 1-based
+                    var productCard = productCards[i];
+                    var keywords = new List<string>();
+                    
+                    // ⭐ KeywordTagPanel에서 크롤링된 키워드 추출
+                    var keywordTagPanel = productCard.Children.OfType<StackPanel>()
+                        .FirstOrDefault(sp => sp.Name == "KeywordTagPanel");
+                    
+                    if (keywordTagPanel != null)
+                    {
+                        // Border > ScrollViewer > StackPanel > StackPanel(행) > Border(태그)
+                        var border = keywordTagPanel.Children.OfType<Border>().FirstOrDefault();
+                        if (border?.Child is ScrollViewer scrollViewer &&
+                            scrollViewer.Content is StackPanel wrapPanel)
+                        {
+                            foreach (var row in wrapPanel.Children.OfType<StackPanel>())
+                            {
+                                foreach (var tag in row.Children.OfType<Border>())
+                                {
+                                    if (tag.Child is TextBlock textBlock)
+                                    {
+                                        var keyword = textBlock.Text?.Trim();
+                                        if (!string.IsNullOrEmpty(keyword))
+                                        {
+                                            keywords.Add(keyword);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (keywords.Count > 0)
+                    {
+                        _savedKeywords[productId] = keywords;
+                        Debug.WriteLine($"✅ 상품 {productId}: {keywords.Count}개 크롤링 키워드 저장");
+                    }
+                }
+                
+                Debug.WriteLine($"✅ 전체 키워드 저장 완료: {_savedKeywords.Count}개 상품");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 키워드 저장 오류: {ex.Message}");
+            }
+        }
+        
+        // 저장된 키워드 복원 (크롤링 키워드 복원)
+        private void RestoreSavedKeywords()
+        {
+            try
+            {
+                Debug.WriteLine($"🔄 키워드 복원 시작: {_savedKeywords.Count}개 상품");
+                
+                foreach (var kvp in _savedKeywords)
+                {
+                    var productId = kvp.Key;
+                    var keywords = kvp.Value;
+                    
+                    Debug.WriteLine($"🔄 상품 {productId}: {keywords.Count}개 키워드 복원 시도");
+                    
+                    // CreateKeywordTags 메서드 재사용
+                    CreateKeywordTags(keywords, productId);
+                }
+                
+                Debug.WriteLine($"✅ 전체 키워드 복원 완료");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 키워드 복원 오류: {ex.Message}");
+            }
+        }
+        
+        // 단일 키워드 태그 생성
+        private void CreateSingleKeywordTag(string keyword, WrapPanel container, int productId)
+        {
+            var keywordBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.Parse("#FFDAC4")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#E67E22")),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(15),
+                Padding = new Thickness(12, 6),
+                Margin = new Thickness(0, 0, 8, 8)
+            };
+
+            var keywordText = new TextBlock
+            {
+                Text = keyword,
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.Parse("#333333")),
+                FontFamily = new FontFamily("Malgun Gothic")
+            };
+
+            keywordBorder.Child = keywordText;
+            container.Children.Add(keywordBorder);
+        }
+        
         private void TestDataButton2_Click(object? sender, RoutedEventArgs e)
         {
             try
             {
+                // 현재 키워드 저장
+                SaveCurrentKeywords();
+                
                 // 카드는 그대로 두고 화면 전환만
                 _hasData = false;
                 UpdateViewVisibility();
@@ -2099,11 +2233,13 @@ namespace Gumaedaehang
             {
                 LogWindow.AddLogStatic($"🔍 네이버 가격비교 검색 시작: {keyword}");
                 
-                // ⭐ "추가" 버튼 클릭 시 키워드 타이머 시작
-                if (_keywordCheckTimer == null)
+                // ⭐ 키워드 타이머 재시작 (기존 타이머 중단 후 새로 시작)
+                if (_keywordCheckTimer != null)
                 {
-                    StartKeywordCheckTimer();
+                    _keywordCheckTimer.Stop();
+                    _keywordCheckTimer = null;
                 }
+                StartKeywordCheckTimer();
                 
                 // URL 인코딩
                 var encodedKeyword = Uri.EscapeDataString(keyword);
