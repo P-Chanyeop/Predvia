@@ -50,8 +50,10 @@ namespace Gumaedaehang.Services
         private bool _crawlingAllowed = false;
         private readonly object _crawlingLock = new object();
 
-        // ⭐ 최신 키워드 저장
-        private List<string> _latestKeywords = new();
+        // ⭐ 상품별 키워드 저장 (productId → keywords)
+        private Dictionary<int, List<string>> _productKeywords = new();
+        private List<string> _latestKeywords = new();  // 가장 최근 키워드
+        private DateTime _latestKeywordsTime = DateTime.MinValue;  // 최근 키워드 시간
         private readonly object _keywordsLock = new object();
 
         public ThumbnailWebServer()
@@ -2211,21 +2213,25 @@ namespace Gumaedaehang.Services
                     return Results.Json(new { success = false, message = "상품명이 없습니다." });
                 }
                 
-                LogWindow.AddLogStatic($"📝 상품명 {request.ProductNames.Count}개 수신");
+                var productId = request.ProductId > 0 ? request.ProductId : 0;
+                LogWindow.AddLogStatic($"📝 상품명 {request.ProductNames.Count}개 수신 (상품 ID: {productId})");
                 
                 // 한글만 추출 및 중복 제거
                 var koreanKeywords = ExtractKoreanKeywords(request.ProductNames);
                 
-                // ⭐ 최신 키워드 저장
+                // ⭐ 최신 키워드를 별도로 저장 (타임스탬프 포함)
                 lock (_keywordsLock)
                 {
+                    _productKeywords[productId] = koreanKeywords;
                     _latestKeywords = koreanKeywords;
+                    _latestKeywordsTime = DateTime.Now;
                 }
                 
-                LogWindow.AddLogStatic($"✅ 한글 키워드 {koreanKeywords.Count}개 추출 완료");
+                LogWindow.AddLogStatic($"✅ 한글 키워드 {koreanKeywords.Count}개 추출 완료 (상품 ID: {productId}, 시간: {_latestKeywordsTime:HH:mm:ss.fff})");
                 
                 return Results.Json(new { 
                     success = true, 
+                    productId = productId,
                     originalCount = request.ProductNames.Count,
                     filteredCount = koreanKeywords.Count,
                     keywords = koreanKeywords 
@@ -2288,9 +2294,10 @@ namespace Gumaedaehang.Services
                     // 키워드가 있는지 확인하고 로그에 알림
                     lock (_keywordsLock)
                     {
-                        if (_latestKeywords != null && _latestKeywords.Count > 0)
+                        if (_productKeywords != null && _productKeywords.Count > 0)
                         {
-                            LogWindow.AddLogStatic($"🏷️ 키워드 {_latestKeywords.Count}개 준비됨 - UI 생성 필요");
+                            var totalKeywords = _productKeywords.Values.Sum(k => k.Count);
+                            LogWindow.AddLogStatic($"🏷️ 키워드 {totalKeywords}개 준비됨 - UI 생성 필요");
                             LogWindow.AddLogStatic("🔔 소싱 페이지에서 키워드를 가져가세요!");
                         }
                         else
@@ -2356,17 +2363,65 @@ namespace Gumaedaehang.Services
                 LogWindow.AddLogStatic($"❌ 키워드 태그 표시 오류: {ex.Message}");
             }
         }
-        private async Task<IResult> HandleGetLatestKeywords()
+        private async Task<IResult> HandleGetLatestKeywords(HttpContext context)
         {
-            await Task.CompletedTask;
+            // ⭐ 쿼리 파라미터에서 productId 가져오기
+            var productIdStr = context.Request.Query["productId"].ToString();
+            var productId = int.TryParse(productIdStr, out var id) ? id : 0;
+            
+            LogWindow.AddLogStatic($"🔍 키워드 조회 요청: productId={productId}");
+            
+            object responseData;
+            
             lock (_keywordsLock)
             {
-                return Results.Json(new { 
-                    success = true,
-                    keywords = _latestKeywords,
-                    filteredCount = _latestKeywords.Count
-                });
+                LogWindow.AddLogStatic($"🔍 저장된 키워드 개수: {_productKeywords.Count}개, 최신 키워드: {_latestKeywords.Count}개 (시간: {_latestKeywordsTime:HH:mm:ss.fff})");
+                
+                if (_productKeywords.TryGetValue(productId, out var keywords))
+                {
+                    LogWindow.AddLogStatic($"✅ productId={productId} 키워드 {keywords.Count}개 반환");
+                    responseData = new { 
+                        success = true,
+                        productId = productId,
+                        keywords = keywords,
+                        filteredCount = keywords.Count
+                    };
+                }
+                // ⭐ 요청한 productId가 없으면 가장 최근 키워드 반환
+                else if (_latestKeywords.Count > 0)
+                {
+                    LogWindow.AddLogStatic($"✅ 최신 키워드를 productId={productId}로 복사 ({_latestKeywords.Count}개)");
+                    // ⭐ 최신 키워드를 요청한 productId로 복사
+                    _productKeywords[productId] = new List<string>(_latestKeywords);
+                    
+                    responseData = new { 
+                        success = true,
+                        productId = productId,
+                        keywords = _latestKeywords,
+                        filteredCount = _latestKeywords.Count
+                    };
+                    
+                    // ⭐ 복사 후 최신 키워드 초기화 (다음 검색을 위해)
+                    _latestKeywords = new List<string>();
+                    LogWindow.AddLogStatic($"🧹 최신 키워드 초기화 완료");
+                }
+                else
+                {
+                    LogWindow.AddLogStatic($"❌ 키워드 없음 - 빈 배열 반환");
+                    responseData = new { 
+                        success = true,
+                        productId = productId,
+                        keywords = new List<string>(),
+                        filteredCount = 0
+                    };
+                }
             }
+            
+            // ⭐ 직접 JSON 응답 작성
+            context.Response.ContentType = "application/json; charset=utf-8";
+            var json = JsonSerializer.Serialize(responseData);
+            await context.Response.WriteAsync(json);
+            return Results.Ok();
         }
 
         // ⭐ 크롤링 플래그 리셋 API
@@ -2757,6 +2812,9 @@ public class ProductCategoryData
     {
         [JsonPropertyName("productNames")]
         public List<string> ProductNames { get; set; } = new();
+        
+        [JsonPropertyName("productId")]
+        public int ProductId { get; set; } = 0;
         
         [JsonPropertyName("pageUrl")]
         public string PageUrl { get; set; } = string.Empty;
