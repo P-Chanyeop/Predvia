@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.58-orange)
+![Release](https://img.shields.io/badge/Release-v1.61-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,22 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.60 - 크롤링 완료 시스템 개선)
+### 🔄 최신 업데이트 (v1.61 - 키워드 시스템 완전 개선)
+- [x] **🏷️ 크롤링 키워드 저장/복원 시스템 구현**: 사용자 입력 키워드가 아닌 크롤링된 키워드만 저장 및 복원
+  - **SaveCurrentKeywords 개선**: KeywordTagPanel에서 크롤링된 키워드 태그 추출 및 저장
+  - **RestoreSavedKeywords 개선**: CreateKeywordTags 메서드 재사용으로 완벽한 UI 복원
+  - **화면 전환 시 키워드 유지**: "데이터 없는 화면 보기" ↔ "추가하기+" 전환 시 키워드 완벽 보존
+- [x] **🔄 키워드 검색 반복 실행 문제 해결**: _keywordTagsCreated 플래그 리셋으로 여러 번 검색 가능
+  - **AddKeywordButton_Click 개선**: 매 검색마다 플래그 리셋으로 반복 검색 허용
+  - **첫 검색 이후에도 정상 작동**: 두 번째, 세 번째 검색에서도 키워드 태그 정상 표시
+- [x] **🎨 사용자 입력 키워드 UI 표시 제거**: 검색 기능만 실행, UI에는 크롤링 키워드만 표시
+  - **AddKeywordFromInput 간소화**: ProductNameKeywords, SelectedKeywords 업데이트 제거
+  - **깔끔한 UI**: 크롤링으로 가져온 키워드만 주황색 박스에 표시
+- [x] **🔧 KeywordPanel 참조 문제 해결**: ProductUIElements에 KeywordPanel 할당 추가
+  - **완벽한 데이터 구조**: 모든 상품 카드의 KeywordPanel 정상 참조
+  - **시스템 안정성 향상**: 키워드 저장/복원 로직의 완전한 동작 보장
+
+### 🔄 이전 업데이트 (v1.60 - 크롤링 완료 시스템 개선)
 - [x] **🔧 Chrome 창 자동 닫기 로직 제거**: 테스트 편의성을 위해 크롤링 완료 후 Chrome 창 자동 닫기 기능 제거
 - [x] **🎯 100개 달성 시 완전 중단 시스템**: `_shouldStop = true` 플래그 추가로 100개 달성 시 모든 추가 크롤링 요청 완전 차단
 - [x] **📊 서버 기반 모든 스토어 완료 감지**: Chrome 확장프로그램에 의존하지 않고 서버에서 직접 모든 스토어 완료 감지
