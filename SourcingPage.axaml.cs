@@ -2739,8 +2739,11 @@ namespace Gumaedaehang
                     var inputText = nameDirectInput.Text?.Trim() ?? "";
                     if (!string.IsNullOrEmpty(inputText))
                     {
-                        // 상품명 입력박스에 직접 설정 (기존 내용 덮어쓰기)
-                        product.NameInputBox.Text = inputText;
+                        // 상품명 입력박스에 추가 (기존 내용 보존)
+                        var existingText = product.NameInputBox.Text?.Trim() ?? "";
+                        product.NameInputBox.Text = string.IsNullOrEmpty(existingText) 
+                            ? inputText 
+                            : $"{existingText} {inputText}";
                         
                         // 입력박스 내용 지우기
                         nameDirectInput.Text = "";
