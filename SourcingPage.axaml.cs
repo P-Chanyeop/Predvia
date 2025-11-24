@@ -88,7 +88,6 @@ namespace Gumaedaehang
         
         // 키워드 태그 자동 생성을 위한 타이머
         private DispatcherTimer? _keywordCheckTimer;
-        private bool _keywordTagsCreated = false;
         private int _keywordSourceProductId = -1; // 키워드를 생성한 상품 ID 추적
         private Dictionary<int, List<string>> _productKeywords = new(); // 상품별 키워드 저장
         private ChromeExtensionService? _extensionService;
@@ -1269,11 +1268,11 @@ namespace Gumaedaehang
             // ⭐ 키워드 생성한 상품 ID 저장
             _keywordSourceProductId = productId;
             
-            // ⭐ 키워드 태그 생성 플래그 리셋 (새 검색 허용)
-            _keywordTagsCreated = false;
-            
             // ⭐ 추가 버튼은 크롤링 플래그 리셋
             await ResetCrawlingAllowed();
+            
+            // ⭐ 서버에 현재 상품 ID 설정
+            await SetCurrentProductId(productId);
             
             if (_productElements.TryGetValue(productId, out var product))
             {
@@ -2348,6 +2347,34 @@ namespace Gumaedaehang
             }
         }
 
+        // ⭐ 서버에 현재 상품 ID 설정
+        private async Task SetCurrentProductId(int productId)
+        {
+            try
+            {
+                using var client = new HttpClient();
+                var content = new StringContent(
+                    JsonSerializer.Serialize(new { productId = productId }),
+                    System.Text.Encoding.UTF8,
+                    "application/json"
+                );
+                var response = await client.PostAsync("http://localhost:8080/api/smartstore/set-current-product", content);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    LogWindow.AddLogStatic($"✅ 서버에 현재 상품 ID 설정 완료: {productId}");
+                }
+                else
+                {
+                    LogWindow.AddLogStatic($"❌ 서버에 현재 상품 ID 설정 실패: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 현재 상품 ID 설정 오류: {ex.Message}");
+            }
+        }
+
         // ⭐ 키워드 체크 타이머 시작
         private void StartKeywordCheckTimer()
         {
@@ -2360,10 +2387,7 @@ namespace Gumaedaehang
                 
                 _keywordCheckTimer.Tick += async (sender, e) =>
                 {
-                    if (!_keywordTagsCreated)
-                    {
-                        await CheckAndCreateKeywordTags();
-                    }
+                    await CheckAndCreateKeywordTags();
                 };
                 
                 _keywordCheckTimer.Start();
@@ -2383,23 +2407,16 @@ namespace Gumaedaehang
                 var currentProductId = _keywordSourceProductId;
                 var keywords = await GetLatestKeywordsFromServer(currentProductId);
                 
-                if (keywords != null && keywords.Count > 0 && !_keywordTagsCreated)
+                if (keywords != null && keywords.Count > 0)
                 {
                     LogWindow.AddLogStatic($"🏷️ 키워드 {keywords.Count}개 발견 - 태그 생성 시작");
                     
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         CreateKeywordTags(keywords, currentProductId);
-                        _keywordTagsCreated = true; // 한 번만 생성
-                        _keywordCheckTimer?.Stop(); // 타이머 중지
                     });
                     
                     LogWindow.AddLogStatic("✅ 키워드 태그 자동 생성 완료");
-                }
-                else if (_keywordTagsCreated)
-                {
-                    // 이미 키워드 태그가 생성되었으면 타이머 중지
-                    _keywordCheckTimer?.Stop();
                 }
             }
             catch (Exception ex)
@@ -2433,21 +2450,27 @@ namespace Gumaedaehang
                 // ⭐ 실제 서버에서 키워드 받아오기 (상품 ID 전달)
                 var keywords = await GetLatestKeywordsFromServer(currentProductId);
                 
-                if (keywords != null && keywords.Count > 0)
+                if (keywords != null)
                 {
-                    LogWindow.AddLogStatic($"🏷️ 서버에서 키워드 {keywords.Count}개 수신: {string.Join(", ", keywords.Take(5))}...");
+                    if (keywords.Count > 0)
+                    {
+                        LogWindow.AddLogStatic($"🏷️ 서버에서 키워드 {keywords.Count}개 수신: {string.Join(", ", keywords.Take(5))}...");
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic($"🏷️ 서버에서 빈 키워드 수신 (상품 ID: {currentProductId})");
+                    }
                     
                     // ⭐ 상품별로 키워드 저장
                     _productKeywords[currentProductId] = keywords;
                     
+                    // ⭐ 키워드가 있든 없든 무조건 UI 업데이트 (기존 태그 제거 포함)
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         CreateKeywordTags(keywords, currentProductId);
-                        _keywordTagsCreated = true; // ⭐ 플래그 설정
-                        _keywordCheckTimer?.Stop(); // ⭐ 타이머 중지
                     });
                     
-                    LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 UI 생성 완료 (상품 ID: {currentProductId})");
+                    LogWindow.AddLogStatic($"✅ 키워드 태그 UI 업데이트 완료 (상품 ID: {currentProductId}, 키워드 {keywords.Count}개)");
                 }
                 else
                 {
@@ -2545,12 +2568,24 @@ namespace Gumaedaehang
                     return;
                 }
 
-                // 기존 키워드 패널 제거
+                // ⭐ 기존 키워드 패널 완전 제거 (강제)
                 var existingKeywordPanel = targetProductCard.Children.OfType<StackPanel>()
                     .FirstOrDefault(sp => sp.Name == "KeywordTagPanel");
                 if (existingKeywordPanel != null)
                 {
                     targetProductCard.Children.Remove(existingKeywordPanel);
+                    LogWindow.AddLogStatic($"🧹 기존 키워드 패널 제거 완료 (상품 ID: {targetProductId})");
+                }
+                else
+                {
+                    LogWindow.AddLogStatic($"ℹ️ 기존 키워드 패널 없음 (상품 ID: {targetProductId})");
+                }
+
+                // ⭐ 키워드가 없으면 빈 패널만 생성하고 종료
+                if (keywords == null || keywords.Count == 0)
+                {
+                    LogWindow.AddLogStatic($"ℹ️ 키워드 없음 - 패널 생성 안함 (상품 ID: {targetProductId})");
+                    return;
                 }
 
                 // ⭐ 키워드 태그 패널 생성 (스크롤 가능한 박스)

@@ -54,6 +54,7 @@ namespace Gumaedaehang.Services
         private Dictionary<int, List<string>> _productKeywords = new();
         private List<string> _latestKeywords = new();  // 가장 최근 키워드
         private DateTime _latestKeywordsTime = DateTime.MinValue;  // 최근 키워드 시간
+        private int _currentProductId = 0;  // 현재 검색 중인 상품 ID
         private readonly object _keywordsLock = new object();
 
         public ThumbnailWebServer()
@@ -127,6 +128,7 @@ namespace Gumaedaehang.Services
                 
                 // ⭐ 상품명 처리 API 추가
                 _app.MapPost("/api/smartstore/product-names", HandleProductNames);
+                _app.MapPost("/api/smartstore/set-current-product", HandleSetCurrentProduct); // ⭐ 현재 상품 ID 설정 API
                 _app.MapGet("/api/smartstore/latest-keywords", HandleGetLatestKeywords);
                 _app.MapPost("/api/smartstore/trigger-keywords", HandleTriggerKeywords);
                 _app.MapPost("/api/smartstore/all-stores-completed", HandleAllStoresCompleted); // ⭐ 모든 스토어 완료 API 추가
@@ -2213,21 +2215,33 @@ namespace Gumaedaehang.Services
                     return Results.Json(new { success = false, message = "상품명이 없습니다." });
                 }
                 
-                var productId = request.ProductId > 0 ? request.ProductId : 0;
-                LogWindow.AddLogStatic($"📝 상품명 {request.ProductNames.Count}개 수신 (상품 ID: {productId})");
+                var productId = request.ProductId > 0 ? request.ProductId : _currentProductId;
+                LogWindow.AddLogStatic($"📝 상품명 {request.ProductNames.Count}개 수신 (상품 ID: {productId}, 현재 설정: {_currentProductId})");
                 
                 // 한글만 추출 및 중복 제거
                 var koreanKeywords = ExtractKoreanKeywords(request.ProductNames);
                 
-                // ⭐ 최신 키워드를 별도로 저장 (타임스탬프 포함)
+                // ⭐ 키워드 누적 저장 (기존 키워드에 추가)
                 lock (_keywordsLock)
                 {
-                    _productKeywords[productId] = koreanKeywords;
-                    _latestKeywords = koreanKeywords;
+                    // 기존 키워드가 있으면 병합, 없으면 새로 생성
+                    if (_productKeywords.ContainsKey(productId))
+                    {
+                        var existingKeywords = _productKeywords[productId];
+                        var mergedKeywords = new HashSet<string>(existingKeywords);
+                        mergedKeywords.UnionWith(koreanKeywords);
+                        _productKeywords[productId] = mergedKeywords.ToList();
+                        LogWindow.AddLogStatic($"✅ 키워드 병합: 기존 {existingKeywords.Count}개 + 새로운 {koreanKeywords.Count}개 = 총 {_productKeywords[productId].Count}개 (상품 ID: {productId})");
+                    }
+                    else
+                    {
+                        _productKeywords[productId] = koreanKeywords;
+                        LogWindow.AddLogStatic($"✅ 한글 키워드 {koreanKeywords.Count}개 추출 완료 (상품 ID: {productId})");
+                    }
+                    
+                    _latestKeywords = _productKeywords[productId];
                     _latestKeywordsTime = DateTime.Now;
                 }
-                
-                LogWindow.AddLogStatic($"✅ 한글 키워드 {koreanKeywords.Count}개 추출 완료 (상품 ID: {productId}, 시간: {_latestKeywordsTime:HH:mm:ss.fff})");
                 
                 return Results.Json(new { 
                     success = true, 
@@ -2285,26 +2299,11 @@ namespace Gumaedaehang.Services
             {
                 LogWindow.AddLogStatic("🏷️ 키워드 태그 표시 트리거 수신");
                 
-                // ⭐ 즉시 키워드 태그 생성 요청
+                // ⭐ 즉시 SourcingPage에 키워드 태그 생성 요청
                 _ = Task.Run(async () =>
                 {
                     await Task.Delay(500); // 0.5초 대기
-                    LogWindow.AddLogStatic("🏷️ 키워드 태그 자동 생성 시작");
-                    
-                    // 키워드가 있는지 확인하고 로그에 알림
-                    lock (_keywordsLock)
-                    {
-                        if (_productKeywords != null && _productKeywords.Count > 0)
-                        {
-                            var totalKeywords = _productKeywords.Values.Sum(k => k.Count);
-                            LogWindow.AddLogStatic($"🏷️ 키워드 {totalKeywords}개 준비됨 - UI 생성 필요");
-                            LogWindow.AddLogStatic("🔔 소싱 페이지에서 키워드를 가져가세요!");
-                        }
-                        else
-                        {
-                            LogWindow.AddLogStatic("❌ 준비된 키워드가 없습니다");
-                        }
-                    }
+                    await TriggerKeywordTagsDisplay();
                 });
                 
                 return Results.Json(new { success = true, message = "키워드 태그 생성 요청 완료" });
@@ -2387,27 +2386,10 @@ namespace Gumaedaehang.Services
                         filteredCount = keywords.Count
                     };
                 }
-                // ⭐ 요청한 productId가 없으면 가장 최근 키워드 반환
-                else if (_latestKeywords.Count > 0)
-                {
-                    LogWindow.AddLogStatic($"✅ 최신 키워드를 productId={productId}로 복사 ({_latestKeywords.Count}개)");
-                    // ⭐ 최신 키워드를 요청한 productId로 복사
-                    _productKeywords[productId] = new List<string>(_latestKeywords);
-                    
-                    responseData = new { 
-                        success = true,
-                        productId = productId,
-                        keywords = _latestKeywords,
-                        filteredCount = _latestKeywords.Count
-                    };
-                    
-                    // ⭐ 복사 후 최신 키워드 초기화 (다음 검색을 위해)
-                    _latestKeywords = new List<string>();
-                    LogWindow.AddLogStatic($"🧹 최신 키워드 초기화 완료");
-                }
                 else
                 {
-                    LogWindow.AddLogStatic($"❌ 키워드 없음 - 빈 배열 반환");
+                    // ⭐ 해당 상품의 키워드가 없으면 빈 배열 반환 (다른 상품 키워드 복사 금지)
+                    LogWindow.AddLogStatic($"❌ productId={productId} 키워드 없음 - 빈 배열 반환");
                     responseData = new { 
                         success = true,
                         productId = productId,
@@ -2434,6 +2416,44 @@ namespace Gumaedaehang.Services
                 return Results.Json(new { success = true });
             }
         }
+
+        // ⭐ 현재 상품 ID 설정 API
+        private async Task<IResult> HandleSetCurrentProduct(HttpContext context)
+        {
+            try
+            {
+                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                LogWindow.AddLogStatic($"📥 현재 상품 ID 설정 요청 수신: {body}");
+                
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var request = JsonSerializer.Deserialize<SetCurrentProductRequest>(body, options);
+                
+                if (request == null)
+                {
+                    LogWindow.AddLogStatic("❌ 요청 데이터 역직렬화 실패");
+                    return Results.Json(new { success = false, message = "요청 데이터가 없습니다." });
+                }
+                
+                lock (_keywordsLock)
+                {
+                    _currentProductId = request.ProductId;
+                    LogWindow.AddLogStatic($"✅ 현재 상품 ID 설정: {_currentProductId}");
+                }
+                
+                return Results.Json(new { success = true, productId = _currentProductId });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 현재 상품 ID 설정 오류: {ex.Message}");
+                return Results.Json(new { success = false, message = ex.Message });
+            }
+        }
+    }
+
+    // ⭐ 현재 상품 ID 설정 요청 모델
+    public class SetCurrentProductRequest
+    {
+        public int ProductId { get; set; }
     }
 
     // 스마트스토어 링크 요청 데이터 모델
