@@ -1470,7 +1470,7 @@ namespace Gumaedaehang.Services
         }
 
         // ⭐ 크롤링 상태 확인 API
-        private async Task<IResult> HandleGetCrawlingStatus(HttpContext context)
+        private Task<IResult> HandleGetCrawlingStatus(HttpContext context)
         {
             try
             {
@@ -1478,80 +1478,49 @@ namespace Gumaedaehang.Services
                 var processedStores = _processedStores.Count;
                 var totalStores = _selectedStores?.Count ?? 0;
                 
-                return Results.Ok(new { 
+                return Task.FromResult(Results.Ok(new { 
                     currentCount = currentCount,
                     processedStores = processedStores,
                     totalStores = totalStores,
                     isCompleted = currentCount >= TARGET_PRODUCT_COUNT || processedStores >= totalStores
-                });
+                }));
             }
             catch (Exception ex)
             {
-                return Results.BadRequest(new { error = ex.Message });
+                return Task.FromResult(Results.BadRequest(new { error = ex.Message }));
             }
         }
         
         // ⭐ 모든 스토어 완료 처리
-        private async Task<IResult> HandleAllStoresCompleted(HttpContext context)
+        private Task<IResult> HandleAllStoresCompleted(HttpContext context)
         {
             try
             {
-                LogWindow.AddLogStatic("🎉 모든 스토어 완료 신호 수신");
+                LogWindow.AddLogStatic("🎉 Chrome에서 모든 스토어 완료 신호 수신");
                 
-                // 모든 스토어 완료 체크 및 팝업 표시
-                CheckAllStoresCompleted();
+                // Chrome의 판단을 신뢰하고 무조건 완료 처리
+                var currentCount = GetCurrentProductCount();
+                LogWindow.AddLogStatic($"🎉 모든 스토어 방문 완료! 최종 수집: {currentCount}/100개");
                 
-                return Results.Ok(new { success = true, message = "All stores completed popup shown" });
+                // 로딩창 숨김
+                LoadingHelper.HideLoadingFromSourcingPage();
+                
+                // 팝업창 표시
+                ShowCrawlingResultPopup(currentCount, "모든 스토어 방문 완료");
+                
+                return Task.FromResult(Results.Ok(new { success = true, message = "All stores completed popup shown" }));
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 모든 스토어 완료 처리 오류: {ex.Message}");
-                return Results.BadRequest(new { error = ex.Message });
+                return Task.FromResult(Results.BadRequest(new { error = ex.Message }));
             }
         }
         
-        // ⭐ 모든 스토어 완료 체크 및 팝업 표시
-        private void CheckAllStoresCompleted()
-        {
-            try
-            {
-                // 현재 상품 수 확인
-                var currentCount = GetCurrentProductCount();
-                
-                // 100개 달성하지 못했지만 모든 스토어 완료된 경우
-                if (currentCount < TARGET_PRODUCT_COUNT)
-                {
-                    LogWindow.AddLogStatic($"🎉 모든 스토어 방문 완료! 최종 수집: {currentCount}/100개");
-                    
-                    // 로딩창 숨김
-                    LoadingHelper.HideLoadingFromSourcingPage();
-                    
-                    // 팝업창 표시
-                    ShowCrawlingResultPopup(currentCount, "모든 스토어 방문 완료");
-                    
-                    // 크롬 탭 자동 닫기 제거 (테스트용)
-                    // _ = Task.Run(() => CloseAllChromeTabs());
-                }
-                else
-                {
-                    LogWindow.AddLogStatic($"🎯 이미 100개 달성됨: {currentCount}/100개");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogWindow.AddLogStatic($"❌ 모든 스토어 완료 체크 오류: {ex.Message}");
-            }
-        }
-        
-        // ⭐ 테스트용: 10초 후 자동으로 모든 스토어 완료 체크
+        // ⭐ 테스트용: 10초 후 자동으로 모든 스토어 완료 체크 (사용 안 함)
         private void StartAutoCompleteTimer()
         {
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(10000); // 10초 대기
-                LogWindow.AddLogStatic("🧪 테스트: 10초 후 자동 완료 체크 실행");
-                CheckAllStoresCompleted();
-            });
+            // 더 이상 사용하지 않음 - Chrome이 직접 완료 신호 전송
         }
         
         // ⭐ 크롤링 결과 팝업창 표시
@@ -2293,7 +2262,7 @@ namespace Gumaedaehang.Services
         }
 
         // ⭐ 키워드 태그 표시 트리거 API
-        private async Task<IResult> HandleTriggerKeywords(HttpContext context)
+        private Task<IResult> HandleTriggerKeywords(HttpContext context)
         {
             try
             {
@@ -2306,12 +2275,12 @@ namespace Gumaedaehang.Services
                     await TriggerKeywordTagsDisplay();
                 });
                 
-                return Results.Json(new { success = true, message = "키워드 태그 생성 요청 완료" });
+                return Task.FromResult(Results.Json(new { success = true, message = "키워드 태그 생성 요청 완료" }));
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 키워드 태그 트리거 오류: {ex.Message}");
-                return Results.Json(new { success = false, message = ex.Message });
+                return Task.FromResult(Results.Json(new { success = false, message = ex.Message }));
             }
         }
 

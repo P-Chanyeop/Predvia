@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.64-orange)
+![Release](https://img.shields.io/badge/Release-v1.65-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,15 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.64 - 키워드 누적 표시 시스템 완전 구현)
+### 🔄 최신 업데이트 (v1.65 - 크롤링 완료 감지 시스템 안정화)
+- [x] **🎯 크롤링 완료 감지 문제 완전 해결**: 가끔씩 7번째 스토어에서 멈추던 문제 해결
+  - **문제 원인**: 서버 내부 상태와 Chrome 완료 신호 불일치로 로딩창이 닫히지 않음
+  - **Chrome 신호 신뢰**: Chrome이 "모든 스토어 완료" 신호를 보내면 서버가 무조건 신뢰
+  - **즉시 완료 처리**: 서버 내부 상태 체크 없이 Chrome 신호만으로 로딩창 닫기 + 팝업 표시
+  - **안정성 향상**: 일부 스토어 상태 업데이트 누락되어도 크롤링 정상 완료
+  - **빌드 오류 해결**: 불필요한 async 키워드 제거 및 컴파일 경고 모두 해결
+
+### 🔄 이전 업데이트 (v1.64 - 키워드 누적 표시 시스템 완전 구현)
 - [x] **🏷️ 같은 상품 여러 번 검색 시 키워드 누적 표시**: 키워드가 계속 쌓여서 UI에 표시되는 시스템 완성
   - **문제 해결**: 같은 상품에서 두 번째 검색 시 키워드가 UI에 표시되지 않던 문제 완전 해결
   - **서버 키워드 병합**: `HashSet.UnionWith()`로 중복 제거하며 키워드 자동 병합
@@ -1000,11 +1008,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.64 (키워드 누적 표시 시스템 완전 구현)
-  - 같은 상품에서 여러 번 검색 시 키워드가 계속 쌓여서 UI에 표시
-  - 서버 키워드 병합 + 플래그 제거로 매번 UI 업데이트 가능
-  - 첫 검색 35개 → 두 번째 231개(35+199) → 세 번째 231+새로운 키워드
-  - Chrome 확장프로그램 → 서버 병합 → 클라이언트 조회 → UI 표시 완전 자동화
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.65 (크롤링 완료 감지 시스템 안정화)
+  - 가끔씩 7번째 스토어에서 멈추던 문제 완전 해결
+  - Chrome 완료 신호를 무조건 신뢰하여 즉시 로딩창 닫기 + 팝업 표시
+  - 서버 내부 상태 불일치로 인한 무한 대기 문제 해결
+  - 일부 스토어 상태 업데이트 누락되어도 크롤링 정상 완료
 
 #### ⚙️ 설정 (Settings)
 - **완전한 15.png/16.png 구현**: 라이트/다크모드 설정 페이지 완벽 재현
