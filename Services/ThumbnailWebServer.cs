@@ -16,6 +16,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
+using PuppeteerSharp;
 
 namespace Gumaedaehang.Services
 {
@@ -132,9 +133,11 @@ namespace Gumaedaehang.Services
                 _app.MapGet("/api/smartstore/latest-keywords", HandleGetLatestKeywords);
                 _app.MapPost("/api/smartstore/trigger-keywords", HandleTriggerKeywords);
                 _app.MapPost("/api/smartstore/all-stores-completed", HandleAllStoresCompleted); // ⭐ 모든 스토어 완료 API 추가
+                _app.MapGet("/api/smartstore/check-all-completed", HandleCheckAllCompleted); // ⭐ 완료 상태 체크 API 추가
                 _app.MapGet("/api/smartstore/crawling-status", HandleGetCrawlingStatus); // ⭐ 크롤링 상태 확인 API 추가
+                _app.MapPost("/api/taobao/upload-image", HandleTaobaoImageUpload); // ⭐ 타오바오 이미지 업로드 API
                 
-                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (19개)");
+                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (20개)");
 
                 // ⭐ 서버 변수 초기화
                 lock (_counterLock)
@@ -1491,6 +1494,123 @@ namespace Gumaedaehang.Services
             }
         }
         
+        // ⭐ 타오바오 이미지 업로드 핸들러
+        private async Task<IResult> HandleTaobaoImageUpload(HttpContext context)
+        {
+            try
+            {
+                var requestData = await context.Request.ReadFromJsonAsync<TaobaoImageUploadRequest>();
+                if (requestData == null || string.IsNullOrEmpty(requestData.ImagePath))
+                {
+                    return Results.BadRequest(new { error = "이미지 경로가 필요합니다" });
+                }
+                
+                LogWindow.AddLogStatic($"🔍 타오바오 이미지 업로드 요청: {requestData.ProductId}");
+                
+                // 이미지 파일 존재 확인
+                if (!File.Exists(requestData.ImagePath))
+                {
+                    LogWindow.AddLogStatic($"❌ 이미지 파일 없음: {requestData.ImagePath}");
+                    return Results.BadRequest(new { error = "이미지 파일을 찾을 수 없습니다" });
+                }
+                
+                // Puppeteer로 타오바오 이미지 업로드
+                await UploadImageToTaobao(requestData.ImagePath);
+                
+                LogWindow.AddLogStatic($"✅ 타오바오 이미지 업로드 완료: {requestData.ProductId}");
+                return Results.Ok(new { success = true, message = "이미지 업로드 완료" });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 타오바오 이미지 업로드 오류: {ex.Message}");
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+        
+        // ⭐ Puppeteer로 타오바오 이미지 업로드
+        private async Task UploadImageToTaobao(string imagePath)
+        {
+            IBrowser? browser = null;
+            IPage? page = null;
+            
+            try
+            {
+                // 절대 경로로 변환
+                var absolutePath = Path.GetFullPath(imagePath);
+                if (!File.Exists(absolutePath))
+                {
+                    throw new FileNotFoundException($"이미지 파일을 찾을 수 없습니다: {absolutePath}");
+                }
+                
+                LogWindow.AddLogStatic("🌐 Chrome DevTools Protocol 연결 중...");
+                
+                // Chrome DevTools Protocol 연결
+                browser = await Puppeteer.ConnectAsync(new ConnectOptions
+                {
+                    BrowserWSEndpoint = "ws://localhost:9222/devtools/browser/"
+                });
+                
+                LogWindow.AddLogStatic("✅ Chrome 연결 성공");
+                
+                // 새 탭 생성
+                page = await browser.NewPageAsync();
+                LogWindow.AddLogStatic("📄 새 탭 생성 완료");
+                
+                // 타오바오 페이지로 이동
+                await page.GoToAsync("https://www.taobao.com/", new NavigationOptions
+                {
+                    WaitUntil = new[] { WaitUntilNavigation.Networkidle0 },
+                    Timeout = 30000
+                });
+                LogWindow.AddLogStatic("🌐 타오바오 페이지 로드 완료");
+                
+                // 이미지 검색 버튼 대기 및 클릭
+                await page.WaitForSelectorAsync(".image-search-icon-outerMode", new WaitForSelectorOptions
+                {
+                    Timeout = 15000
+                });
+                LogWindow.AddLogStatic("🔍 이미지 검색 버튼 발견");
+                
+                await page.ClickAsync(".image-search-icon-outerMode");
+                LogWindow.AddLogStatic("✅ 이미지 검색 버튼 클릭 완료");
+                
+                // 파일 업로드 input 대기
+                await Task.Delay(1500); // 업로드 UI 로드 대기
+                
+                // 파일 input 찾기 (숨겨진 input)
+                var fileInput = await page.QuerySelectorAsync("input[type='file']");
+                if (fileInput != null)
+                {
+                    await fileInput.UploadFileAsync(absolutePath);
+                    LogWindow.AddLogStatic($"✅ 이미지 파일 업로드 완료: {Path.GetFileName(absolutePath)}");
+                    
+                    // 업로드 후 검색 결과 로딩 대기
+                    await Task.Delay(2000);
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("❌ 파일 업로드 input을 찾을 수 없습니다");
+                    throw new Exception("파일 업로드 input을 찾을 수 없습니다");
+                }
+                
+                // 탭은 사용자가 결과를 볼 수 있도록 열어둠 (닫지 않음)
+                LogWindow.AddLogStatic("✅ 타오바오 이미지 검색 완료 - 탭 유지");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 타오바오 업로드 오류: {ex.Message}");
+                
+                // 오류 발생 시 탭 닫기
+                if (page != null)
+                {
+                    try { await page.CloseAsync(); } catch { }
+                }
+                
+                throw;
+            }
+            // browser는 ConnectAsync이므로 Disconnect 불필요 (자동 해제)
+        }
+        
         // ⭐ 모든 스토어 완료 처리
         private Task<IResult> HandleAllStoresCompleted(HttpContext context)
         {
@@ -1514,6 +1634,30 @@ namespace Gumaedaehang.Services
             {
                 LogWindow.AddLogStatic($"❌ 모든 스토어 완료 처리 오류: {ex.Message}");
                 return Task.FromResult(Results.BadRequest(new { error = ex.Message }));
+            }
+        }
+        
+        // ⭐ 모든 스토어 완료 상태 체크
+        private IResult HandleCheckAllCompleted()
+        {
+            try
+            {
+                var allCompleted = _storeStates.Values.All(s => s.State == "done");
+                var completedCount = _storeStates.Count(s => s.Value.State == "done");
+                var totalCount = _storeStates.Count;
+                var currentProducts = GetCurrentProductCount();
+                
+                return Results.Json(new { 
+                    allCompleted, 
+                    completedCount, 
+                    totalCount,
+                    currentProducts
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 완료 상태 체크 오류: {ex.Message}");
+                return Results.BadRequest(new { error = ex.Message });
             }
         }
         
@@ -2810,6 +2954,16 @@ public class ProductCategoryData
         
         [JsonPropertyName("timestamp")]
         public string Timestamp { get; set; } = string.Empty;
+    }
+    
+    // 타오바오 이미지 업로드 요청 데이터
+    public class TaobaoImageUploadRequest
+    {
+        [JsonPropertyName("imagePath")]
+        public string ImagePath { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
     }
     
     // 🔄 소싱 페이지에서 직접 로딩창 숨김

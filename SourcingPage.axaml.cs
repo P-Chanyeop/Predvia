@@ -109,6 +109,10 @@ namespace Gumaedaehang
         private TextBox? _mainProductTextBox;
         private Button? _mainProductButton;
         
+        // 중복 로드 방지 플래그
+        private bool _dataAlreadyLoaded = false;
+        private bool _isLoadingData = false; // 로딩 중 플래그
+        
         public SourcingPage()
         {
             try
@@ -365,6 +369,15 @@ namespace Gumaedaehang
         // 크롤링된 데이터를 로드하는 메서드
         public void LoadCrawledData()
         {
+            // 중복 로드 방지
+            if (_dataAlreadyLoaded)
+            {
+                Debug.WriteLine("⚠️ LoadCrawledData 중복 호출 방지 - 이미 로드됨");
+                return;
+            }
+            
+            _dataAlreadyLoaded = true;
+            
             try
             {
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -1127,7 +1140,7 @@ namespace Gumaedaehang
                 _testDataButton.Click += TestDataButton_Click;
                 
             if (_testDataButton2 != null)
-                _testDataButton2.Click += TestDataButton2_Click;
+                _testDataButton2.Click += TestDataButton_Click; // 같은 핸들러 사용
                 
             if (_selectAllCheckBox != null)
             {
@@ -1404,63 +1417,77 @@ namespace Gumaedaehang
             {
                 try
                 {
+                    LogWindow.AddLogStatic($"🔍 타오바오 페어링 시작: 상품 ID {productId}");
+                    
                     // 버튼 비활성화
                     if (product.TaobaoPairingButton != null)
                     {
                         product.TaobaoPairingButton.IsEnabled = false;
-                        product.TaobaoPairingButton.Content = "연결 중...";
+                        product.TaobaoPairingButton.Content = "업로드 중...";
                     }
 
-                    // 선택된 키워드들을 조합하여 검색어 생성
-                    var searchKeyword = string.Join(" ", product.SelectedKeywords);
+                    // 상품 이미지 경로 찾기
+                    string? imagePath = FindProductImagePath(productId);
                     
-                    if (string.IsNullOrEmpty(searchKeyword))
+                    if (string.IsNullOrEmpty(imagePath))
                     {
-                        // 키워드가 없으면 상품명 키워드 사용
-                        searchKeyword = string.Join(" ", product.ProductNameKeywords);
-                    }
-
-                    if (!string.IsNullOrEmpty(searchKeyword))
-                    {
-                        // 네이버 스마트스토어 서비스 초기화
-                        _naverService ??= new NaverSmartStoreService();
+                        LogWindow.AddLogStatic($"❌ 상품 {productId} 이미지를 찾을 수 없습니다");
                         
-                        // 네이버 스마트스토어 해외직구 페이지 열기
-                        await _naverService.OpenNaverSmartStoreWithKeyword(searchKeyword);
+                        if (product.TaobaoPairingButton != null)
+                        {
+                            product.TaobaoPairingButton.Content = "이미지 없음";
+                            await Task.Delay(2000);
+                        }
+                        return;
+                    }
+                    
+                    LogWindow.AddLogStatic($"📷 상품 {productId} 이미지 경로: {imagePath}");
+                    
+                    // 서버로 이미지 업로드 요청
+                    using var httpClient = new HttpClient();
+                    var requestData = new
+                    {
+                        imagePath = imagePath,
+                        productId = productId.ToString()
+                    };
+                    
+                    var json = JsonSerializer.Serialize(requestData);
+                    var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                    
+                    var response = await httpClient.PostAsync("http://localhost:8080/api/taobao/upload-image", content);
+                    
+                    if (response.IsSuccessStatusCode)
+                    {
+                        LogWindow.AddLogStatic($"✅ 상품 {productId} 타오바오 이미지 업로드 완료");
                         
                         // 페어링 완료 처리
                         product.IsTaobaoPaired = true;
                         UpdateProductStatusIndicators(productId);
                         
-                        Debug.WriteLine($"상품 {productId} 네이버 스마트스토어 연결 완료 - 키워드: {searchKeyword}");
-                        
-                        // 성공 메시지 표시
                         if (product.TaobaoPairingButton != null)
                         {
-                            product.TaobaoPairingButton.Content = "연결 완료";
+                            product.TaobaoPairingButton.Content = "업로드 완료";
                             await Task.Delay(1500);
                         }
                     }
                     else
                     {
-                        Debug.WriteLine($"상품 {productId} 검색 키워드가 없습니다.");
+                        LogWindow.AddLogStatic($"❌ 상품 {productId} 타오바오 업로드 실패");
                         
-                        // 키워드 없음 메시지 표시
                         if (product.TaobaoPairingButton != null)
                         {
-                            product.TaobaoPairingButton.Content = "키워드 없음";
+                            product.TaobaoPairingButton.Content = "업로드 실패";
                             await Task.Delay(2000);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"네이버 스마트스토어 연결 실패: {ex.Message}");
+                    LogWindow.AddLogStatic($"❌ 타오바오 페어링 오류: {ex.Message}");
                     
-                    // 오류 메시지 표시
                     if (product.TaobaoPairingButton != null)
                     {
-                        product.TaobaoPairingButton.Content = "연결 실패";
+                        product.TaobaoPairingButton.Content = "오류 발생";
                         await Task.Delay(2000);
                     }
                 }
@@ -1473,6 +1500,29 @@ namespace Gumaedaehang
                         product.TaobaoPairingButton.Content = "페어링";
                     }
                 }
+            }
+        }
+        
+        // 상품 이미지 경로 찾기
+        private string? FindProductImagePath(int productId)
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var imagesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Images");
+                
+                if (!Directory.Exists(imagesPath))
+                    return null;
+                
+                // {storeId}_{productId}_main.jpg 패턴으로 검색
+                var imageFiles = Directory.GetFiles(imagesPath, $"*_{productId}_main.jpg");
+                
+                return imageFiles.Length > 0 ? imageFiles[0] : null;
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 이미지 경로 찾기 오류: {ex.Message}");
+                return null;
             }
         }
         
@@ -1789,27 +1839,59 @@ namespace Gumaedaehang
         {
             try
             {
-                // 기존 카드들 모두 제거
+                // 이미 로딩 중이면 무시
+                if (_isLoadingData)
+                {
+                    LogWindow.AddLogStatic("⚠️ 이미 데이터 로딩 중 - 중복 클릭 무시");
+                    return;
+                }
+                
+                _isLoadingData = true;
+                LogWindow.AddLogStatic("🔥 '데이터 있는 화면 보기' 버튼 클릭됨");
+                
+                // 기존 카드들 확인
                 var container = this.FindControl<StackPanel>("RealDataContainer");
                 if (container != null)
                 {
+                    var cardCount = container.Children.Count;
+                    LogWindow.AddLogStatic($"🔥 기존 카드 {cardCount}개 제거");
+                    
+                    // 카드가 있으면 플래그 리셋 안 함 (중복 로드 방지)
+                    if (cardCount == 0)
+                    {
+                        _dataAlreadyLoaded = false;
+                    }
+                    
                     container.Children.Clear();
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("❌ RealDataContainer를 찾을 수 없음");
+                    _dataAlreadyLoaded = false;
                 }
                 
                 // 크롤링된 실제 데이터 로드
+                LogWindow.AddLogStatic("🔥 LoadCrawledData() 호출");
                 LoadCrawledData();
+                
+                // 화면 전환
+                _hasData = true;
+                UpdateViewVisibility();
                 
                 // ⭐ 카드 생성 완료 후 키워드 복원 (지연 실행)
                 Dispatcher.UIThread.Post(() =>
                 {
                     RestoreSavedKeywords();
+                    _isLoadingData = false; // 로딩 완료
                 }, DispatcherPriority.Background);
                 
-                Debug.WriteLine("✅ 실제 크롤링 데이터 로드 완료");
+                LogWindow.AddLogStatic("✅ 실제 크롤링 데이터 로드 완료");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"❌ 테스트 데이터 버튼 오류: {ex.Message}");
+                _isLoadingData = false; // 오류 시에도 플래그 해제
+                LogWindow.AddLogStatic($"❌ 테스트 데이터 버튼 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 스택: {ex.StackTrace}");
             }
         }
         
@@ -2037,86 +2119,71 @@ namespace Gumaedaehang
         }
         
         // 🧹 기존 크롤링 데이터 초기화 메서드 (조용한 버전 - 생성자용)
-        private async void ClearPreviousCrawlingDataSilent()
+        private void ClearPreviousCrawlingDataSilent()
         {
             try
             {
-                await Task.Run(async () =>
+                // 플래그 리셋
+                _dataAlreadyLoaded = false;
+                
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
+                
+                int totalDeleted = 0;
+                
+                // 이미지 폴더 초기화
+                var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
+                if (Directory.Exists(imagesPath))
                 {
-                    var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                    var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
-                    
-                    int totalDeleted = 0;
-                    int cardCount = 0;
-                    
-                    // 이미지 폴더 초기화
-                    var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
-                    if (Directory.Exists(imagesPath))
+                    var fileCount = Directory.GetFiles(imagesPath).Length;
+                    Directory.Delete(imagesPath, true);
+                    totalDeleted += fileCount;
+                }
+                
+                // 상품명 폴더 초기화
+                var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
+                if (Directory.Exists(productDataPath))
+                {
+                    var fileCount = Directory.GetFiles(productDataPath).Length;
+                    Directory.Delete(productDataPath, true);
+                    totalDeleted += fileCount;
+                }
+                
+                // 리뷰 폴더 초기화
+                var reviewsPath = System.IO.Path.Combine(predviaPath, "Reviews");
+                if (Directory.Exists(reviewsPath))
+                {
+                    var fileCount = Directory.GetFiles(reviewsPath).Length;
+                    Directory.Delete(reviewsPath, true);
+                    totalDeleted += fileCount;
+                }
+                
+                // 카테고리 폴더 초기화
+                var categoriesPath = System.IO.Path.Combine(predviaPath, "Categories");
+                if (Directory.Exists(categoriesPath))
+                {
+                    var fileCount = Directory.GetFiles(categoriesPath).Length;
+                    Directory.Delete(categoriesPath, true);
+                    totalDeleted += fileCount;
+                }
+                
+                // 로그 출력 (지연 후)
+                if (totalDeleted > 0)
+                {
+                    Task.Delay(500).ContinueWith(_ =>
                     {
-                        var fileCount = Directory.GetFiles(imagesPath).Length;
-                        Directory.Delete(imagesPath, true);
-                        totalDeleted += fileCount;
-                    }
-                    
-                    // 상품명 폴더 초기화
-                    var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
-                    if (Directory.Exists(productDataPath))
-                    {
-                        var fileCount = Directory.GetFiles(productDataPath).Length;
-                        Directory.Delete(productDataPath, true);
-                        totalDeleted += fileCount;
-                    }
-                    
-                    // 리뷰 폴더 초기화
-                    var reviewsPath = System.IO.Path.Combine(predviaPath, "Reviews");
-                    if (Directory.Exists(reviewsPath))
-                    {
-                        var fileCount = Directory.GetFiles(reviewsPath).Length;
-                        Directory.Delete(reviewsPath, true);
-                        totalDeleted += fileCount;
-                    }
-                    
-                    // 카테고리 폴더 초기화
-                    var categoriesPath = System.IO.Path.Combine(predviaPath, "Categories");
-                    if (Directory.Exists(categoriesPath))
-                    {
-                        var fileCount = Directory.GetFiles(categoriesPath).Length;
-                        Directory.Delete(categoriesPath, true);
-                        totalDeleted += fileCount;
-                    }
-                    
-                    // UI에서 기존 카드들 제거
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        var realDataContainer = this.FindControl<StackPanel>("RealDataContainer");
-                        if (realDataContainer != null)
+                        Dispatcher.UIThread.Post(() =>
                         {
-                            cardCount = realDataContainer.Children.Count;
-                            realDataContainer.Children.Clear();
-                        }
-                    });
-                    
-                    // 지연 시간 증가
-                    await Task.Delay(1500);
-                    
-                    // 작업로그에 초기화 완료 메시지 추가
-                    if (totalDeleted > 0 || cardCount > 0)
-                    {
-                        // LogWindow가 준비될 때까지 잠시 기다림
-                        int maxWaitTime = 5000; // 5초
-                        int waitTime = 0;
-                        while (LogWindow.Instance == null && waitTime < maxWaitTime)
-                        {
-                            await Task.Delay(100);
-                            waitTime += 100;
-                        }
-                        
-                        await Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            LogWindow.AddLogStatic($"초기화 완료 (파일 {totalDeleted}개, 카드 {cardCount}개 삭제)");
+                            try
+                            {
+                                LogWindow.AddLogStatic($"🧹 자동 초기화 완료 (파일 {totalDeleted}개 삭제)");
+                            }
+                            catch { }
                         });
-                    }
-                });
+                    });
+                }
+                
+                // 지연 시간 증가 (제거)
             }
             catch (Exception ex)
             {

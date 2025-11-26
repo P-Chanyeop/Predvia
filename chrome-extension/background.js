@@ -90,10 +90,31 @@ function handleProcessingRelease(request, sender, sendResponse) {
   if (globalProcessingState.currentStore === storeId && globalProcessingState.currentTabId === tabId) {
     resetProcessingState();
     processQueue();
+    checkAllStoresCompleted(); // 모든 스토어 완료 체크
     sendResponse({ success: true });
   } else {
     console.log(`⚠️ 잘못된 해제 요청: 현재 ${globalProcessingState.currentStore}, 요청 ${storeId}`);
     sendResponse({ success: false });
+  }
+}
+
+// ⭐ 모든 스토어 완료 체크
+async function checkAllStoresCompleted() {
+  try {
+    const response = await fetch('http://localhost:8080/api/smartstore/check-all-completed');
+    const data = await response.json();
+    
+    console.log(`📊 완료 체크: ${data.completedCount}/${data.totalCount} 스토어 완료, ${data.currentProducts}/100개 수집`);
+    
+    // 10개 스토어 모두 완료 OR 100개 상품 달성
+    if ((data.allCompleted && data.totalCount === 10) || data.currentProducts >= 100) {
+      console.log('🎉 크롤링 완료 조건 달성 - 완료 신호 전송');
+      await fetch('http://localhost:8080/api/smartstore/all-stores-completed', {
+        method: 'POST'
+      });
+    }
+  } catch (error) {
+    console.error('❌ 완료 체크 오류:', error);
   }
 }
 

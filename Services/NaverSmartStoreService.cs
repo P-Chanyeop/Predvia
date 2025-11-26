@@ -48,6 +48,7 @@ namespace Gumaedaehang.Services
                 options.AddAdditionalOption("useAutomationExtension", false);
                 options.AddArgument("--disable-web-security");
                 options.AddArgument("--allow-running-insecure-content");
+                options.AddArgument("--remote-debugging-port=9222"); // DevTools Protocol 활성화
 
                 // 크롬 드라이버 시작
                 _driver = new ChromeDriver(options);
