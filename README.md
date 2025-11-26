@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.66-orange)
+![Release](https://img.shields.io/badge/Release-v1.67-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,17 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.66 - 소싱 페이지 데이터 로드 시스템 완전 개선)
+### 🔄 최신 업데이트 (v1.67 - 키워드 추출 필터 문제 해결)
+- [x] **🔧 하드코딩된 키워드 필터 제거**: 특정 키워드만 추출되던 문제 완전 해결
+  - **문제 원인**: `망치`, `사다리`, `원목` 등 특정 키워드만 추출하도록 하드코딩되어 있었음
+  - **증상**: 다른 상품 검색 시 0개 추출되는 문제 발생
+  - **해결**: 하드코딩된 키워드 필터 완전 제거
+  - **개선**: 이제 모든 상품명 추출 가능 (10자 이상 + 한글 포함 + 광고 제외)
+- [x] **✅ 범용 상품명 추출 시스템**: 어떤 상품이든 정상적으로 상품명 추출
+  - **필터 조건**: 10자 이상, 한글 포함, 광고/스폰서/네이버/쇼핑/가격비교 제외
+  - **유연한 추출**: 특정 카테고리에 제한되지 않는 범용 시스템
+
+### 🔄 이전 업데이트 (v1.66 - 소싱 페이지 데이터 로드 시스템 완전 개선)
 - [x] **🔧 "데이터 있는 화면 보기" 버튼 완전 수정**: 버튼 무반응 및 중복 로드 문제 완전 해결
   - **문제 원인 1**: TestDataButton2가 잘못된 핸들러(TestDataButton2_Click) 호출
   - **문제 원인 2**: `_dataAlreadyLoaded` 플래그로 인한 중복 로드 방지가 첫 로드도 차단

@@ -396,10 +396,7 @@ function extractAllProductNames() {
         !title.includes('스폰서') &&
         !title.includes('네이버') &&
         !title.includes('쇼핑') &&
-        !title.includes('가격비교') &&
-        (title.includes('망치') || title.includes('사다리') || title.includes('원목') || 
-         title.includes('어린이') || title.includes('가정용') || title.includes('접이식') ||
-         /\d+g|\d+mm|\d+개/.test(title) || title.includes('원'))) { // 상품 스펙이 포함된 것
+        !title.includes('가격비교')) {
       productNames.push(title);
       console.log(`📝 상품명 발견: "${title}"`);
     }
