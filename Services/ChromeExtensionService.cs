@@ -112,6 +112,38 @@ namespace Gumaedaehang.Services
             }
         }
         
+        public Task<bool> OpenUrlInNewTab(string url)
+        {
+            try
+            {
+                // Chrome 새 창에서 URL 열기 (확장프로그램 로드)
+                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --new-window \"{url}\"";
+                
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = GetChromePath(),
+                    Arguments = chromeArgs,
+                    UseShellExecute = false,
+                    CreateNoWindow = false
+                };
+                
+                var process = Process.Start(processInfo);
+                
+                if (process != null)
+                {
+                    Debug.WriteLine($"새 창에서 URL 열기 (확장프로그램 포함): {url}");
+                    return Task.FromResult(true);
+                }
+                
+                return Task.FromResult(false);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"URL 열기 실패: {ex.Message}");
+                return Task.FromResult(false);
+            }
+        }
+        
         private string GetChromePath()
         {
             // Chrome 설치 경로 찾기

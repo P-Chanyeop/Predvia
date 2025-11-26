@@ -12,6 +12,7 @@
   "host_permissions": [
     "*://search.shopping.naver.com/*",
     "*://smartstore.naver.com/*",
+    "*://*.taobao.com/*",
     "http://localhost:8080/*"
   ],
   "background": {
@@ -35,6 +36,11 @@
     },
     {
       "matches": ["*://smartstore.naver.com/*/products/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["*://*.taobao.com/*"],
       "js": ["content.js"],
       "run_at": "document_end"
     }

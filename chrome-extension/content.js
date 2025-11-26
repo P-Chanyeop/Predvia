@@ -67,7 +67,13 @@ if (document.readyState === 'loading') {
 }
 
 async function initializeExtension() {
-  console.log('🆕 Predvia 스마트스토어 링크 수집 초기화 시작');
+  console.log('🆕 Predvia 확장프로그램 초기화 시작');
+  
+  // ⭐ 타오바오 페이지인 경우 - 이미지 검색만 실행
+  if (window.location.href.includes('taobao.com')) {
+    console.log('🔍 타오바오 페이지 감지 - 네이버 크롤링 로직 건너뛰기');
+    return; // 타오바오에서는 여기서 종료
+  }
   
   // ⭐ 네이버 가격비교 페이지가 아닌 경우 (스마트스토어 페이지) 플래그 확인 건너뛰기
   if (!window.location.href.includes('search.shopping.naver.com')) {
@@ -671,6 +677,18 @@ async function visitSelectedStoresOnly(selectedStores) {
       // ⭐ 목표 달성 시 중단
       if (visitResponse && visitResponse.stop) {
         console.log(`🎉 목표 달성! 총 ${visitResponse.totalProducts}개 상품 수집 완료`);
+        
+        // ⭐ 완료 신호 전송
+        try {
+          await fetch('http://localhost:8080/api/smartstore/all-stores-completed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          console.log('✅ 목표 달성 완료 신호 전송 완료');
+        } catch (error) {
+          console.error('❌ 완료 신호 전송 실패:', error);
+        }
+        
         // ⭐ 처리 권한 해제
         await releaseProcessingPermission(storeId);
         return;
@@ -811,6 +829,18 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
       // ⭐ 목표 달성 시 중단
       if (visitResponse && visitResponse.stop) {
         console.log(`🎉 목표 달성! 총 ${visitResponse.totalProducts}개 상품 수집 완료`);
+        
+        // ⭐ 완료 신호 전송
+        try {
+          await fetch('http://localhost:8080/api/smartstore/all-stores-completed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          console.log('✅ 목표 달성 완료 신호 전송 완료');
+        } catch (error) {
+          console.error('❌ 완료 신호 전송 실패:', error);
+        }
+        
         // ⭐ 처리 권한 해제
         await releaseProcessingPermission(storeId);
         return;
@@ -1316,6 +1346,73 @@ if (window.location.href.includes('smartstore.naver.com') && window.location.hre
 if (window.location.href.includes('shopping.naver.com/overseas')) {
   console.log('🔍 네이버 가격비교 페이지 - 모든 스토어 완료 감지 시작');
   startAllStoresCompletionCheck();
+}
+
+// ⭐ 타오바오 페이지에서 이미지 검색 버튼 자동 클릭
+if (window.location.href.includes('taobao.com')) {
+  console.log('🔍 타오바오 페이지 감지!');
+  console.log('🌐 현재 URL:', window.location.href);
+  console.log('⏰ 페이지 로드 시간:', new Date().toLocaleString());
+  console.log('⏳ 2초 후 이미지 검색 버튼 클릭 시도...');
+  
+  setTimeout(() => {
+    clickTaobaoImageSearchButton();
+  }, 2000); // 2초 후 클릭
+}
+
+// ⭐ 타오바오 이미지 검색 버튼 클릭
+function clickTaobaoImageSearchButton() {
+  console.log('🔍 === 타오바오 이미지 검색 (DevTools Protocol 방식) ===');
+  console.log('ℹ️ 서버에서 자동으로 이미지를 업로드합니다.');
+  console.log('ℹ️ 별도의 버튼 클릭이나 붙여넣기가 필요하지 않습니다.');
+}
+
+// ⭐ 클립보드에서 이미지 붙여넣기 (Ctrl+V)
+function findAndTriggerFileUpload() {
+  console.log('📁 === 파일 업로드 input 찾기 시작 ===');
+  
+  try {
+    // 타오바오 이미지 업로드 input 찾기
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    console.log(`🔍 발견된 file input 개수: ${fileInputs.length}`);
+    
+    if (fileInputs.length > 0) {
+      const fileInput = fileInputs[0];
+      console.log('✅ 파일 업로드 input 발견!');
+      
+      // 사용자에게 파일 선택 다이얼로그 표시
+      fileInput.click();
+      console.log('✅ 파일 선택 다이얼로그 열기 완료');
+      sendLogToServer('✅ 타오바오 파일 선택 다이얼로그 열기 완료');
+    } else {
+      console.log('❌ 파일 업로드 input을 찾을 수 없음');
+      sendLogToServer('❌ 타오바오 파일 업로드 input을 찾을 수 없음');
+    }
+  } catch (error) {
+    console.error('❌ 파일 업로드 오류:', error);
+    sendLogToServer(`❌ 파일 업로드 오류: ${error.message}`);
+  }
+  
+  console.log('📁 === 파일 업로드 input 찾기 종료 ===');
+}
+
+function pasteImageFromClipboard() {
+  console.log('📋 === 클립보드 이미지 붙여넣기 (사용 안 함) ===');
+  // DevTools Protocol 방식으로 변경되어 이 함수는 더 이상 사용하지 않음
+  console.log('ℹ️ 서버에서 DevTools Protocol로 직접 업로드합니다.');
+}
+
+// ⭐ 서버에 로그 전송
+async function sendLogToServer(message) {
+  try {
+    await fetch('http://localhost:8080/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: message })
+    });
+  } catch (error) {
+    console.error('로그 전송 실패:', error);
+  }
 }
 
 // ⭐ 모든 스토어 완료 감지 시스템

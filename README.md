@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.65-orange)
+![Release](https://img.shields.io/badge/Release-v1.66-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,22 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.65 - 크롤링 완료 감지 시스템 안정화)
+### 🔄 최신 업데이트 (v1.66 - 소싱 페이지 데이터 로드 시스템 완전 개선)
+- [x] **🔧 "데이터 있는 화면 보기" 버튼 완전 수정**: 버튼 무반응 및 중복 로드 문제 완전 해결
+  - **문제 원인 1**: TestDataButton2가 잘못된 핸들러(TestDataButton2_Click) 호출
+  - **문제 원인 2**: `_dataAlreadyLoaded` 플래그로 인한 중복 로드 방지가 첫 로드도 차단
+  - **문제 원인 3**: 더블클릭 시 두 번 다 `cardCount == 0`이라 200개 카드 생성
+  - **해결 1**: TestDataButton2도 TestDataButton_Click 사용하도록 통일
+  - **해결 2**: 카드 0개일 때만 플래그 리셋하여 첫 로드 허용
+  - **해결 3**: `_isLoadingData` 플래그 추가로 더블클릭 완전 방지
+  - **화면 전환 로직 추가**: `_hasData = true; UpdateViewVisibility();` 추가
+  - **로딩 완료 후 플래그 해제**: Dispatcher.UIThread.Post()에서 플래그 리셋
+- [x] **✅ 완벽한 데이터 로드 보장**: 정확히 100개 상품 카드만 생성
+  - **중복 클릭 무시**: 로딩 중 추가 클릭 자동 무시
+  - **실제 파일 검증**: Images 폴더에 정확히 100개 파일 확인
+  - **안정적인 UI 업데이트**: 모든 예외 상황에서도 플래그 안전 해제
+
+### 🔄 이전 업데이트 (v1.65 - 크롤링 완료 감지 시스템 안정화)
 - [x] **🎯 크롤링 완료 감지 문제 완전 해결**: 가끔씩 7번째 스토어에서 멈추던 문제 해결
   - **문제 원인**: 서버 내부 상태와 Chrome 완료 신호 불일치로 로딩창이 닫히지 않음
   - **Chrome 신호 신뢰**: Chrome이 "모든 스토어 완료" 신호를 보내면 서버가 무조건 신뢰
