@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.67-orange)
+![Release](https://img.shields.io/badge/Release-v1.68-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,22 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.67 - 키워드 추출 필터 문제 해결)
+### 🔄 최신 업데이트 (v1.68 - 크롤링 완료 팝업 개선 및 타오바오 페어링 시스템 구현)
+- [x] **📊 크롤링 완료 팝업 상세 정보 표시**: 수집 성공/실패 개수 명확히 표시
+  - **수집 성공**: 실제로 다운로드된 이미지 개수 표시
+  - **수집 실패**: 100 - 성공 개수로 자동 계산
+  - **전체 시도**: 목표 100개 명시
+  - **팝업 크기 증가**: 280px → 320px로 정보 표시 공간 확보
+  - **버튼 인덱스 수정**: Children[4] → Children[3]으로 오류 해결
+- [x] **🔧 타오바오 이미지 업로드 시스템 완전 구현**: Puppeteer 기반 자동 이미지 검색
+  - **BrowserFetcher 자동 다운로드**: Chrome 자동 다운로드 및 설치
+  - **ExecutablePath 지정**: 다운로드된 Chrome 경로 정확히 전달
+  - **Headless=false**: 사용자가 타오바오 검색 결과 확인 가능
+  - **이미지 파일 업로드**: 로컬 이미지를 타오바오 이미지 검색에 자동 업로드
+  - **완벽한 오류 처리**: Chrome 실행 실패, 파일 없음 등 모든 예외 상황 대응
+  - **서버 응답 로깅**: 업로드 성공/실패 상태를 작업로그에 명확히 표시
+
+### 🔄 이전 업데이트 (v1.67 - 키워드 추출 필터 문제 해결)
 - [x] **🔧 하드코딩된 키워드 필터 제거**: 특정 키워드만 추출되던 문제 완전 해결
   - **문제 원인**: `망치`, `사다리`, `원목` 등 특정 키워드만 추출하도록 하드코딩되어 있었음
   - **증상**: 다른 상품 검색 시 0개 추출되는 문제 발생
