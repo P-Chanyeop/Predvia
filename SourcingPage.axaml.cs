@@ -446,8 +446,9 @@ namespace Gumaedaehang
                     
                     if (parts.Length >= 3)
                     {
-                        var storeId = parts[0];
-                        var productId = parts[1];
+                        // 올바른 파싱: 마지막에서 2번째가 productId, 나머지가 storeId
+                        var productId = parts[parts.Length - 2];  // "12512103209"
+                        var storeId = string.Join("_", parts.Take(parts.Length - 2));  // "mnd_store"
                         
                         // UI에 상품 추가
                         Dispatcher.UIThread.Post(() =>
@@ -1089,16 +1090,22 @@ namespace Gumaedaehang
                 var productElement = new ProductUIElements
                 {
                     ProductId = cardId,
+                    StoreId = storeId,
+                    RealProductId = productId,
                     NameInputBox = nameInputText,
                     ByteCountTextBlock = byteCountText,
                     KeywordPanel = keywordPanel,
                     KeywordInputBox = keywordInput,
-                    AddKeywordButton = addButton
+                    AddKeywordButton = addButton,
+                    TaobaoPairingButton = pairingButton
                 };
                 
                 _productElements[cardId] = productElement;
                 
-                LogWindow.AddLogStatic($"✅ 상품 카드 생성 완료 - CardId: {cardId}");
+                // 이벤트 등록
+                RegisterProductEventHandlers(productElement);
+                
+                LogWindow.AddLogStatic($"✅ 상품 카드 생성 완료 - CardId: {cardId}, StoreId: {storeId}, ProductId: {productId}");
 
                 Debug.WriteLine($"✅ 원본과 완전히 똑같은 카드 추가: {storeId}_{productId}");
             }
@@ -1417,7 +1424,8 @@ namespace Gumaedaehang
             {
                 try
                 {
-                    LogWindow.AddLogStatic($"🔍 타오바오 페어링 시작: 상품 ID {productId}");
+                    LogWindow.AddLogStatic($"🔍 타오바오 페어링 시작: 카드 ID {productId}");
+                    LogWindow.AddLogStatic($"📦 실제 상품 정보: StoreId={product.StoreId}, ProductId={product.RealProductId}");
                     
                     // 버튼 비활성화
                     if (product.TaobaoPairingButton != null)
@@ -1427,7 +1435,11 @@ namespace Gumaedaehang
                     }
 
                     // 상품 이미지 경로 찾기
-                    string? imagePath = FindProductImagePath(productId);
+                    string? imagePath = null;
+                    if (product.StoreId != null && product.RealProductId != null)
+                    {
+                        imagePath = FindProductImagePath(product.StoreId, product.RealProductId);
+                    }
                     
                     if (string.IsNullOrEmpty(imagePath))
                     {
@@ -1455,6 +1467,9 @@ namespace Gumaedaehang
                     var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
                     
                     var response = await httpClient.PostAsync("http://localhost:8080/api/taobao/upload-image", content);
+                    var responseText = await response.Content.ReadAsStringAsync();
+                    
+                    LogWindow.AddLogStatic($"📡 서버 응답: {response.StatusCode} - {responseText}");
                     
                     if (response.IsSuccessStatusCode)
                     {
@@ -1472,7 +1487,7 @@ namespace Gumaedaehang
                     }
                     else
                     {
-                        LogWindow.AddLogStatic($"❌ 상품 {productId} 타오바오 업로드 실패");
+                        LogWindow.AddLogStatic($"❌ 상품 {productId} 타오바오 업로드 실패: {responseText}");
                         
                         if (product.TaobaoPairingButton != null)
                         {
@@ -1504,7 +1519,7 @@ namespace Gumaedaehang
         }
         
         // 상품 이미지 경로 찾기
-        private string? FindProductImagePath(int productId)
+        private string? FindProductImagePath(string storeId, string productId)
         {
             try
             {
@@ -1514,10 +1529,11 @@ namespace Gumaedaehang
                 if (!Directory.Exists(imagesPath))
                     return null;
                 
-                // {storeId}_{productId}_main.jpg 패턴으로 검색
-                var imageFiles = Directory.GetFiles(imagesPath, $"*_{productId}_main.jpg");
+                // {storeId}_{productId}_main.jpg 정확한 파일명으로 검색
+                var fileName = $"{storeId}_{productId}_main.jpg";
+                var fullPath = System.IO.Path.Combine(imagesPath, fileName);
                 
-                return imageFiles.Length > 0 ? imageFiles[0] : null;
+                return File.Exists(fullPath) ? fullPath : null;
             }
             catch (Exception ex)
             {
@@ -2984,6 +3000,8 @@ namespace Gumaedaehang
     public class ProductUIElements
     {
         public int ProductId { get; set; }
+        public string? StoreId { get; set; } // 실제 스토어 ID
+        public string? RealProductId { get; set; } // 실제 상품 ID
         public CheckBox? CheckBox { get; set; }
         public Ellipse? CategoryStatusIndicator { get; set; }
         public Ellipse? NameStatusIndicator { get; set; }

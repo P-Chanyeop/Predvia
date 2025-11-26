@@ -1454,17 +1454,7 @@ namespace Gumaedaehang.Services
                 
                 LogWindow.AddLogStatic($"📊 완료 상태 체크: {completedStores}/{totalStores} 스토어 완료, {currentCount}/100개 수집");
                 
-                // 모든 스토어가 완료된 경우
-                if (completedStores >= totalStores)
-                {
-                    LogWindow.AddLogStatic($"🎉 모든 스토어 완료 감지! 최종 수집: {currentCount}/100개");
-                    
-                    // 로딩창 숨김
-                    LoadingHelper.HideLoadingFromSourcingPage();
-                    
-                    // 팝업창 표시
-                    ShowCrawlingResultPopup(currentCount, "모든 스토어 방문 완료");
-                }
+                // Chrome에서 완료 신호를 보낼 때까지 대기 (서버 측 자동 팝업 제거)
             }
             catch (Exception ex)
             {
@@ -1542,15 +1532,24 @@ namespace Gumaedaehang.Services
                     throw new FileNotFoundException($"이미지 파일을 찾을 수 없습니다: {absolutePath}");
                 }
                 
-                LogWindow.AddLogStatic("🌐 Chrome DevTools Protocol 연결 중...");
+                LogWindow.AddLogStatic("🌐 Chrome 다운로드 중...");
                 
-                // Chrome DevTools Protocol 연결
-                browser = await Puppeteer.ConnectAsync(new ConnectOptions
+                // Chrome 자동 다운로드
+                var browserFetcher = new BrowserFetcher();
+                var revisionInfo = await browserFetcher.DownloadAsync();
+                
+                LogWindow.AddLogStatic($"✅ Chrome 다운로드 완료: {revisionInfo.GetExecutablePath()}");
+                LogWindow.AddLogStatic("🌐 Chrome 실행 중...");
+                
+                // Puppeteer가 다운로드한 Chrome 실행
+                browser = await Puppeteer.LaunchAsync(new LaunchOptions
                 {
-                    BrowserWSEndpoint = "ws://localhost:9222/devtools/browser/"
+                    Headless = false,
+                    ExecutablePath = revisionInfo.GetExecutablePath(),
+                    Args = new[] { "--start-maximized" }
                 });
                 
-                LogWindow.AddLogStatic("✅ Chrome 연결 성공");
+                LogWindow.AddLogStatic("✅ Chrome 실행 성공");
                 
                 // 새 탭 생성
                 page = await browser.NewPageAsync();
@@ -1672,8 +1671,9 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                // 🔄 팝업창 표시 전에 로딩창 먼저 숨김 - 소싱 페이지에서 직접 처리
                 LoadingHelper.HideLoadingFromSourcingPage();
+                
+                var failedCount = 100 - count;
                 
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
@@ -1683,13 +1683,11 @@ namespace Gumaedaehang.Services
 
                     if (mainWindow != null)
                     {
-                        var percentage = (count * 100.0 / 100);
-                        
                         var messageBox = new Avalonia.Controls.Window
                         {
                             Title = "크롤링 완료",
                             Width = 450,
-                            Height = 280,
+                            Height = 320,
                             WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
                             CanResize = false,
                             Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F8F9FA")),
@@ -1701,6 +1699,7 @@ namespace Gumaedaehang.Services
                                 Child = new Avalonia.Controls.StackPanel
                                 {
                                     Margin = new Avalonia.Thickness(30),
+                                    Spacing = 15,
                                     Children =
                                     {
                                         new Avalonia.Controls.TextBlock
@@ -1709,23 +1708,50 @@ namespace Gumaedaehang.Services
                                             FontSize = 24,
                                             FontWeight = Avalonia.Media.FontWeight.Bold,
                                             Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2C3E50")),
-                                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                            Margin = new Avalonia.Thickness(0, 0, 0, 20)
+                                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
                                         },
                                         new Avalonia.Controls.Border
                                         {
                                             Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E67E22")),
                                             CornerRadius = new Avalonia.CornerRadius(8),
                                             Padding = new Avalonia.Thickness(20, 15),
-                                            Margin = new Avalonia.Thickness(0, 0, 0, 25),
-                                            Child = new Avalonia.Controls.TextBlock
+                                            Child = new Avalonia.Controls.StackPanel
                                             {
-                                                Text = $"수집 완료: {count}/100개 ({percentage:F1}%)",
-                                                FontSize = 18,
-                                                FontWeight = Avalonia.Media.FontWeight.SemiBold,
-                                                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White),
-                                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                                                Spacing = 8,
+                                                Children =
+                                                {
+                                                    new Avalonia.Controls.TextBlock
+                                                    {
+                                                        Text = $"수집 성공: {count}개",
+                                                        FontSize = 18,
+                                                        FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                                                        Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White),
+                                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                                                    },
+                                                    new Avalonia.Controls.TextBlock
+                                                    {
+                                                        Text = $"수집 실패: {failedCount}개",
+                                                        FontSize = 18,
+                                                        FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                                                        Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White),
+                                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                                                    },
+                                                    new Avalonia.Controls.TextBlock
+                                                    {
+                                                        Text = $"전체 시도: 100개",
+                                                        FontSize = 16,
+                                                        Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White),
+                                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                                                    }
+                                                }
                                             }
+                                        },
+                                        new Avalonia.Controls.TextBlock
+                                        {
+                                            Text = reason,
+                                            FontSize = 14,
+                                            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#666666")),
+                                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
                                         },
                                         new Avalonia.Controls.Button
                                         {
@@ -1745,7 +1771,7 @@ namespace Gumaedaehang.Services
                         };
 
                         var button = ((Avalonia.Controls.Border)messageBox.Content).Child as Avalonia.Controls.StackPanel;
-                        var confirmButton = button?.Children[2] as Avalonia.Controls.Button;
+                        var confirmButton = button?.Children[3] as Avalonia.Controls.Button;
                         if (confirmButton != null)
                         {
                             confirmButton.Click += (s, e) => messageBox.Close();
