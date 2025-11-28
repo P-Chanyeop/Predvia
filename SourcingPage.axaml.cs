@@ -1450,6 +1450,7 @@ namespace Gumaedaehang
                 {
                     LogWindow.AddLogStatic($"🔍 타오바오 페어링 시작: 카드 ID {productId}");
                     LogWindow.AddLogStatic($"📦 실제 상품 정보: StoreId={product.StoreId}, ProductId={product.RealProductId}");
+                    LogWindow.AddLogStatic($"⚠️ 타오바오 이미지 검색을 위해 Chrome이 열립니다 (네이버 크롤링 아님)");
                     
                     // 버튼 비활성화
                     if (product.TaobaoPairingButton != null)
@@ -3050,8 +3051,16 @@ namespace Gumaedaehang
             {
                 LogWindow.AddLogStatic($"🔍 타오바오 패널 찾기 시작: TaobaoProductPanel_{cardId}");
                 
+                // RealDataContainer 찾기
+                var container = this.FindControl<StackPanel>("RealDataContainer");
+                if (container == null)
+                {
+                    LogWindow.AddLogStatic("❌ RealDataContainer를 찾을 수 없습니다");
+                    return;
+                }
+                
                 // 모든 StackPanel 찾기
-                var allPanels = RealDataContainer.FindAll<StackPanel>();
+                var allPanels = container.FindAll<StackPanel>();
                 LogWindow.AddLogStatic($"🔍 전체 StackPanel 개수: {allPanels.Count()}");
                 
                 // 이름이 있는 패널들 로그
@@ -3079,15 +3088,15 @@ namespace Gumaedaehang
                     var product = products[i];
                     
                     // 이미지 찾기
-                    var image = RealDataContainer.FindAll<Image>()
+                    var image = container.FindAll<Image>()
                         .FirstOrDefault(img => img.Name == $"TaobaoImage_{cardId}_{i}");
                     
                     // 플레이스홀더 텍스트 찾기
-                    var placeholder = RealDataContainer.FindAll<TextBlock>()
+                    var placeholder = container.FindAll<TextBlock>()
                         .FirstOrDefault(tb => tb.Name == $"PlaceholderText_{cardId}_{i}");
                     
                     // 정보 텍스트 찾기
-                    var infoText = RealDataContainer.FindAll<TextBlock>()
+                    var infoText = container.FindAll<TextBlock>()
                         .FirstOrDefault(tb => tb.Name == $"TaobaoInfo_{cardId}_{i}");
                     
                     // Border 찾기 (URL 저장용)
@@ -3095,23 +3104,33 @@ namespace Gumaedaehang
                     
                     if (image != null && !string.IsNullOrEmpty(product.ImageUrl))
                     {
-                        // 이미지 로드
-                        try
+                        // 원격 이미지 로드
+                        _ = Task.Run(async () =>
                         {
-                            var bitmap = new Avalonia.Media.Imaging.Bitmap(product.ImageUrl);
-                            image.Source = bitmap;
-                            image.IsVisible = true;
-                            
-                            // 플레이스홀더 숨기기
-                            if (placeholder != null)
+                            try
                             {
-                                placeholder.IsVisible = false;
+                                using var httpClient = new HttpClient();
+                                var imageBytes = await httpClient.GetByteArrayAsync(product.ImageUrl);
+                                
+                                await Dispatcher.UIThread.InvokeAsync(() =>
+                                {
+                                    using var stream = new MemoryStream(imageBytes);
+                                    var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+                                    image.Source = bitmap;
+                                    image.IsVisible = true;
+                                    
+                                    // 플레이스홀더 숨기기
+                                    if (placeholder != null)
+                                    {
+                                        placeholder.IsVisible = false;
+                                    }
+                                });
                             }
-                        }
-                        catch (Exception imgEx)
-                        {
-                            LogWindow.AddLogStatic($"⚠️ 이미지 로드 실패: {imgEx.Message}");
-                        }
+                            catch (Exception imgEx)
+                            {
+                                LogWindow.AddLogStatic($"⚠️ 타오바오 이미지 로드 실패: {imgEx.Message}");
+                            }
+                        });
                     }
                     
                     // 가격 + 판매량 표시

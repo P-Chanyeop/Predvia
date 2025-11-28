@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.70-orange)
+![Release](https://img.shields.io/badge/Release-v1.71-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,24 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.70 - 타오바오 이미지 검색 및 상품 정보 수집 완전 구현)
+### 🔄 최신 업데이트 (v1.71 - 타오바오 원격 이미지 로딩 시스템 구현)
+- [x] **🖼️ 타오바오 원격 이미지 HTTP 다운로드 및 표시 완전 구현**
+  - **문제 해결**: 타오바오 이미지 URL을 로컬 파일처럼 로드하려던 오류 완전 해결
+  - **HttpClient 다운로드**: 원격 타오바오 이미지를 바이트 배열로 다운로드
+  - **MemoryStream 변환**: 다운로드된 바이트를 MemoryStream으로 변환 후 Bitmap 생성
+  - **비동기 이미지 로딩**: Task.Run으로 백그라운드 다운로드, UI 스레드 차단 방지
+  - **메모리 기반 표시**: 로컬 저장 없이 메모리에서 직접 이미지 표시 (빠른 성능)
+  - **완벽한 오류 처리**: 네트워크 오류, 이미지 파싱 오류 등 모든 예외 상황 대응
+- [x] **🔗 타오바오 상품 클릭 이벤트 완벽 작동**
+  - **Border.Tag에 URL 저장**: 타오바오 상품 URL을 Border 컨트롤의 Tag 속성에 저장
+  - **클릭 시 브라우저 열기**: Process.Start()로 기본 브라우저에서 타오바오 상품 페이지 자동 열기
+  - **완벽한 사용자 경험**: 이미지 클릭만으로 타오바오 상품 페이지 즉시 접근
+- [x] **📝 사용자 안내 메시지 강화**
+  - **타오바오 페어링 시작 시**: "⚠️ 타오바오 이미지 검색을 위해 Chrome이 열립니다 (네이버 크롤링 아님)" 메시지 추가
+  - **이미지 업로드 시작 시**: 구분선과 함께 "🔍 타오바오 이미지 검색 시작 (네이버 크롤링 아님)" 명확한 안내
+  - **사용자 혼란 방지**: 네이버 크롤링과 타오바오 이미지 검색을 명확히 구분
+
+### 🔄 이전 업데이트 (v1.70 - 타오바오 이미지 검색 및 상품 정보 수집 완전 구현)
 - [x] **🎉 타오바오 이미지 검색 완전 성공**: Puppeteer 기반 자동 이미지 검색 및 상품 정보 수집 완료
   - **새 탭 감지 및 전환**: 검색 버튼 클릭 후 새로 열린 탭을 정확히 감지하여 전환
   - **URL 기반 페이지 찾기**: `s.taobao.com` 포함된 검색 결과 페이지를 정확히 식별
