@@ -1033,47 +1033,71 @@ namespace Gumaedaehang
                 pairingPanel.Children.Add(pairingTitle);
                 pairingPanel.Children.Add(pairingButton);
 
-                // 5. 상품박스 3개 (PREDVIA 로고)
+                // 5. 상품박스 5개 (타오바오 상품 표시용)
                 var productBoxPanel = new StackPanel 
                 { 
                     Orientation = Orientation.Horizontal, 
                     Spacing = 20,
-                    Margin = new Thickness(0, 10, 0, 0)
+                    Margin = new Thickness(0, 10, 0, 0),
+                    Name = $"TaobaoProductPanel_{cardId}"  // 나중에 찾기 위한 이름
                 };
 
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < 5; i++)
                 {
                     var productBox = new StackPanel { Spacing = 10 };
                     
-                    // PREDVIA 로고 박스
+                    // 타오바오 상품 이미지 박스 (클릭 가능)
                     var logoBorder = new Border
                     {
                         Width = 160,
                         Height = 120,
                         Background = new SolidColorBrush(Color.Parse("#F5F5F5")),
                         CornerRadius = new CornerRadius(8),
-                        Child = new TextBlock
+                        Cursor = new Cursor(StandardCursorType.Hand),
+                        Tag = "",  // 타오바오 URL 저장용
+                        Child = new Grid
                         {
-                            Text = "🔺 PREDVIA",
-                            FontSize = 16,
-                            FontFamily = new FontFamily("Malgun Gothic"),
-                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                            Foreground = new SolidColorBrush(Color.Parse("#FF8A46"))
+                            Children =
+                            {
+                                // 기본 PREDVIA 로고
+                                new TextBlock
+                                {
+                                    Text = "🔺 PREDVIA",
+                                    FontSize = 16,
+                                    FontFamily = new FontFamily("Malgun Gothic"),
+                                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                                    Foreground = new SolidColorBrush(Color.Parse("#FF8A46")),
+                                    Name = $"PlaceholderText_{cardId}_{i}"
+                                },
+                                // 타오바오 상품 이미지 (처음엔 숨김)
+                                new Image
+                                {
+                                    Width = 160,
+                                    Height = 120,
+                                    Stretch = Avalonia.Media.Stretch.UniformToFill,
+                                    IsVisible = false,
+                                    Name = $"TaobaoImage_{cardId}_{i}"
+                                }
+                            }
                         }
                     };
                     
-                    // 페어링 텍스트
-                    var pairingText = new TextBlock
+                    // 클릭 이벤트 추가
+                    logoBorder.PointerPressed += OnTaobaoProductClick;
+                    
+                    // 가격 + 판매량 텍스트
+                    var infoText = new TextBlock
                     {
                         Text = "페어링",
                         FontSize = 12,
                         FontFamily = new FontFamily("Malgun Gothic"),
-                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        Name = $"TaobaoInfo_{cardId}_{i}"
                     };
                     
                     productBox.Children.Add(logoBorder);
-                    productBox.Children.Add(pairingText);
+                    productBox.Children.Add(infoText);
                     productBoxPanel.Children.Add(productBox);
                 }
 
@@ -1474,6 +1498,30 @@ namespace Gumaedaehang
                     if (response.IsSuccessStatusCode)
                     {
                         LogWindow.AddLogStatic($"✅ 상품 {productId} 타오바오 이미지 업로드 완료");
+                        
+                        // 응답에서 타오바오 상품 정보 추출
+                        try
+                        {
+                            var responseData = JsonSerializer.Deserialize<JsonElement>(responseText);
+                            if (responseData.TryGetProperty("products", out var productsElement))
+                            {
+                                var taobaoProducts = JsonSerializer.Deserialize<List<TaobaoProductData>>(productsElement.GetRawText());
+                                if (taobaoProducts != null && taobaoProducts.Count > 0)
+                                {
+                                    LogWindow.AddLogStatic($"📦 타오바오 상품 {taobaoProducts.Count}개 수신");
+                                    
+                                    // UI 업데이트
+                                    await Dispatcher.UIThread.InvokeAsync(() =>
+                                    {
+                                        UpdateTaobaoProductBoxes(productId, taobaoProducts);
+                                    });
+                                }
+                            }
+                        }
+                        catch (Exception parseEx)
+                        {
+                            LogWindow.AddLogStatic($"⚠️ 타오바오 상품 정보 파싱 오류: {parseEx.Message}");
+                        }
                         
                         // 페어링 완료 처리
                         product.IsTaobaoPaired = true;
@@ -2994,6 +3042,106 @@ namespace Gumaedaehang
                 }
             };
         }
+        
+        // ⭐ 타오바오 상품 박스 업데이트
+        private void UpdateTaobaoProductBoxes(int cardId, List<TaobaoProductData> products)
+        {
+            try
+            {
+                // 타오바오 상품 패널 찾기
+                var panel = RealDataContainer.FindAll<StackPanel>()
+                    .FirstOrDefault(p => p.Name == $"TaobaoProductPanel_{cardId}");
+                
+                if (panel == null)
+                {
+                    LogWindow.AddLogStatic($"⚠️ 타오바오 상품 패널을 찾을 수 없습니다: {cardId}");
+                    return;
+                }
+                
+                // 최대 5개 상품 표시
+                for (int i = 0; i < Math.Min(5, products.Count); i++)
+                {
+                    var product = products[i];
+                    
+                    // 이미지 찾기
+                    var image = RealDataContainer.FindAll<Image>()
+                        .FirstOrDefault(img => img.Name == $"TaobaoImage_{cardId}_{i}");
+                    
+                    // 플레이스홀더 텍스트 찾기
+                    var placeholder = RealDataContainer.FindAll<TextBlock>()
+                        .FirstOrDefault(tb => tb.Name == $"PlaceholderText_{cardId}_{i}");
+                    
+                    // 정보 텍스트 찾기
+                    var infoText = RealDataContainer.FindAll<TextBlock>()
+                        .FirstOrDefault(tb => tb.Name == $"TaobaoInfo_{cardId}_{i}");
+                    
+                    // Border 찾기 (URL 저장용)
+                    var border = image?.Parent?.Parent as Border;
+                    
+                    if (image != null && !string.IsNullOrEmpty(product.ImageUrl))
+                    {
+                        // 이미지 로드
+                        try
+                        {
+                            var bitmap = new Avalonia.Media.Imaging.Bitmap(product.ImageUrl);
+                            image.Source = bitmap;
+                            image.IsVisible = true;
+                            
+                            // 플레이스홀더 숨기기
+                            if (placeholder != null)
+                            {
+                                placeholder.IsVisible = false;
+                            }
+                        }
+                        catch (Exception imgEx)
+                        {
+                            LogWindow.AddLogStatic($"⚠️ 이미지 로드 실패: {imgEx.Message}");
+                        }
+                    }
+                    
+                    // 가격 + 판매량 표시
+                    if (infoText != null)
+                    {
+                        infoText.Text = $"¥{product.Price} | {product.Sales}";
+                    }
+                    
+                    // URL 저장
+                    if (border != null && !string.IsNullOrEmpty(product.ProductUrl))
+                    {
+                        border.Tag = product.ProductUrl;
+                    }
+                }
+                
+                LogWindow.AddLogStatic($"✅ 타오바오 상품 박스 업데이트 완료: {cardId}");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 타오바오 상품 박스 업데이트 오류: {ex.Message}");
+            }
+        }
+        
+        // ⭐ 타오바오 상품 클릭 이벤트
+        private void OnTaobaoProductClick(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+        {
+            try
+            {
+                if (sender is Border border && border.Tag is string url && !string.IsNullOrEmpty(url))
+                {
+                    LogWindow.AddLogStatic($"🔗 타오바오 상품 페이지 열기: {url}");
+                    
+                    // 새 탭에서 타오바오 페이지 열기
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = url,
+                        UseShellExecute = true
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 타오바오 페이지 열기 오류: {ex.Message}");
+            }
+        }
     }
     
     // 상품별 UI 요소들을 관리하는 클래스
@@ -3063,3 +3211,24 @@ public class KeywordResponse
     [JsonPropertyName("filteredCount")]
     public int FilteredCount { get; set; }
 }
+
+// ⭐ 타오바오 상품 데이터 모델
+public class TaobaoProductData
+{
+    [JsonPropertyName("imageUrl")]
+    public string ImageUrl { get; set; } = string.Empty;
+    
+    [JsonPropertyName("price")]
+    public string Price { get; set; } = string.Empty;
+    
+    [JsonPropertyName("sales")]
+    public string Sales { get; set; } = string.Empty;
+    
+    [JsonPropertyName("productUrl")]
+    public string ProductUrl { get; set; } = string.Empty;
+    
+    [JsonPropertyName("title")]
+    public string Title { get; set; } = string.Empty;
+}
+
+        // ⭐ 타오바오 상품 박스 업데이트
