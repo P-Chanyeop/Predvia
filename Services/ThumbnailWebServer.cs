@@ -1643,6 +1643,9 @@ namespace Gumaedaehang.Services
                     throw new FileNotFoundException($"이미지 파일을 찾을 수 없습니다: {absolutePath}");
                 }
                 
+                LogWindow.AddLogStatic("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                LogWindow.AddLogStatic("🔍 타오바오 이미지 검색 시작 (네이버 크롤링 아님)");
+                LogWindow.AddLogStatic("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 LogWindow.AddLogStatic("🌐 Chrome 다운로드 중...");
                 
                 var browserFetcher = new BrowserFetcher();
