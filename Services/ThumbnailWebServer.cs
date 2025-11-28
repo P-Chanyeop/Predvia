@@ -1604,12 +1604,27 @@ namespace Gumaedaehang.Services
                 LogWindow.AddLogStatic($"✅ 타오바오 이미지 업로드 완료: {requestData.ProductId}");
                 LogWindow.AddLogStatic($"📦 타오바오 상품 {products.Count}개 수집 완료");
                 
-                return Results.Ok(new { success = true, message = "이미지 업로드 완료", products = products });
+                // 명시적 JSON 응답 작성
+                var responseJson = JsonSerializer.Serialize(new 
+                { 
+                    success = true, 
+                    message = "이미지 업로드 완료", 
+                    products = products 
+                });
+                
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync(responseJson);
+                return Results.Ok();
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 타오바오 이미지 업로드 오류: {ex.Message}");
-                return Results.BadRequest(new { error = ex.Message });
+                
+                var errorJson = JsonSerializer.Serialize(new { error = ex.Message });
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsync(errorJson);
+                return Results.Ok();
             }
         }
         
@@ -1735,21 +1750,57 @@ namespace Gumaedaehang.Services
                     });
                     LogWindow.AddLogStatic("✅ 이미지 검색 버튼 발견");
                     
-                    // 버튼 클릭 및 페이지 네비게이션 대기
-                    await Task.WhenAll(
-                        page.WaitForNavigationAsync(new NavigationOptions
-                        {
-                            WaitUntil = new[] { WaitUntilNavigation.DOMContentLoaded },
-                            Timeout = 30000
-                        }),
-                        page.ClickAsync("#image-search-upload-button")
-                    );
+                    // 현재 페이지 수 확인
+                    var pagesBefore = (await browser.PagesAsync()).Length;
+                    LogWindow.AddLogStatic($"📄 클릭 전 페이지 수: {pagesBefore}");
                     
+                    // 버튼 클릭
+                    await page.ClickAsync("#image-search-upload-button");
                     LogWindow.AddLogStatic("✅ 이미지 검색 버튼 클릭 완료");
-                    LogWindow.AddLogStatic($"🌐 검색 결과 페이지: {page.Url}");
                     
-                    // 검색 결과 로딩 대기
+                    // 새 탭이 열릴 때까지 대기
                     await Task.Delay(3000);
+                    
+                    // 모든 페이지 확인
+                    var pagesAfter = await browser.PagesAsync();
+                    LogWindow.AddLogStatic($"📄 클릭 후 페이지 수: {pagesAfter.Length}");
+                    
+                    // 검색 결과 페이지 찾기 (s.taobao.com 포함된 페이지)
+                    IPage? searchResultPage = null;
+                    for (int i = 0; i < 30; i++) // 최대 15초 대기
+                    {
+                        await Task.Delay(500);
+                        
+                        foreach (var p in await browser.PagesAsync())
+                        {
+                            if (p.Url.Contains("s.taobao.com"))
+                            {
+                                searchResultPage = p;
+                                break;
+                            }
+                        }
+                        
+                        if (searchResultPage != null)
+                        {
+                            LogWindow.AddLogStatic($"✅ 검색 결과 페이지 발견: {searchResultPage.Url}");
+                            break;
+                        }
+                    }
+                    
+                    if (searchResultPage != null)
+                    {
+                        page = searchResultPage;
+                        LogWindow.AddLogStatic($"✅ 검색 결과 페이지로 전환 완료");
+                        
+                        // 추가 로딩 대기
+                        await Task.Delay(2000);
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic("⚠️ 검색 결과 페이지를 찾을 수 없습니다");
+                    }
+                    
+                    LogWindow.AddLogStatic($"🌐 최종 페이지: {page.Url}");
                     
                     // 3단계: 검색 결과에서 상위 5개 상품 정보 크롤링
                     LogWindow.AddLogStatic("📦 타오바오 상품 정보 수집 중...");
@@ -1810,27 +1861,25 @@ namespace Gumaedaehang.Services
                         const card = cards[i];
                         
                         try {
-                            // 이미지
-                            const img = card.querySelector('.mainPic--Ds3X7I8z');
+                            // 이미지 - img 태그 직접 찾기
+                            const img = card.querySelector('img[class*=""mainPic""]');
                             const imageUrl = img ? img.src : '';
                             
-                            // 가격
-                            const priceInt = card.querySelector('.priceInt--yqqZMJ5a');
+                            // 가격 - priceInt로 시작하는 클래스
+                            const priceInt = card.querySelector('[class*=""priceInt""]');
                             const price = priceInt ? priceInt.textContent.trim() : '';
                             
-                            // 판매량
-                            const sales = card.querySelector('.realSales--XZJiepmt');
+                            // 판매량 - realSales로 시작하는 클래스
+                            const sales = card.querySelector('[class*=""realSales""]');
                             const salesText = sales ? sales.textContent.trim() : '';
                             
-                            // 상품명
-                            const title = card.querySelector('.title--ASSt27UY span');
+                            // 상품명 - title로 시작하는 클래스 안의 span
+                            const title = card.querySelector('[class*=""title""] span');
                             const titleText = title ? title.textContent.trim() : '';
                             
-                            // 상품 링크
-                            const link = card.querySelector('a[href*=""item.taobao.com""]') || 
-                                        card.querySelector('a[href*=""detail.tmall.com""]') ||
-                                        card.querySelector('a[href*=""taobao.com""]');
-                            const productUrl = link ? link.href : '';
+                            // 상품 링크 - 카드를 감싸는 부모 a 태그
+                            const parentLink = card.closest('a');
+                            const productUrl = parentLink ? parentLink.href : '';
                             
                             console.log(`상품 ${i+1}:`, { imageUrl, price, salesText, titleText, productUrl });
                             
@@ -2306,6 +2355,21 @@ namespace Gumaedaehang.Services
                     // ⭐ 크롤링 완전 중단 신호 설정
                     _shouldStop = true;
                     _isCrawlingActive = false;
+                    
+                    // ⭐ 모든 스토어를 done 상태로 변경하여 Chrome 중단
+                    lock (_statesLock)
+                    {
+                        foreach (var storeId in _storeStates.Keys.ToList())
+                        {
+                            var state = _storeStates[storeId];
+                            if (state.State != "done")
+                            {
+                                state.State = "done";
+                                state.Lock = false;
+                                LogWindow.AddLogStatic($"🛑 {storeId}: 강제 완료 처리 (목표 달성)");
+                            }
+                        }
+                    }
                     
                     // 🔄 로딩창 숨김 - 소싱 페이지에서 직접 처리
                     LoadingHelper.HideLoadingFromSourcingPage();
