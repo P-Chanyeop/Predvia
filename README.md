@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.68-orange)
+![Release](https://img.shields.io/badge/Release-v1.69-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,22 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.68 - 크롤링 완료 팝업 개선 및 타오바오 페어링 시스템 구현)
+### 🔄 최신 업데이트 (v1.69 - 타오바오 검색 결과 페이지 네비게이션 개선)
+- [x] **🔍 검색 버튼 클릭 후 페이지 네비게이션 대기 추가**: WaitForNavigationAsync로 검색 결과 페이지 로드 완료 대기
+  - **문제 해결**: 검색 버튼 클릭 후 페이지 이동을 기다리지 않아 상품 카드를 찾지 못하던 문제 해결
+  - **Task.WhenAll 사용**: 버튼 클릭과 페이지 네비게이션을 동시에 대기
+  - **DOMContentLoaded 이벤트**: 페이지 DOM 로드 완료 시점까지 대기
+  - **30초 타임아웃**: 느린 네트워크 환경 대응
+  - **현재 URL 로그**: 검색 결과 페이지 URL 확인 가능
+- [x] **📦 ExtractTaobaoProducts 메서드 개선**: 상품 정보 추출 안정성 향상
+  - **타임아웃 증가**: 10초 → 20초로 상품 카드 대기 시간 증가
+  - **현재 URL 로그**: 상품 추출 시작 시 페이지 URL 확인
+  - **상품 카드 발견 로그**: 상품 카드 탐지 성공 시 명확한 로그 표시
+  - **JavaScript 콘솔 로그**: 브라우저 콘솔에서 상품 카드 개수 및 개별 상품 정보 확인
+  - **타오바오 링크 선택자 추가**: `a[href*="taobao.com"]` 추가로 더 많은 상품 링크 탐지
+  - **상품 정보 상세 로그**: 각 상품의 가격과 판매량을 작업로그에 표시
+
+### 🔄 이전 업데이트 (v1.68 - 크롤링 완료 팝업 개선 및 타오바오 페어링 시스템 구현)
 - [x] **📊 크롤링 완료 팝업 상세 정보 표시**: 수집 성공/실패 개수 명확히 표시
   - **수집 성공**: 실제로 다운로드된 이미지 개수 표시
   - **수집 실패**: 100 - 성공 개수로 자동 계산

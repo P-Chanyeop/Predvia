@@ -626,6 +626,37 @@ namespace Gumaedaehang
             }
         }
 
+        // ⭐ 타오바오 로그인 버튼 클릭
+        private async void OnTaobaoLoginClick(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🔐 타오바오 로그인 시작...");
+                
+                // 서버에 타오바오 로그인 요청
+                using var client = new System.Net.Http.HttpClient();
+                var response = await client.PostAsync("http://localhost:8080/api/taobao/login", null);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    LogWindow.AddLogStatic("✅ 타오바오 로그인 페이지가 열렸습니다");
+                    LogWindow.AddLogStatic("👤 Chrome 창에서 타오바오 로그인을 완료하세요");
+                    LogWindow.AddLogStatic("💾 로그인 정보는 자동으로 저장됩니다");
+                    
+                    // 설정 박스 숨기기
+                    HideAllSettingsBoxes();
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("❌ 타오바오 로그인 페이지 열기 실패");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 타오바오 로그인 오류: {ex.Message}");
+            }
+        }
+
         // 마켓 설정 페이지 전환
         private void OnMarketSetupClick(object? sender, RoutedEventArgs e)
         {

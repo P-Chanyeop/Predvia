@@ -291,6 +291,13 @@
           <!-- 닉네임 변경 -->
           <Button Classes="menu-item" Content="닉네임 변경" Click="OnNicknameChangeClick"/>
           
+          <Border Height="1" 
+                  Background="#E0E0E0" 
+                  Margin="0,10,0,10"/>
+          
+          <!-- 타오바오 계정 연동 -->
+          <Button Classes="menu-item" Content="타오바오 계정 연동" Click="OnTaobaoLoginClick"/>
+          
         </StackPanel>
       </Border>
 
