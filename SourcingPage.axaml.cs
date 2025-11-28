@@ -3048,15 +3048,30 @@ namespace Gumaedaehang
         {
             try
             {
+                LogWindow.AddLogStatic($"🔍 타오바오 패널 찾기 시작: TaobaoProductPanel_{cardId}");
+                
+                // 모든 StackPanel 찾기
+                var allPanels = RealDataContainer.FindAll<StackPanel>();
+                LogWindow.AddLogStatic($"🔍 전체 StackPanel 개수: {allPanels.Count()}");
+                
+                // 이름이 있는 패널들 로그
+                var namedPanels = allPanels.Where(p => !string.IsNullOrEmpty(p.Name)).ToList();
+                LogWindow.AddLogStatic($"🔍 이름 있는 패널 개수: {namedPanels.Count}");
+                foreach (var np in namedPanels.Take(10))
+                {
+                    LogWindow.AddLogStatic($"  - {np.Name}");
+                }
+                
                 // 타오바오 상품 패널 찾기
-                var panel = RealDataContainer.FindAll<StackPanel>()
-                    .FirstOrDefault(p => p.Name == $"TaobaoProductPanel_{cardId}");
+                var panel = allPanels.FirstOrDefault(p => p.Name == $"TaobaoProductPanel_{cardId}");
                 
                 if (panel == null)
                 {
                     LogWindow.AddLogStatic($"⚠️ 타오바오 상품 패널을 찾을 수 없습니다: {cardId}");
                     return;
                 }
+                
+                LogWindow.AddLogStatic($"✅ 타오바오 패널 발견: {panel.Name}");
                 
                 // 최대 5개 상품 표시
                 for (int i = 0; i < Math.Min(5, products.Count); i++)
