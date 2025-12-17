@@ -79,11 +79,11 @@ namespace Gumaedaehang.Services
                             "--disable-notifications",
                             "--disable-popup-blocking",
                             "--start-maximized",
+                            "--ignore-certificate-errors",
                             "--disable-extensions-except=" + Path.Combine(Directory.GetCurrentDirectory(), "chrome-extension"),
                             "--load-extension=" + Path.Combine(Directory.GetCurrentDirectory(), "chrome-extension")
                         },
                         UserDataDir = userDataDir,
-                        IgnoreHTTPSErrors = true,
                         DefaultViewport = null // 실제 브라우저 크기 사용
                     });
 
@@ -531,10 +531,13 @@ namespace Gumaedaehang.Services
                 // ⭐ 확장프로그램과 동일: 40개 상품 중 리뷰가 있는 마지막 rank 찾기
                 await SendLogAsync($"🔍 {storeId}: 리뷰 span 검색 시작");
 
-                var reviewSpans = await page.XPathAsync("//span[normalize-space(text())='리뷰']");
-                await SendLogAsync($"📝 {storeId}: {reviewSpans.Length}개 '리뷰' span 발견");
+                // ⭐ XPath 대신 JavaScript 평가로 리뷰 span 찾기
+                var reviewSpansCount = await page.EvaluateExpressionAsync<int>(@"
+                    document.evaluate(""//span[normalize-space(text())='리뷰']"", document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null).snapshotLength
+                ");
+                await SendLogAsync($"📝 {storeId}: {reviewSpansCount}개 '리뷰' span 발견");
 
-                if (reviewSpans.Length == 0)
+                if (reviewSpansCount == 0)
                 {
                     await SendLogAsync($"❌ {storeId}: '리뷰' span 없음 - 스킵");
                     return;
@@ -615,9 +618,9 @@ namespace Gumaedaehang.Services
         {
             for (int i = 0; i < products.Count && !_shouldStop && _currentProductCount < 100; i++)
             {
+                var product = products[i]; // ⭐ try 블록 밖으로 이동
                 try
                 {
-                    var product = products[i];
                     await SendLogAsync($"🔗 {storeId}: [{i + 1}/{products.Count}] Rank {product.Rank} - {product.Url} 접속");
 
                     // ⭐ 실제 productId로 접속
