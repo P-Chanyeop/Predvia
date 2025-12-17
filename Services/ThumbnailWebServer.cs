@@ -2948,406 +2948,6 @@ namespace Gumaedaehang.Services
         [JsonPropertyName("pageUrl")]
         public string PageUrl { get; set; } = string.Empty;
     }
-
-    // 스마트스토어 링크 데이터 모델
-    public class SmartStoreLink
-    {
-        [JsonPropertyName("url")]
-        public string Url { get; set; } = string.Empty;
-        
-        [JsonPropertyName("title")]
-        public string Title { get; set; } = string.Empty;
-        
-        [JsonPropertyName("seller")]
-        public string Seller { get; set; } = string.Empty;
-        
-        [JsonPropertyName("storeId")]
-        public string StoreId { get; set; } = string.Empty;
-    }
-
-    // 스마트스토어 방문 요청 데이터 모델
-    public class SmartStoreVisitRequest
-    {
-        [JsonPropertyName("url")]
-        public string Url { get; set; } = string.Empty;
-        
-        [JsonPropertyName("title")]
-        public string Title { get; set; } = string.Empty;
-        
-        [JsonPropertyName("storeId")]
-        public string StoreId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("gongguUrl")]
-        public string GongguUrl { get; set; } = string.Empty;
-        
-        [JsonPropertyName("currentIndex")]
-        public int CurrentIndex { get; set; }
-        
-        [JsonPropertyName("totalCount")]
-        public int TotalCount { get; set; }
-        
-        [JsonPropertyName("timestamp")]
-        public string Timestamp { get; set; } = string.Empty;
-    }
-
-    // 공구 개수 확인 요청 데이터 모델
-    public class GongguCheckRequest
-    {
-        [JsonPropertyName("storeId")]
-        public string StoreId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("gongguCount")]
-        public int GongguCount { get; set; }
-        
-        [JsonPropertyName("isValid")]
-        public bool IsValid { get; set; }
-        
-        [JsonPropertyName("timestamp")]
-        public string Timestamp { get; set; } = string.Empty;
-    }
-
-    // 전체상품 페이지 요청 데이터 모델
-    public class AllProductsPageRequest
-    {
-        [JsonPropertyName("storeId")]
-        public string StoreId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("pageType")]
-        public string PageType { get; set; } = string.Empty;
-        
-        [JsonPropertyName("pageUrl")]
-        public string PageUrl { get; set; } = string.Empty;
-        
-        [JsonPropertyName("timestamp")]
-        public string Timestamp { get; set; } = string.Empty;
-    }
-
-    // 상품 데이터 요청 모델
-    public class ProductDataRequest
-    {
-        [JsonPropertyName("storeId")]
-        public string StoreId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("productCount")]
-        public int ProductCount { get; set; }
-        
-        [JsonPropertyName("reviewProductCount")]
-        public int ReviewProductCount { get; set; }
-        
-        [JsonPropertyName("products")]
-        public List<ProductInfo> Products { get; set; } = new();
-        
-        [JsonPropertyName("pageUrl")]
-        public string PageUrl { get; set; } = string.Empty;
-        
-        [JsonPropertyName("timestamp")]
-        public string Timestamp { get; set; } = string.Empty;
-    }
-
-    // Chrome 확장프로그램 로그 요청 데이터 모델
-    public class ExtensionLogRequest
-    {
-        [JsonPropertyName("message")]
-        public string Message { get; set; } = string.Empty;
-        
-        [JsonPropertyName("timestamp")]
-        public string Timestamp { get; set; } = string.Empty;
-    }
-
-    // 상품 정보 모델
-    public class ProductInfo
-    {
-        [JsonPropertyName("index")]
-        public int Index { get; set; }
-        
-        [JsonPropertyName("name")]
-        public string Name { get; set; } = string.Empty;
-        
-        [JsonPropertyName("price")]
-        public string Price { get; set; } = string.Empty;
-        
-        [JsonPropertyName("imageUrl")]
-        public string ImageUrl { get; set; } = string.Empty;
-        
-        [JsonPropertyName("reviewCount")]
-        public string ReviewCount { get; set; } = string.Empty;
-        
-        [JsonPropertyName("element")]
-        public string Element { get; set; } = string.Empty;
-    }
-
-    // ⭐ 스토어 상태 모델
-    public class StoreState
-    {
-        [JsonPropertyName("storeId")]
-        public string StoreId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("runId")]
-        public string RunId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("state")]
-        public string State { get; set; } = string.Empty; // collecting, visiting, done
-        
-        [JsonPropertyName("status")]
-        public string Status { get; set; } = string.Empty; // collecting, visiting, done
-        
-        [JsonPropertyName("lock")]
-        public bool Lock { get; set; } = false;
-        
-        [JsonPropertyName("isLocked")]
-        public bool IsLocked { get; set; } = false;
-        
-        [JsonPropertyName("expected")]
-        public int Expected { get; set; } = 0;
-        
-        [JsonPropertyName("progress")]
-        public int Progress { get; set; } = 0;
-        
-        [JsonPropertyName("productCount")]
-        public int ProductCount { get; set; } = 0;
-        
-        [JsonPropertyName("updatedAt")]
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
-        
-        // ⭐ 진행률 정체 감지용
-        [JsonPropertyName("lastProgress")]
-        public int LastProgress { get; set; } = -1;
-        
-        [JsonPropertyName("stuckCount")]
-        public int StuckCount { get; set; } = 0;
-    }
-
-    // ⭐ 차단 정보 모델
-    public class BlockedStoreInfo
-    {
-    [JsonPropertyName("storeId")]
-    public string StoreId { get; set; } = string.Empty;
-    
-    [JsonPropertyName("runId")]
-    public string RunId { get; set; } = string.Empty;
-    
-    [JsonPropertyName("currentIndex")]
-    public int CurrentIndex { get; set; }
-    
-    [JsonPropertyName("totalProducts")]
-    public int TotalProducts { get; set; }
-    
-    [JsonPropertyName("productUrls")]
-    public List<string> ProductUrls { get; set; } = new();
-    
-    [JsonPropertyName("timestamp")]
-    public long Timestamp { get; set; }
-}
-
-// ⭐ 카테고리 데이터 모델
-public class CategoryData
-{
-    [JsonPropertyName("storeId")]
-    public string StoreId { get; set; } = "";
-
-    [JsonPropertyName("categories")]
-    public List<CategoryInfo> Categories { get; set; } = new();
-
-    [JsonPropertyName("pageUrl")]
-    public string PageUrl { get; set; } = "";
-
-    [JsonPropertyName("extractedAt")]
-    public string ExtractedAt { get; set; } = "";
-}
-
-public class CategoryInfo
-{
-    [JsonPropertyName("name")]
-    public string Name { get; set; } = "";
-
-    [JsonPropertyName("url")]
-    public string Url { get; set; } = "";
-
-    [JsonPropertyName("categoryId")]
-    public string CategoryId { get; set; } = "";
-
-    [JsonPropertyName("order")]
-    public int Order { get; set; }
-}
-
-// ⭐ 개별 상품 카테고리 데이터 모델
-public class ProductCategoryData
-{
-    [JsonPropertyName("storeId")]
-    public string StoreId { get; set; } = "";
-
-    [JsonPropertyName("productId")]
-    public string ProductId { get; set; } = "";
-
-    [JsonPropertyName("categories")]
-    public List<CategoryInfo> Categories { get; set; } = new();
-
-    [JsonPropertyName("pageUrl")]
-    public string PageUrl { get; set; } = "";
-
-    [JsonPropertyName("extractedAt")]
-    public string ExtractedAt { get; set; } = "";
-}
-
-// ⭐ 상품 이미지 데이터 모델
-    public class ProductImageData
-    {
-        [JsonPropertyName("storeId")]
-        public string StoreId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("productId")]
-        public string ProductId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("imageUrl")]
-        public string ImageUrl { get; set; } = string.Empty;
-        
-        [JsonPropertyName("productUrl")]
-        public string ProductUrl { get; set; } = string.Empty;
-    }
-
-    // ⭐ 상품명 데이터 모델
-    public class ProductNameData
-    {
-        [JsonPropertyName("storeId")]
-        public string StoreId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("productId")]
-        public string ProductId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("productName")]
-        public string ProductName { get; set; } = string.Empty;
-        
-        [JsonPropertyName("productUrl")]
-        public string ProductUrl { get; set; } = string.Empty;
-    }
-
-    // ⭐ 리뷰 데이터 모델
-    public class ProductReviewsData
-    {
-        [JsonPropertyName("storeId")]
-        public string StoreId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("productId")]
-        public string ProductId { get; set; } = string.Empty;
-        
-        [JsonPropertyName("productUrl")]
-        public string ProductUrl { get; set; } = string.Empty;
-        
-        [JsonPropertyName("reviews")]
-        public List<ReviewData> Reviews { get; set; } = new List<ReviewData>();
-        
-        [JsonPropertyName("reviewCount")]
-        public int ReviewCount { get; set; }
-        
-        [JsonPropertyName("timestamp")]
-        public DateTime Timestamp { get; set; } = DateTime.Now;
-    }
-
-    public class ReviewData
-    {
-        [JsonPropertyName("rating")]
-        public double Rating { get; set; }
-        
-        [JsonPropertyName("content")]
-        public string Content { get; set; } = string.Empty;
-        
-        [JsonPropertyName("ratingText")]
-        public string RatingText { get; set; } = string.Empty;
-        
-        [JsonPropertyName("recentRating")]
-        public string RecentRating { get; set; } = string.Empty;
-    }
-
-    // URL에서 스토어 ID 추출 확장 메서드
-    public static class UrlExtensions
-    {
-        public static string ExtractStoreIdFromUrl(string url)
-        {
-            try
-            {
-                var storeId = "";
-                
-                if (!string.IsNullOrEmpty(url) && url.Contains("smartstore.naver.com/"))
-                {
-                    var decoded = Uri.UnescapeDataString(url);
-                    // ⭐ inflow URL에서 실제 스토어 ID 추출
-                    if (decoded.Contains("inflow/outlink/url?url="))
-                    {
-                        var innerUrlMatch = System.Text.RegularExpressions.Regex.Match(decoded, @"url=([^&]+)");
-                        if (innerUrlMatch.Success)
-                        {
-                            var innerUrl = Uri.UnescapeDataString(innerUrlMatch.Groups[1].Value);
-                            var storeMatch = System.Text.RegularExpressions.Regex.Match(innerUrl, @"smartstore\.naver\.com/([^/&?]+)");
-                            if (storeMatch.Success)
-                            {
-                                storeId = storeMatch.Groups[1].Value;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // 일반 smartstore URL
-                        var match = System.Text.RegularExpressions.Regex.Match(decoded, @"smartstore\.naver\.com/([^/&?]+)");
-                        if (match.Success)
-                        {
-                            storeId = match.Groups[1].Value;
-                        }
-                    }
-                }
-                
-                return storeId ?? "unknown";
-            }
-            catch (Exception)
-            {
-                return "unknown";
-            }
-        }
-    }
-
-    // ⭐ 상품명 요청 데이터 모델
-    public class ProductNamesRequest
-    {
-        [JsonPropertyName("productNames")]
-        public List<string> ProductNames { get; set; } = new();
-        
-        [JsonPropertyName("productId")]
-        public int ProductId { get; set; } = 0;
-        
-        [JsonPropertyName("pageUrl")]
-        public string PageUrl { get; set; } = string.Empty;
-        
-        [JsonPropertyName("timestamp")]
-        public string Timestamp { get; set; } = string.Empty;
-    }
-    
-    // 타오바오 이미지 업로드 요청 데이터
-    public class TaobaoImageUploadRequest
-    {
-        [JsonPropertyName("imagePath")]
-        public string ImagePath { get; set; } = string.Empty;
-        
-        [JsonPropertyName("productId")]
-        public string ProductId { get; set; } = string.Empty;
-    }
-    
-    // 타오바오 상품 정보
-    public class TaobaoProduct
-    {
-        [JsonPropertyName("imageUrl")]
-        public string ImageUrl { get; set; } = string.Empty;
-        
-        [JsonPropertyName("price")]
-        public string Price { get; set; } = string.Empty;
-        
-        [JsonPropertyName("sales")]
-        public string Sales { get; set; } = string.Empty;
-        
-        [JsonPropertyName("productUrl")]
-        public string ProductUrl { get; set; } = string.Empty;
-        
-        [JsonPropertyName("title")]
-        public string Title { get; set; } = string.Empty;
-    }
     
     // 🔄 소싱 페이지에서 직접 로딩창 숨김
     public static class LoadingHelper
@@ -3381,6 +2981,219 @@ public class ProductCategoryData
         public static void HideLoadingOverlay()
         {
             HideLoadingFromSourcingPage();
+        }
+    }
+
+    // 스토어 상태 모델
+    public class StoreState
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("runId")]
+        public string RunId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("state")]
+        public string State { get; set; } = string.Empty;
+        
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = string.Empty;
+        
+        [JsonPropertyName("lock")]
+        public bool Lock { get; set; } = false;
+        
+        [JsonPropertyName("isLocked")]
+        public bool IsLocked { get; set; } = false;
+        
+        [JsonPropertyName("expected")]
+        public int Expected { get; set; } = 0;
+        
+        [JsonPropertyName("progress")]
+        public int Progress { get; set; } = 0;
+        
+        [JsonPropertyName("productCount")]
+        public int ProductCount { get; set; } = 0;
+        
+        [JsonPropertyName("lastProgress")]
+        public int LastProgress { get; set; } = -1;
+        
+        [JsonPropertyName("stuckCount")]
+        public int StuckCount { get; set; } = 0;
+        
+        [JsonPropertyName("updatedAt")]
+        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    }
+
+    // 스마트스토어 방문 요청 데이터 모델
+    public class SmartStoreVisitRequest
+    {
+        [JsonPropertyName("url")]
+        public string Url { get; set; } = string.Empty;
+        
+        [JsonPropertyName("title")]
+        public string Title { get; set; } = string.Empty;
+        
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("currentIndex")]
+        public int CurrentIndex { get; set; }
+        
+        [JsonPropertyName("totalCount")]
+        public int TotalCount { get; set; }
+    }
+
+    // 공구 개수 확인 요청 데이터 모델
+    public class GongguCheckRequest
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("gongguCount")]
+        public int GongguCount { get; set; }
+        
+        [JsonPropertyName("isValid")]
+        public bool IsValid { get; set; }
+    }
+
+    // 전체상품 페이지 요청 데이터 모델
+    public class AllProductsPageRequest
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("pageUrl")]
+        public string PageUrl { get; set; } = string.Empty;
+    }
+
+    // 상품 데이터 요청 모델
+    public class ProductDataRequest
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productCount")]
+        public int ProductCount { get; set; }
+    }
+
+    // Chrome 확장프로그램 로그 요청 데이터 모델
+    public class ExtensionLogRequest
+    {
+        [JsonPropertyName("message")]
+        public string Message { get; set; } = string.Empty;
+    }
+
+    // 상품 이미지 데이터 모델
+    public class ProductImageData
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("imageUrl")]
+        public string ImageUrl { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productUrl")]
+        public string ProductUrl { get; set; } = string.Empty;
+    }
+
+    // 상품명 데이터 모델
+    public class ProductNameData
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productName")]
+        public string ProductName { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productUrl")]
+        public string ProductUrl { get; set; } = string.Empty;
+    }
+
+    // 리뷰 데이터 모델
+    public class ProductReviewsData
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productUrl")]
+        public string ProductUrl { get; set; } = string.Empty;
+        
+        [JsonPropertyName("reviews")]
+        public List<ReviewData> Reviews { get; set; } = new List<ReviewData>();
+        
+        [JsonPropertyName("reviewCount")]
+        public int ReviewCount { get; set; }
+        
+        [JsonPropertyName("timestamp")]
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+    }
+
+    public class ReviewData
+    {
+        [JsonPropertyName("rating")]
+        public double Rating { get; set; }
+        
+        [JsonPropertyName("content")]
+        public string Content { get; set; } = string.Empty;
+    }
+
+    // 카테고리 데이터 모델
+    public class ProductCategoryData
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("categories")]
+        public List<CategoryInfo> Categories { get; set; } = new();
+    }
+
+    public class CategoryInfo
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+        
+        [JsonPropertyName("url")]
+        public string Url { get; set; } = string.Empty;
+    }
+
+    // 상품명 요청 데이터 모델
+    public class ProductNamesRequest
+    {
+        [JsonPropertyName("productNames")]
+        public List<string> ProductNames { get; set; } = new();
+        
+        [JsonPropertyName("productId")]
+        public int ProductId { get; set; } = 0;
+    }
+
+    // 타오바오 이미지 업로드 요청 데이터
+    public class TaobaoImageUploadRequest
+    {
+        [JsonPropertyName("imagePath")]
+        public string ImagePath { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
+    }
+
+    // URL 확장 메서드
+    public static class UrlExtensions
+    {
+        public static string ExtractStoreIdFromUrl(string url)
+        {
+            return "unknown";
         }
     }
 }

@@ -6,8 +6,11 @@ using Avalonia.LogicalTree;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using System.Threading.Tasks;
 using Avalonia;
 using Gumaedaehang.Services;
+using PuppeteerSharp;
 
 namespace Gumaedaehang
 {
@@ -714,6 +717,113 @@ namespace Gumaedaehang
             {
                 System.Diagnostics.Debug.WriteLine($"마켓 설정 페이지 표시 오류: {ex.Message}");
                 Console.WriteLine($"마켓 설정 오류: {ex.Message}");
+            }
+        }
+
+        // 네이버 로그인 기능
+        private async void OnNaverLoginClick(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🔐 네이버 로그인 상태 확인 중...");
+                
+                // UserDataDir 폴더 미리 생성
+                var userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "NaverProfile");
+                Directory.CreateDirectory(userDataDir);
+                
+                // 먼저 로그인 상태 확인
+                await new BrowserFetcher().DownloadAsync();
+                var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+                {
+                    Headless = true, // 상태 확인은 헤드리스로
+                    Args = new[] { 
+                        "--no-sandbox", 
+                        "--disable-dev-shm-usage",
+                        "--disable-blink-features=AutomationControlled"
+                    },
+                    UserDataDir = userDataDir
+                });
+
+                var page = await browser.NewPageAsync();
+                await page.GoToAsync("https://www.naver.com");
+                await Task.Delay(2000);
+                
+                // 로그인 상태 확인 (로그인 버튼이 있는지 체크)
+                var isLoggedIn = await page.EvaluateExpressionAsync<bool>(@"
+                    !document.querySelector('a[href*=""nid.naver.com/nidlogin""]')
+                ");
+                
+                await browser.CloseAsync();
+                
+                if (isLoggedIn)
+                {
+                    LogWindow.AddLogStatic("✅ 이미 네이버에 로그인되어 있습니다!");
+                    return;
+                }
+                
+                LogWindow.AddLogStatic("🔐 네이버 로그인 필요 - 로그인 페이지를 엽니다");
+                
+                // 로그인이 필요한 경우에만 헤드풀 모드로 로그인 페이지 열기
+                browser = await Puppeteer.LaunchAsync(new LaunchOptions
+                {
+                    Headless = false, // 사용자가 직접 로그인할 수 있도록 보이게 함
+                    Args = new[] { 
+                        "--no-sandbox", 
+                        "--disable-dev-shm-usage",
+                        "--disable-blink-features=AutomationControlled"
+                    },
+                    UserDataDir = userDataDir
+                });
+
+                var loginPage = await browser.NewPageAsync();
+                
+                // 네이버 로그인 페이지로 이동
+                await loginPage.GoToAsync("https://nid.naver.com/nidlogin.login");
+                
+                LogWindow.AddLogStatic("🌐 네이버 로그인 페이지가 열렸습니다. 로그인을 완료해주세요.");
+                
+                // 네이버 홈페이지로 이동할 때까지 대기
+                var startTime = DateTime.Now;
+                while (true)
+                {
+                    await Task.Delay(2000); // 2초마다 확인
+                    
+                    var currentUrl = loginPage.Url;
+                    LogWindow.AddLogStatic($"🔍 현재 URL: {currentUrl}");
+                    
+                    // 네이버 홈페이지(www.naver.com)로 이동했는지 확인
+                    if (currentUrl.Contains("www.naver.com") && !currentUrl.Contains("nidlogin"))
+                    {
+                        LogWindow.AddLogStatic("✅ 네이버 로그인 성공! 홈페이지로 이동 완료");
+                        
+                        // 쿠키 저장을 위한 대기 시간 (중요!)
+                        LogWindow.AddLogStatic("⏳ 쿠키 저장을 위해 5초 대기 중...");
+                        await Task.Delay(5000);
+                        
+                        // 쿠키 저장 (자동으로 UserDataDir에 저장됨)
+                        var cookies = await loginPage.GetCookiesAsync();
+                        LogWindow.AddLogStatic($"🍪 로그인 정보 저장 완료 ({cookies.Length}개 쿠키)");
+                        
+                        // 3초 후 브라우저 닫기
+                        await Task.Delay(3000);
+                        await browser.CloseAsync();
+                        
+                        LogWindow.AddLogStatic("🔐 네이버 로그인 완료 - 브라우저 닫힘");
+                        break;
+                    }
+                    
+                    // 5분 타임아웃 체크
+                    if (DateTime.Now.Subtract(startTime).TotalMinutes > 5)
+                    {
+                        LogWindow.AddLogStatic("⏰ 로그인 타임아웃 - 브라우저 닫힘");
+                        await browser.CloseAsync();
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 네이버 로그인 오류: {ex.Message}");
             }
         }
 

@@ -1482,47 +1482,26 @@ namespace Gumaedaehang
                     
                     // 서버로 이미지 업로드 요청
                     using var httpClient = new HttpClient();
-                    var requestData = new
+                    // PuppeteerCrawlingService 사용
+                    var puppeteerService = new PuppeteerCrawlingService();
+                    var taobaoProducts = await puppeteerService.SearchTaobaoImageAsync(imagePath);
+                    
+                    if (taobaoProducts != null && taobaoProducts.Count > 0)
                     {
-                        imagePath = imagePath,
-                        productId = productId.ToString()
-                    };
-                    
-                    var json = JsonSerializer.Serialize(requestData);
-                    var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-                    
-                    var response = await httpClient.PostAsync("http://localhost:8080/api/taobao/upload-image", content);
-                    var responseText = await response.Content.ReadAsStringAsync();
-                    
-                    LogWindow.AddLogStatic($"📡 서버 응답: {response.StatusCode} - {responseText}");
-                    
-                    if (response.IsSuccessStatusCode)
-                    {
-                        LogWindow.AddLogStatic($"✅ 상품 {productId} 타오바오 이미지 업로드 완료");
+                        LogWindow.AddLogStatic($"✅ 타오바오 상품 {taobaoProducts.Count}개 검색 완료");
                         
-                        // 응답에서 타오바오 상품 정보 추출
-                        try
+                        // TaobaoProduct를 TaobaoProductData로 변환
+                        var taobaoProductData = taobaoProducts.Select(p => new TaobaoProductData
                         {
-                            var responseData = JsonSerializer.Deserialize<JsonElement>(responseText);
-                            if (responseData.TryGetProperty("products", out var productsElement))
-                            {
-                                var taobaoProducts = JsonSerializer.Deserialize<List<TaobaoProductData>>(productsElement.GetRawText());
-                                if (taobaoProducts != null && taobaoProducts.Count > 0)
-                                {
-                                    LogWindow.AddLogStatic($"📦 타오바오 상품 {taobaoProducts.Count}개 수신");
-                                    
-                                    // UI 업데이트
-                                    await Dispatcher.UIThread.InvokeAsync(() =>
-                                    {
-                                        UpdateTaobaoProductBoxes(productId, taobaoProducts);
-                                    });
-                                }
-                            }
-                        }
-                        catch (Exception parseEx)
-                        {
-                            LogWindow.AddLogStatic($"⚠️ 타오바오 상품 정보 파싱 오류: {parseEx.Message}");
-                        }
+                            ImageUrl = p.Image,
+                            Price = p.Price,
+                            Sales = p.Sales,
+                            ProductUrl = p.Url,
+                            Title = p.Title
+                        }).ToList();
+                        
+                        // UI에 타오바오 상품 표시
+                        UpdateTaobaoProductBoxes(productId, taobaoProductData);
                         
                         // 페어링 완료 처리
                         product.IsTaobaoPaired = true;
@@ -1530,13 +1509,13 @@ namespace Gumaedaehang
                         
                         if (product.TaobaoPairingButton != null)
                         {
-                            product.TaobaoPairingButton.Content = "업로드 완료";
+                            product.TaobaoPairingButton.Content = "검색 완료";
                             await Task.Delay(1500);
                         }
                     }
                     else
                     {
-                        LogWindow.AddLogStatic($"❌ 상품 {productId} 타오바오 업로드 실패: {responseText}");
+                        LogWindow.AddLogStatic($"❌ 상품 {productId} 타오바오 검색 실패");
                         
                         if (product.TaobaoPairingButton != null)
                         {
@@ -2417,16 +2396,14 @@ namespace Gumaedaehang
                     return;
                 }
                 
-                // ⭐ 크롤링 허용 플래그 설정
-                await SetCrawlingAllowed();
-                
-                _extensionService ??= new ChromeExtensionService();
-                var success = await _extensionService.SearchWithExtension(searchText);
+                // PuppeteerCrawlingService 사용
+                var puppeteerService = new PuppeteerCrawlingService();
+                var success = await puppeteerService.StartCrawlingAsync(searchText);
                 
                 if (success)
                 {
-                    button.Content = "연결 완료";
-                    Debug.WriteLine($"{type} 확장프로그램 검색 완료 - 키워드: {searchText}");
+                    button.Content = "크롤링 완료";
+                    Debug.WriteLine($"{type} Puppeteer 크롤링 완료 - 키워드: {searchText}");
                 }
                 else
                 {

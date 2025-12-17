@@ -295,6 +295,13 @@
                   Background="#E0E0E0" 
                   Margin="0,10,0,10"/>
           
+          <!-- 네이버 로그인 -->
+          <Button Classes="menu-item" Content="네이버 로그인" Click="OnNaverLoginClick"/>
+          
+          <Border Height="1" 
+                  Background="#E0E0E0" 
+                  Margin="0,10,0,10"/>
+          
           <!-- 타오바오 계정 연동 -->
           <Button Classes="menu-item" Content="타오바오 계정 연동" Click="OnTaobaoLoginClick"/>
           
@@ -314,7 +321,7 @@
                   Content="내마켓 설정하기" 
                   Click="OnMarketSetupClick"
                   HorizontalAlignment="Center"
-                  Margin="0,20,0,20"/>
+                  Margin="0,20,0,10"/>
           
         </StackPanel>
       </Border>
