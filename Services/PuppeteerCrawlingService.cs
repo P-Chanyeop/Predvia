@@ -56,36 +56,35 @@ namespace Gumaedaehang.Services
                 {
                     // Puppeteer 브라우저 시작 (네이버 로그인 정보 사용)
                     await new BrowserFetcher().DownloadAsync();
-                    
-                    // 실제 Chrome 프로필 사용 (사용자의 기본 Chrome 프로필)
-                    var realChromeProfile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "User Data");
-                    string userDataDir;
-                    
-                    // 실제 Chrome 프로필이 존재하는지 확인
-                    if (Directory.Exists(realChromeProfile))
-                    {
-                        await SendLogAsync($"🌐 실제 Chrome 프로필 사용: {realChromeProfile}");
-                        userDataDir = realChromeProfile;
-                    }
-                    else
-                    {
-                        // 실제 프로필이 없으면 기존 NaverProfile 사용
-                        await SendLogAsync("⚠️ 실제 Chrome 프로필을 찾을 수 없어 NaverProfile 사용");
-                        userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "NaverProfile");
-                        Directory.CreateDirectory(userDataDir);
-                    }
+
+                    // ⭐ 별도의 프로필 디렉토리 사용 (기존 Chrome과 충돌 방지)
+                    var userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "ChromeProfile");
+                    Directory.CreateDirectory(userDataDir);
+                    await SendLogAsync($"🌐 Chrome 프로필 사용: {userDataDir}");
 
                     _browser = await Puppeteer.LaunchAsync(new LaunchOptions
                     {
-                        Headless = false, // 테스트용으로 헤드리스 비활성화
-                        Args = new[] { 
-                            "--no-sandbox", 
+                        Headless = false, // 로그인 및 테스트용으로 헤드리스 비활성화
+                        Args = new[] {
+                            "--no-sandbox",
                             "--disable-dev-shm-usage",
                             "--disable-blink-features=AutomationControlled",
                             "--disable-features=VizDisplayCompositor",
-                            "--window-size=1920,1080"
+                            "--window-size=1920,1080",
+                            // ⭐ 봇 차단 우회를 위한 추가 플래그
+                            "--disable-web-security",
+                            "--disable-features=IsolateOrigins,site-per-process",
+                            "--disable-setuid-sandbox",
+                            "--disable-infobars",
+                            "--disable-notifications",
+                            "--disable-popup-blocking",
+                            "--start-maximized",
+                            "--disable-extensions-except=" + Path.Combine(Directory.GetCurrentDirectory(), "chrome-extension"),
+                            "--load-extension=" + Path.Combine(Directory.GetCurrentDirectory(), "chrome-extension")
                         },
-                        UserDataDir = userDataDir // 네이버 로그인 쿠키 사용
+                        UserDataDir = userDataDir,
+                        IgnoreHTTPSErrors = true,
+                        DefaultViewport = null // 실제 브라우저 크기 사용
                     });
 
                     // 하나의 페이지만 생성
@@ -95,9 +94,36 @@ namespace Gumaedaehang.Services
                         Width = 1920,
                         Height = 1080
                     });
-                    
+
                     // User-Agent 설정 (페이지 레벨에서 안전하게)
                     await _page.SetUserAgentAsync("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+                    // ⭐ 봇 탐지 우회: navigator.webdriver 제거 및 Chrome 객체 추가
+                    await _page.EvaluateFunctionOnNewDocumentAsync(@"
+                        () => {
+                            Object.defineProperty(navigator, 'webdriver', {
+                                get: () => undefined
+                            });
+
+                            // Chrome 객체 추가 (봇 탐지 우회)
+                            window.chrome = {
+                                runtime: {},
+                                loadTimes: function() {},
+                                csi: function() {},
+                                app: {}
+                            };
+
+                            // 플러그인 추가
+                            Object.defineProperty(navigator, 'plugins', {
+                                get: () => [1, 2, 3, 4, 5]
+                            });
+
+                            // 언어 설정
+                            Object.defineProperty(navigator, 'languages', {
+                                get: () => ['ko-KR', 'ko', 'en-US', 'en']
+                            });
+                        }
+                    ");
                 }
 
                 _shouldStop = false;
@@ -502,18 +528,79 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                // 40개 상품 중 마지막 리뷰 상품 찾기
-                var lastReviewProductInfo = await FindLastReviewProductAsync(page, storeId);
-                if (lastReviewProductInfo == null)
+                // ⭐ 확장프로그램과 동일: 40개 상품 중 리뷰가 있는 마지막 rank 찾기
+                await SendLogAsync($"🔍 {storeId}: 리뷰 span 검색 시작");
+
+                var reviewSpans = await page.XPathAsync("//span[normalize-space(text())='리뷰']");
+                await SendLogAsync($"📝 {storeId}: {reviewSpans.Length}개 '리뷰' span 발견");
+
+                if (reviewSpans.Length == 0)
                 {
-                    await SendLogAsync($"⏭️ {storeId}: 리뷰 상품 없음 - 스킵");
+                    await SendLogAsync($"❌ {storeId}: '리뷰' span 없음 - 스킵");
                     return;
                 }
 
-                await SendLogAsync($"🎯 {storeId}: 마지막 리뷰 상품 {lastReviewProductInfo.Rank}번째 발견");
+                // ⭐ 모든 상품 링크 가져오기 (data-shp-contents-rank 속성 가진 a 태그)
+                var allProducts = await page.QuerySelectorAllAsync("a[data-shp-contents-rank]");
+                await SendLogAsync($"📊 {storeId}: 전체 {allProducts.Length}개 상품 발견");
 
-                // 1번부터 마지막 리뷰 상품까지 순차 접속
-                await VisitProductsSequentiallyAsync(storeId, lastReviewProductInfo.Rank);
+                // ⭐ 처음 40개 상품에서 리뷰가 있는 마지막 rank 찾기
+                int lastReviewRank = -1;
+                var productList = new List<ProductInfo>();
+
+                for (int i = 0; i < allProducts.Length; i++)
+                {
+                    var productLink = allProducts[i];
+                    var rankStr = await productLink.EvaluateFunctionAsync<string>("el => el.getAttribute('data-shp-contents-rank')");
+                    var productId = await productLink.EvaluateFunctionAsync<string>("el => el.getAttribute('data-shp-contents-id')");
+
+                    if (string.IsNullOrEmpty(rankStr) || string.IsNullOrEmpty(productId))
+                        continue;
+
+                    int rank = int.Parse(rankStr);
+
+                    // 40개까지만 확인
+                    if (rank > 40) continue;
+
+                    // ⭐ 상품 주변에서 리뷰 텍스트 찾기
+                    var parentElement = await productLink.EvaluateFunctionAsync<string>("el => el.parentElement?.textContent || ''");
+
+                    if (parentElement.Contains("리뷰"))
+                    {
+                        lastReviewRank = Math.Max(lastReviewRank, rank);
+                        await SendLogAsync($"🔢 {storeId}: {rank}번 상품에 리뷰 발견 (ID: {productId})");
+                    }
+
+                    // ⭐ 1번부터 현재까지의 모든 상품 정보 저장
+                    if (rank <= 40)
+                    {
+                        productList.Add(new ProductInfo
+                        {
+                            ProductId = productId,
+                            Rank = rank,
+                            Url = $"https://smartstore.naver.com/{storeId}/products/{productId}"
+                        });
+                    }
+                }
+
+                if (lastReviewRank == -1)
+                {
+                    await SendLogAsync($"❌ {storeId}: 리뷰 상품 없음");
+                    return;
+                }
+
+                await SendLogAsync($"✅ {storeId}: 1번부터 {lastReviewRank}번째 상품까지 수집 (총 {lastReviewRank}개)");
+
+                // ⭐ 1번부터 lastReviewRank까지만 필터링하고 rank 순서로 정렬
+                var productsToVisit = productList
+                    .Where(p => p.Rank <= lastReviewRank)
+                    .OrderBy(p => p.Rank)
+                    .ToList();
+
+                await SendLogAsync($"⏳ {storeId}: {productsToVisit.Count}개 상품 순차 접속 시작");
+
+                // ⭐ 실제 productId로 순차 접속
+                await VisitProductsSequentiallyAsync(storeId, productsToVisit);
             }
             catch (Exception ex)
             {
@@ -521,109 +608,98 @@ namespace Gumaedaehang.Services
             }
         }
 
-        private async Task<ProductInfo?> FindLastReviewProductAsync(IPage page, string storeId)
+        // ⭐ 더 이상 사용하지 않음 (CollectProductDataAsync에 통합됨)
+        // private async Task<ProductInfo?> FindLastReviewProductAsync(IPage page, string storeId)
+
+        private async Task VisitProductsSequentiallyAsync(string storeId, List<ProductInfo> products)
         {
-            try
-            {
-                var productInfo = await page.EvaluateExpressionAsync<object>(@"
-                    (() => {
-                        const reviewSpans = document.evaluate(
-                            ""//span[normalize-space(text())='리뷰']"",
-                            document,
-                            null,
-                            XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-                            null
-                        );
-                        
-                        if (reviewSpans.snapshotLength === 0) return null;
-                        
-                        const lastIndex = Math.min(39, reviewSpans.snapshotLength - 1);
-                        const lastReviewSpan = reviewSpans.snapshotItem(lastIndex);
-                        
-                        let productElement = lastReviewSpan;
-                        while (productElement && !productElement.getAttribute('data-shp-contents-id')) {
-                            productElement = productElement.parentElement;
-                        }
-                        
-                        if (!productElement) return null;
-                        
-                        const productId = productElement.getAttribute('data-shp-contents-id');
-                        const rank = productElement.getAttribute('data-shp-contents-rank') || (lastIndex + 1).toString();
-                        
-                        return {
-                            productId: productId,
-                            rank: parseInt(rank),
-                            url: `https://smartstore.naver.com/${storeId}/products/${productId}`
-                        };
-                    })()
-                ");
-
-                if (productInfo != null)
-                {
-                    var jsonElement = (JsonElement)productInfo;
-                    return new ProductInfo
-                    {
-                        ProductId = jsonElement.GetProperty("productId").GetString()!,
-                        Rank = jsonElement.GetProperty("rank").GetInt32(),
-                        Url = jsonElement.GetProperty("url").GetString()!
-                    };
-                }
-
-                return null;
-            }
-            catch (Exception ex)
-            {
-                await SendLogAsync($"❌ {storeId}: 마지막 리뷰 상품 찾기 오류 - {ex.Message}");
-                return null;
-            }
-        }
-
-        private async Task VisitProductsSequentiallyAsync(string storeId, int lastRank)
-        {
-            for (int rank = 1; rank <= lastRank && !_shouldStop && _currentProductCount < 100; rank++)
+            for (int i = 0; i < products.Count && !_shouldStop && _currentProductCount < 100; i++)
             {
                 try
                 {
-                    var productUrl = $"https://smartstore.naver.com/{storeId}/products/{rank}";
-                    await VisitProductPageAsync(storeId, rank.ToString(), productUrl);
-                    
-                    await Task.Delay(2000); // 2초 대기
+                    var product = products[i];
+                    await SendLogAsync($"🔗 {storeId}: [{i + 1}/{products.Count}] Rank {product.Rank} - {product.Url} 접속");
+
+                    // ⭐ 실제 productId로 접속
+                    await VisitProductPageAsync(storeId, product.ProductId, product.Url);
+
+                    // ⭐ 확장프로그램과 동일: 2-4초 랜덤 대기 (봇 차단 방지)
+                    var delay = 2000 + new Random().Next(0, 2001); // 2000~4000ms
+                    await SendLogAsync($"⏳ {storeId}: {delay}ms 대기 중...");
+                    await Task.Delay(delay);
                 }
                 catch (Exception ex)
                 {
-                    await SendLogAsync($"❌ {storeId}: 상품 {rank} 처리 오류 - {ex.Message}");
+                    await SendLogAsync($"❌ {storeId}: 상품 {product.ProductId} 처리 오류 - {ex.Message}");
                 }
             }
         }
 
         private async Task VisitProductPageAsync(string storeId, string productId, string productUrl)
         {
+            IPage? page = null;
             try
             {
-                var page = await _browser!.NewPageAsync();
-                await page.GoToAsync(productUrl);
-                await Task.Delay(3000);
+                // ⭐ 새 페이지 생성 및 봇 탐지 우회 설정
+                page = await _browser!.NewPageAsync();
 
-                // 차단 감지
-                var pageText = await page.EvaluateExpressionAsync<string>("document.body.textContent || ''");
-                if (pageText.Contains("현재 서비스 접속이 불가합니다"))
+                // ⭐ 각 페이지마다 봇 탐지 우회 코드 적용
+                await page.EvaluateFunctionOnNewDocumentAsync(@"
+                    () => {
+                        Object.defineProperty(navigator, 'webdriver', {
+                            get: () => undefined
+                        });
+                        window.chrome = {
+                            runtime: {},
+                            loadTimes: function() {},
+                            csi: function() {},
+                            app: {}
+                        };
+                        Object.defineProperty(navigator, 'plugins', {
+                            get: () => [1, 2, 3, 4, 5]
+                        });
+                        Object.defineProperty(navigator, 'languages', {
+                            get: () => ['ko-KR', 'ko', 'en-US', 'en']
+                        });
+                    }
+                ");
+
+                await page.GoToAsync(productUrl, new NavigationOptions
                 {
-                    await SendLogAsync($"🚫 {storeId}: 상품 {productId} 차단 감지");
+                    WaitUntil = new[] { WaitUntilNavigation.Networkidle2 },
+                    Timeout = 30000
+                });
+
+                // ⭐ 페이지 로드 후 추가 대기
+                await Task.Delay(1000);
+
+                // ⭐ 차단 감지 (확장프로그램과 동일)
+                var pageText = await page.EvaluateExpressionAsync<string>("document.body.textContent || ''");
+                if (pageText.Contains("현재 서비스 접속이 불가합니다") ||
+                    pageText.Contains("동시에 접속하는 이용자 수가 많거나") ||
+                    pageText.Contains("인터넷 네트워크 상태가 불안정하여"))
+                {
+                    await SendLogAsync($"🚫 {storeId}: 상품 {productId} 네이버 차단 감지 - 크롤링 중단");
                     _shouldStop = true;
                     await page.CloseAsync();
                     return;
                 }
 
-                // 이미지 추출 및 저장
+                // ⭐ 확장프로그램과 동일한 순서로 데이터 추출
+                // 1. 카테고리 추출
+                await ExtractAndSaveCategoriesFromProductAsync(page, storeId, productId, productUrl);
+
+                // 2. 이미지 추출 및 저장
                 await ExtractAndSaveImageAsync(page, storeId, productId);
 
-                // 상품명 추출 및 저장
+                // 3. 상품명 추출 및 저장
                 await ExtractAndSaveProductNameAsync(page, storeId, productId);
 
-                // 리뷰 추출 및 저장
+                // 4. 리뷰 추출 및 저장
                 await ExtractAndSaveReviewsAsync(page, storeId, productId, productUrl);
 
                 await page.CloseAsync();
+                page = null;
 
                 _currentProductCount++;
                 var progress = (_currentProductCount * 100.0 / 100).ToString("F1");
@@ -638,6 +714,52 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 await SendLogAsync($"❌ {storeId}: 상품 {productId} 방문 오류 - {ex.Message}");
+                if (page != null && !page.IsClosed)
+                {
+                    await page.CloseAsync();
+                }
+            }
+        }
+
+        private async Task ExtractAndSaveCategoriesFromProductAsync(IPage page, string storeId, string productId, string productUrl)
+        {
+            try
+            {
+                // ⭐ 확장프로그램과 동일한 선택자 사용: ul.ySOklWNBjf .sAla67hq4a
+                var categories = await page.EvaluateExpressionAsync<object[]>(@"
+                    Array.from(document.querySelectorAll('ul.ySOklWNBjf .sAla67hq4a')).map((span, index) => ({
+                        name: span.textContent.trim(),
+                        url: span.closest('a')?.href || '',
+                        id: index + 1,
+                        order: index
+                    }))
+                ");
+
+                if (categories.Length > 0)
+                {
+                    var categoryData = new
+                    {
+                        storeId = storeId,
+                        productId = productId,
+                        categories = categories,
+                        pageUrl = productUrl,
+                        timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                    };
+
+                    var json = JsonSerializer.Serialize(categoryData, new JsonSerializerOptions { WriteIndented = true });
+                    var filePath = Path.Combine(_categoriesPath, $"{storeId}_{productId}_categories.json");
+                    await File.WriteAllTextAsync(filePath, json, Encoding.UTF8);
+
+                    await SendLogAsync($"📂 {storeId}: 상품 {productId} 카테고리 수집 성공 - {categories.Length}개");
+                }
+                else
+                {
+                    await SendLogAsync($"📂 {storeId}: 상품 {productId} 카테고리 없음");
+                }
+            }
+            catch (Exception ex)
+            {
+                await SendLogAsync($"❌ {storeId}: 상품 {productId} 카테고리 추출 오류 - {ex.Message}");
             }
         }
 
