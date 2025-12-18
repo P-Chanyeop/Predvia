@@ -60,6 +60,21 @@ namespace Gumaedaehang
             LogWindow.AddLogStatic("Predvia 구매대행 시스템 시작됨");
             LogWindow.AddLogStatic("시스템 초기화 중...");
             
+            // ⭐ 프로그램 시작 시 이전 크롤링 데이터 자동 초기화
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1000); // 1초 후 초기화
+                try
+                {
+                    _thumbnailWebServer.ClearPreviousData();
+                    LogWindow.AddLogStatic("✅ 이전 크롤링 데이터 자동 초기화 완료");
+                }
+                catch (Exception ex)
+                {
+                    LogWindow.AddLogStatic($"❌ 자동 초기화 오류: {ex.Message}");
+                }
+            });
+            
             // 썸네일 API 서버 시작
             _ = Task.Run(async () => 
             {

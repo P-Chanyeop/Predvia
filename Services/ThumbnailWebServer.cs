@@ -2617,7 +2617,7 @@ namespace Gumaedaehang.Services
         }
 
         // ⭐ 기존 데이터 초기화
-        private void ClearPreviousData()
+        public void ClearPreviousData()
         {
             try
             {

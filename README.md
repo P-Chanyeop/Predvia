@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.71-orange)
+![Release](https://img.shields.io/badge/Release-v1.73-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,20 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.71 - 타오바오 원격 이미지 로딩 시스템 구현)
+### 🔄 최신 업데이트 (v1.73 - Chrome 앱 모드 작은 창 시스템 구현)
+- [x] **📱 Chrome 앱 모드 작은 창 시스템 완전 구현**
+  - **앱 모드 창**: `--app="URL"` 옵션으로 주소창 없는 깔끔한 앱 스타일 창 구현
+  - **작은 창 크기**: `--window-size=250,400` (250×400 픽셀) 컴팩트한 크기
+  - **위치 고정**: `--window-position=50,400` 화면 왼쪽 하단 고정 위치
+  - **확장프로그램 완벽 연동**: `--load-extension` 옵션으로 모든 v1.71 기능 유지
+  - **크롤링 최적화**: 네이버 검색, 가격비교, 스마트스토어 모든 크롤링이 작은 창으로 실행
+- [x] **🔧 프로그램 시작 시 자동 초기화 시스템 추가**
+  - **자동 데이터 정리**: 프로그램 시작 1초 후 이전 크롤링 데이터 자동 삭제
+  - **깨끗한 시작**: 매번 실행 시 이전 세션 상태 완전 초기화
+  - **사용자 편의성**: 수동 초기화 없이 항상 깨끗한 상태로 시작
+  - **오류 방지**: 이전 세션 데이터로 인한 충돌 및 오류 완전 방지
+
+### 🔄 이전 업데이트 (v1.71 - 타오바오 원격 이미지 로딩 시스템 구현)
 - [x] **🖼️ 타오바오 원격 이미지 HTTP 다운로드 및 표시 완전 구현**
   - **문제 해결**: 타오바오 이미지 URL을 로컬 파일처럼 로드하려던 오류 완전 해결
   - **HttpClient 다운로드**: 원격 타오바오 이미지를 바이트 배열로 다운로드
