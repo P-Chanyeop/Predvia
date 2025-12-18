@@ -712,12 +712,20 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
         const timeoutPromise = new Promise(resolve => setTimeout(resolve, delay));
         const accessPromise = new Promise(async (resolve, reject) => {
           try {
-            const productTab = window.open(product.url, '_blank');
+            // ⭐ 앱 모드 작은 창으로 열기 (Chrome API 사용)
+            chrome.runtime.sendMessage({
+              action: 'openAppWindow',
+              url: product.url
+            }, (response) => {
+              if (response && response.success) {
+                console.log(`✅ 앱 모드 창으로 상품 접속: ${product.url}`);
+              }
+            });
             
             // ⭐ 차단 페이지 감지를 위한 체크
             setTimeout(async () => {
               try {
-                if (productTab && !productTab.closed) {
+                if (true) {
                   // 차단 페이지 텍스트 감지
                   const pageContent = productTab.document.body.textContent || '';
                   if (pageContent.includes('현재 서비스 접속이 불가합니다') || 
@@ -741,7 +749,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                       console.log('중단 신호 전송 오류:', e);
                     }
                     
-                    productTab.close();
+                    
                     reject(new Error('BLOCKED_BY_NAVER'));
                     return;
                   }
@@ -941,13 +949,13 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                     await sendLogToServer(`❌ ${storeId}: 리뷰 수집 오류 - ${reviewError.message}`);
                   }
                   
-                  productTab.close();
+                  
                 }
                 resolve();
               } catch (crossOriginError) {
                 // 크로스 오리진 오류는 정상 접속으로 간주
-                if (productTab && !productTab.closed) {
-                  productTab.close();
+                if (true) {
+                  
                 }
                 resolve();
               }

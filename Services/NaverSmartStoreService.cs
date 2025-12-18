@@ -1,16 +1,17 @@
 using System;
 using System.Threading.Tasks;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using WebDriverManager;
-using WebDriverManager.DriverConfigs.Impl;
 
 namespace Gumaedaehang.Services
 {
     public class NaverSmartStoreService
     {
-        private IWebDriver? _driver;
+        private readonly ChromeExtensionService _chromeExtensionService;
         private bool _isDisposed = false;
+
+        public NaverSmartStoreService()
+        {
+            _chromeExtensionService = new ChromeExtensionService();
+        }
 
         public async Task OpenNaverSmartStoreWithKeyword(string keyword)
         {
@@ -19,91 +20,19 @@ namespace Gumaedaehang.Services
 
             try
             {
-                // 기존 드라이버가 있으면 정리
-                if (_driver != null)
-                {
-                    try
-                    {
-                        _driver.Quit();
-                        _driver.Dispose();
-                    }
-                    catch
-                    {
-                        // 무시
-                    }
-                    _driver = null;
-                }
-
-                // 크롬 드라이버 자동 다운로드 및 설정
-                await Task.Run(() =>
-                {
-                    new DriverManager().SetUpDriver(new ChromeConfig());
-                });
-
-                // 크롬 옵션 설정
-                var options = new ChromeOptions();
-                options.AddArgument("--start-maximized");
-                options.AddArgument("--disable-blink-features=AutomationControlled");
-                options.AddExcludedArgument("enable-automation");
-                options.AddAdditionalOption("useAutomationExtension", false);
-                options.AddArgument("--disable-web-security");
-                options.AddArgument("--allow-running-insecure-content");
-                options.AddArgument("--remote-debugging-port=9222"); // DevTools Protocol 활성화
-
-                // 크롬 드라이버 시작
-                _driver = new ChromeDriver(options);
-
-                // 네이버 스마트스토어 해외직구 페이지로 이동
-                string encodedKeyword = Uri.EscapeDataString(keyword);
-                string url = $"https://search.shopping.naver.com/search/all?adQuery={encodedKeyword}&origQuery={encodedKeyword}&pagingIndex=1&pagingSize=40&productSet=overseas&query={encodedKeyword}&sort=rel&timestamp=&viewType=list";
-                
-                await Task.Run(() => _driver.Navigate().GoToUrl(url));
-
-                // 페이지 로드 대기
-                await Task.Delay(3000);
+                // ChromeExtensionService를 사용하여 앱 모드로 열기
+                await _chromeExtensionService.SearchWithExtension(keyword);
             }
             catch (Exception ex)
             {
-                // 오류 발생 시 드라이버 정리
-                try
-                {
-                    _driver?.Quit();
-                    _driver?.Dispose();
-                    _driver = null;
-                }
-                catch
-                {
-                    // 무시
-                }
-                
-                throw new Exception($"네이버 스마트스토어 연결 실패: {ex.Message}");
+                throw new InvalidOperationException($"네이버 스마트스토어 열기 실패: {ex.Message}", ex);
             }
         }
 
         public void Close()
         {
-            if (_isDisposed)
-                return;
-
-            try
+            if (!_isDisposed)
             {
-                _driver?.Quit();
-            }
-            catch
-            {
-                // 무시
-            }
-            finally
-            {
-                try
-                {
-                    _driver?.Dispose();
-                }
-                catch
-                {
-                    // 무시
-                }
-                _driver = null;
                 _isDisposed = true;
             }
         }

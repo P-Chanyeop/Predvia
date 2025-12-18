@@ -14,6 +14,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('🔥 Background 메시지 수신:', request.action, request.storeId);
   
   switch (request.action) {
+    case 'openAppWindow':
+      // ⭐ 앱 모드 작은 창으로 열기
+      chrome.windows.create({
+        url: request.url,
+        type: 'popup',
+        width: 250,
+        height: 400,
+        left: 50,
+        top: 400,
+        focused: false  // 포커싱 방지
+      }, (window) => {
+        console.log('✅ 앱 모드 창 생성:', request.url);
+        sendResponse({ success: true, windowId: window.id });
+      });
+      return true;
+      
     case 'requestProcessing':
       handleProcessingRequest(request, sender, sendResponse);
       return true; // 비동기 응답
