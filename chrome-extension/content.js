@@ -705,7 +705,7 @@ async function visitSelectedStoresOnly(selectedStores) {
       await setStoreState(storeId, runId, 'collecting', true);
       
       // 새 탭에서 공구탭 열기
-      chrome.runtime.sendMessage({action: 'openAppWindow', url: gongguUrl});
+      chrome.runtime.sendMessage({action: 'openAppWindow', url: gongguUrl, storeId: storeId});
       
       // ⭐ 탭 열기 후 3초 강제 대기 (탭이 완전히 로드될 때까지)
       console.log(`⏳ ${storeId}: 탭 로딩 대기 중...`);
@@ -857,7 +857,7 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
       await setStoreState(storeId, runId, 'collecting', true);
       
       // 새 탭에서 공구탭 열기
-      chrome.runtime.sendMessage({action: 'openAppWindow', url: gongguUrl});
+      chrome.runtime.sendMessage({action: 'openAppWindow', url: gongguUrl, storeId: storeId});
       
       // ⭐ 탭 열기 후 3초 강제 대기 (탭이 완전히 로드될 때까지)
       console.log(`⏳ ${storeId}: 탭 로딩 대기 중...`);

@@ -3,15 +3,33 @@ console.log('🔥 gonggu-checker.js 파일 로드됨!');
 console.log('🔥 현재 URL:', window.location.href);
 console.log('🔍 공구 개수 확인 스크립트 실행');
 
-// 페이지 로딩 완료 후 실행
-setTimeout(() => {
-  checkGongguCount();
-}, 2000);
+// ⭐ 순차 처리 권한 요청
+chrome.runtime.sendMessage({
+  action: 'requestProcessing',
+  storeId: getStoreIdFromUrl(),
+  storeTitle: document.title
+}, (response) => {
+  if (response.granted) {
+    console.log('✅ 순차 처리 권한 획득');
+    // 페이지 로딩 완료 후 실행
+    setTimeout(() => {
+      checkGongguCount();
+    }, 2000);
+    
+    // 추가로 5초 후에도 한번 더 시도
+    setTimeout(() => {
+      checkGongguCount();
+    }, 5000);
+  } else {
+    console.log(`🔒 대기열 ${response.position}번째 - 권한 대기 중`);
+  }
+});
 
-// 추가로 5초 후에도 한번 더 시도
-setTimeout(() => {
-  checkGongguCount();
-}, 5000);
+function getStoreIdFromUrl() {
+  const url = window.location.href;
+  const match = url.match(/smartstore\.naver\.com\/([^\/]+)/);
+  return match ? match[1] : 'unknown';
+}
 
 function checkGongguCount() {
   try {
@@ -83,6 +101,14 @@ function checkGongguCount() {
     console.error('공구 개수 확인 오류:', error);
     // 오류 발생 시에도 0으로 전송
     sendGongguResult(0);
+  } finally {
+    // ⭐ 항상 순차 처리 권한 해제
+    chrome.runtime.sendMessage({
+      action: 'releaseProcessing',
+      storeId: getStoreIdFromUrl()
+    }, (response) => {
+      console.log('🔓 순차 처리 권한 해제 완료');
+    });
   }
 }
 
@@ -91,6 +117,23 @@ async function sendGongguResult(gongguCount) {
   try {
     // URL에서 스토어 ID 추출
     const storeId = extractStoreIdFromUrl(window.location.href);
+    console.log('🔥🔥🔥 서버 연결 테스트 시작');
+    
+    // 먼저 서버 연결 테스트
+    try {
+      const testResponse = await fetch('http://localhost:8080/api/smartstore/status');
+      console.log('🔥🔥🔥 서버 연결 테스트 결과:', testResponse.status);
+      
+      if (!testResponse.ok) {
+        console.error('❌ 서버 연결 실패:', testResponse.status);
+        return;
+      }
+      
+      console.log('✅ 서버 연결 성공 - 공구 개수 체크 시작');
+    } catch (testError) {
+      console.error('❌ 서버 연결 테스트 오류:', testError);
+      return;
+    }
     
     const data = {
       storeId: storeId,

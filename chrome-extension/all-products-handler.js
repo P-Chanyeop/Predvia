@@ -8,12 +8,30 @@ if (window.__ALL_PRODUCTS_HANDLER_RUNNING__) {
   window.__ALL_PRODUCTS_HANDLER_RUNNING__ = true;
   console.log('✅ all-products-handler 실행 시작 - 가드 설정 완료');
   
-  // ⭐ 페이지 로드 완료 후 실행
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initHandler);
-  } else {
-    initHandler();
-  }
+  // ⭐ 순차 처리 권한 요청
+  chrome.runtime.sendMessage({
+    action: 'requestProcessing',
+    storeId: getStoreIdFromUrl(),
+    storeTitle: document.title
+  }, (response) => {
+    if (response.granted) {
+      console.log('✅ 순차 처리 권한 획득');
+      // ⭐ 페이지 로드 완료 후 실행
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHandler);
+      } else {
+        initHandler();
+      }
+    } else {
+      console.log(`🔒 대기열 ${response.position}번째 - 권한 대기 중`);
+    }
+  });
+}
+
+function getStoreIdFromUrl() {
+  const url = window.location.href;
+  const match = url.match(/smartstore\.naver\.com\/([^\/]+)/);
+  return match ? match[1] : 'unknown';
 }
 
 function initHandler() {
@@ -239,6 +257,12 @@ async function collectProductData(storeId, runId) {
       await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
       await sendLogToServer(`✅ ${storeId}: 리뷰 없음으로 완료 처리됨`);
       
+      // ⭐ 해당 스토어의 모든 앱 창 닫기
+      chrome.runtime.sendMessage({
+        action: 'closeAppWindows',
+        storeId: storeId
+      });
+      
       return [];
     }
     
@@ -314,6 +338,12 @@ async function collectProductData(storeId, runId) {
       
       // ⭐ 완료 상태로 설정
       await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
+      
+      // ⭐ 해당 스토어의 모든 앱 창 닫기
+      chrome.runtime.sendMessage({
+        action: 'closeAppWindows',
+        storeId: storeId
+      });
     }
     
     return allProductUrls;
@@ -575,6 +605,8 @@ function findReviewsInWholePage(storeId) {
 
 // 서버로 상품 데이터 전송
 async function sendProductDataToServer(storeId, productData, reviewCount) {
+  console.log(`🔥🔥🔥 sendProductDataToServer 함수 진입: ${storeId}`);
+  
   try {
     const data = {
       storeId: storeId,
@@ -585,13 +617,7 @@ async function sendProductDataToServer(storeId, productData, reviewCount) {
       timestamp: new Date().toISOString()
     };
     
-    // 디버깅: 전송할 데이터 확인
-    console.log('📡 전송 데이터:', {
-      storeId: data.storeId,
-      productCount: data.productCount,
-      reviewProductCount: data.reviewProductCount,
-      products: data.products
-    });
+    console.log(`🔥🔥🔥 전송할 데이터 준비 완료: ${storeId}, 상품수: ${data.productCount}`);
     
     const response = await fetch('http://localhost:8080/api/smartstore/product-data', {
       method: 'POST',
@@ -601,8 +627,12 @@ async function sendProductDataToServer(storeId, productData, reviewCount) {
       body: JSON.stringify(data)
     });
     
-    if (!response.ok) {
-      console.error('❌ 서버 응답 오류:', response.status);
+    console.log(`🔥🔥🔥 서버 응답 받음: ${storeId}, 상태: ${response.status}`);
+    
+    if (response.ok) {
+      console.log(`✅ ${storeId}: 상품 데이터 전송 성공`);
+    } else {
+      console.error(`❌ ${storeId}: 서버 응답 오류 ${response.status}`);
     }
     
   } catch (error) {
@@ -715,7 +745,8 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
             // ⭐ 앱 모드 작은 창으로 열기 (Chrome API 사용)
             chrome.runtime.sendMessage({
               action: 'openAppWindow',
-              url: product.url
+              url: product.url,
+              storeId: storeId  // 스토어 ID 전달
             }, (response) => {
               if (response && response.success) {
                 console.log(`✅ 앱 모드 창으로 상품 접속: ${product.url}`);
@@ -992,13 +1023,29 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
     const beforeSendMsg = `📡 ${storeId}: 완료 신호 전송 시작`;
     await sendLogToServer(beforeSendMsg);
     
+    console.log(`🔥🔥🔥 sendProductDataToServer 호출 시작: ${storeId}, 상품수: ${productUrls.length}`);
     await sendProductDataToServer(storeId, productUrls, productUrls.length);
+    console.log(`🔥🔥🔥 sendProductDataToServer 호출 완료: ${storeId}`);
     
     const afterSendMsg = `📡 ${storeId}: 완료 신호 전송 완료`;
     await sendLogToServer(afterSendMsg);
     
+    // ⭐ 순차 처리 권한 해제 (정상 완료)
+    chrome.runtime.sendMessage({
+      action: 'releaseProcessing',
+      storeId: storeId
+    }, (response) => {
+      console.log('🔓 순차 처리 권한 해제 완료 (정상)');
+    });
+    
     // ⭐ 강제로 완료 상태 설정 (무한 대기 방지)
     await setStoreStateFromHandler(storeId, runId, 'done', false, productUrls.length, productUrls.length);
+    
+    // ⭐ 해당 스토어의 모든 앱 창 닫기
+    chrome.runtime.sendMessage({
+      action: 'closeAppWindows',
+      storeId: storeId
+    });
     
     const finalMsg = `🎉 ${storeId}: 모든 상품 접속 완료 (${productUrls.length}개)`;
     await sendLogToServer(finalMsg);
@@ -1024,6 +1071,12 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
     
     // ⭐ 오류 발생 시에도 완료 처리 (무한 대기 방지)
     await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
+    
+    // ⭐ 해당 스토어의 모든 앱 창 닫기
+    chrome.runtime.sendMessage({
+      action: 'closeAppWindows',
+      storeId: storeId
+    });
     
     // ⭐ 오류 시에도 탭 닫기
     setTimeout(() => {

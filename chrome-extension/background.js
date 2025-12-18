@@ -6,7 +6,8 @@ let globalProcessingState = {
   currentStore: null,
   currentTabId: null,
   lockTimestamp: null,
-  queue: []
+  queue: [],
+  openWindows: new Map()  // 열린 앱 창들 추적
 };
 
 // ⭐ 순차 처리 요청 핸들러
@@ -26,8 +27,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         focused: false  // 포커싱 방지
       }, (window) => {
         console.log('✅ 앱 모드 창 생성:', request.url);
+        
+        // ⭐ 창 ID를 저장해서 나중에 닫을 수 있도록
+        if (!globalProcessingState.openWindows) {
+          globalProcessingState.openWindows = new Map();
+        }
+        globalProcessingState.openWindows.set(window.id, {
+          storeId: request.storeId || 'unknown',
+          url: request.url,
+          timestamp: Date.now()
+        });
+        
         sendResponse({ success: true, windowId: window.id });
       });
+      return true;
+      
+    case 'closeAppWindows':
+      // ⭐ 특정 스토어의 모든 앱 창 닫기
+      if (globalProcessingState.openWindows) {
+        for (const [windowId, windowInfo] of globalProcessingState.openWindows.entries()) {
+          if (windowInfo.storeId === request.storeId) {
+            chrome.windows.remove(windowId, () => {
+              console.log(`🗂️ 앱 창 닫기: ${windowInfo.url}`);
+              globalProcessingState.openWindows.delete(windowId);
+            });
+          }
+        }
+      }
+      sendResponse({ success: true });
       return true;
       
     case 'requestProcessing':
@@ -82,7 +109,8 @@ function handleProcessingRequest(request, sender, sendResponse) {
   }
   
   // 이미 처리 중인 스토어와 같으면 승인 (재요청)
-  if (globalProcessingState.currentStore === storeId && globalProcessingState.currentTabId === tabId) {
+  if (globalProcessingState.currentStore === storeId) {
+    console.log(`✅ 같은 스토어 ${storeId} 재요청 - 즉시 승인`);
     sendResponse({ granted: true, position: 0 });
     return;
   }
@@ -101,36 +129,22 @@ function handleProcessingRelease(request, sender, sendResponse) {
   const tabId = sender.tab.id;
   
   console.log(`🔓 처리 해제 요청: ${storeId} (탭: ${tabId})`);
+  console.log(`🔍 현재 처리 중인 스토어: ${globalProcessingState.currentStore}`);
   
-  // 현재 처리 중인 스토어가 맞는지 확인
-  if (globalProcessingState.currentStore === storeId && globalProcessingState.currentTabId === tabId) {
+  // 현재 처리 중인 스토어가 맞는지 확인 (대소문자 무시)
+  if (globalProcessingState.currentStore && 
+      globalProcessingState.currentStore.toLowerCase() === storeId.toLowerCase()) {
+    console.log(`✅ 권한 해제 승인: ${storeId}`);
     resetProcessingState();
     processQueue();
-    checkAllStoresCompleted(); // 모든 스토어 완료 체크
     sendResponse({ success: true });
   } else {
     console.log(`⚠️ 잘못된 해제 요청: 현재 ${globalProcessingState.currentStore}, 요청 ${storeId}`);
-    sendResponse({ success: false });
-  }
-}
-
-// ⭐ 모든 스토어 완료 체크
-async function checkAllStoresCompleted() {
-  try {
-    const response = await fetch('http://localhost:8080/api/smartstore/check-all-completed');
-    const data = await response.json();
-    
-    console.log(`📊 완료 체크: ${data.completedCount}/${data.totalCount} 스토어 완료, ${data.currentProducts}/100개 수집`);
-    
-    // 10개 스토어 모두 완료 OR 100개 상품 달성
-    if ((data.allCompleted && data.totalCount === 10) || data.currentProducts >= 100) {
-      console.log('🎉 크롤링 완료 조건 달성 - 완료 신호 전송');
-      await fetch('http://localhost:8080/api/smartstore/all-stores-completed', {
-        method: 'POST'
-      });
-    }
-  } catch (error) {
-    console.error('❌ 완료 체크 오류:', error);
+    // 강제로 해제 (데드락 방지)
+    console.log(`🔧 강제 권한 해제: ${storeId}`);
+    resetProcessingState();
+    processQueue();
+    sendResponse({ success: true });
   }
 }
 
@@ -213,16 +227,28 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     
     // 공구탭 페이지 감지
     if (tab.url.includes('smartstore.naver.com') && tab.url.includes('/category/50000165')) {
-      console.log('🎯 공구탭 페이지 감지 - 스크립트 강제 주입');
+      console.log('🎯 공구탭 페이지 감지 - 즉시 스크립트 주입');
       
-      // 강제 스크립트 주입
+      // 즉시 스크립트 주입 (대기 없음)
       chrome.scripting.executeScript({
         target: { tabId: tabId },
         files: ['gonggu-checker.js']
       }).then(() => {
-        console.log('✅ gonggu-checker.js 강제 주입 완료');
+        console.log('✅ gonggu-checker.js 즉시 주입 완료');
       }).catch((error) => {
         console.log('❌ 스크립트 주입 실패:', error);
+        
+        // 재시도 (1초 후)
+        setTimeout(() => {
+          chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['gonggu-checker.js']
+          }).then(() => {
+            console.log('✅ gonggu-checker.js 재시도 주입 완료');
+          }).catch((retryError) => {
+            console.log('❌ 재시도 주입도 실패:', retryError);
+          });
+        }, 1000);
       });
     }
   }

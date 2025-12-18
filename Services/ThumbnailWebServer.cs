@@ -966,13 +966,18 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                LogWindow.AddLogStatic("🔥 HandleProductData 메서드 진입!");
+                
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
+                
+                LogWindow.AddLogStatic($"🔥 수신된 JSON 길이: {json.Length}");
                 
                 ProductDataRequest? productData = null;
                 try
                 {
                     productData = JsonSerializer.Deserialize<ProductDataRequest>(json);
+                    LogWindow.AddLogStatic("🔥 JSON 파싱 성공");
                 }
                 catch (Exception jsonEx)
                 {
@@ -986,6 +991,20 @@ namespace Gumaedaehang.Services
                 if (productData != null)
                 {
                     LogWindow.AddLogStatic($"📊 {productData.StoreId}: {productData.ProductCount}개 상품 데이터 수신");
+                    
+                    // ⭐ 상품 카운터 업데이트 (실제 수집된 상품 수 반영)
+                    lock (_counterLock)
+                    {
+                        _productCount += productData.ProductCount;
+                        LogWindow.AddLogStatic($"📊 전체 상품 수 업데이트: {_productCount}/100개");
+                    }
+                    
+                    // ⭐ 정상 완료 시 다음 스토어로 이동
+                    lock (_storeProcessLock)
+                    {
+                        _currentStoreIndex++;
+                        LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                    }
                 }
 
                 return Results.Json(new { 
@@ -1183,6 +1202,35 @@ namespace Gumaedaehang.Services
                     }
                 }
                 
+                // ⭐ 타임아웃 체크 (30초 이상 collecting 상태면 강제 완료)
+                if (storeState.State == "collecting" && 
+                    DateTime.Now - storeState.UpdatedAt > TimeSpan.FromSeconds(30))
+                {
+                    LogWindow.AddLogStatic($"{storeId}: 30초 collecting 타임아웃 - 강제 완료 처리");
+                    
+                    lock (_statesLock)
+                    {
+                        var key = $"{storeId}:{runId}";
+                        if (_storeStates.ContainsKey(key))
+                        {
+                            _storeStates[key].State = "done";
+                            _storeStates[key].Lock = false;
+                            _storeStates[key].UpdatedAt = DateTime.Now;
+                            storeState = _storeStates[key];
+                            
+                            // 🔥 순차 처리 - 다음 스토어로 이동
+                            lock (_storeProcessLock)
+                            {
+                                _currentStoreIndex++;
+                                LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                            }
+                            
+                            // 🔥 크롤링 완료 시 소싱 페이지 새로고침
+                            RefreshSourcingPage();
+                        }
+                    }
+                }
+                
                 // ⭐ 타임아웃 체크 (2분 이상 visiting 상태면 강제 완료)
                 if (storeState.State == "visiting" && 
                     DateTime.Now - storeState.UpdatedAt > TimeSpan.FromMinutes(2))
@@ -1212,31 +1260,8 @@ namespace Gumaedaehang.Services
                     }
                 }
                 
-                // ⭐ collecting 상태 타임아웃 체크 (5초 이상 collecting 상태면 강제 완료)
-                if (storeState.State == "collecting" && 
-                    DateTime.Now - storeState.UpdatedAt > TimeSpan.FromSeconds(5))
-                {
-                    LogWindow.AddLogStatic($"{storeId}: collecting 상태 5초 타임아웃 - 강제 완료 처리");
-                    
-                    lock (_statesLock)
-                    {
-                        var key = $"{storeId}:{runId}";
-                        if (_storeStates.ContainsKey(key))
-                        {
-                            _storeStates[key].State = "done";
-                            _storeStates[key].Lock = false;
-                            _storeStates[key].UpdatedAt = DateTime.Now;
-                            storeState = _storeStates[key];
-                            
-                            // 🔥 순차 처리 - 다음 스토어로 이동
-                            lock (_storeProcessLock)
-                            {
-                                _currentStoreIndex++;
-                                LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
-                            }
-                        }
-                    }
-                }
+                // ⭐ Chrome 순차 처리 시스템 사용 - 서버 타임아웃 제거
+                // collecting 상태 타임아웃 체크 제거됨 (Chrome에서 처리)
                 
                 LogWindow.AddLogStatic($"{storeId}: 상태 확인 - {storeState.State} (lock: {storeState.Lock}, {storeState.Progress}/{storeState.Expected})");
                 
