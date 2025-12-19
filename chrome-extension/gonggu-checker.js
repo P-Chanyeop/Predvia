@@ -187,8 +187,8 @@ async function sendGongguResult(gongguCount) {
         // 페이지 이동 후 리뷰 찾기 로직 실행
         setTimeout(() => {
           console.log('🚀 전체상품 페이지로 이동 중...');
-          window.location.href = allProductsUrl;
-        }, 1000);
+          window.location.replace(allProductsUrl);
+        }, 500);
         
       } else {
         // 공구 개수가 1000개 미만인 경우 (0개 포함) 모두 탭 닫기

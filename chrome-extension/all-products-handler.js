@@ -1052,6 +1052,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
     
     // ⭐ 메인 스토어 탭 닫기 (작업 완료 후)
     setTimeout(() => {
+      console.log('🔥 전체상품 페이지 작업 완료 - 창 닫기');
       // 일반 닫기 시도
       window.close();
       
@@ -1063,7 +1064,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
           }
         });
       }
-    }, 500); // 2초→0.5초로 단축
+    }, 500); // 즉시 닫기
     
   } catch (error) {
     const errorMsg = `❌ ${storeId}: 순차 접속 오류 - ${error.message}`;

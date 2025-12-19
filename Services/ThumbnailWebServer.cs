@@ -1202,6 +1202,46 @@ namespace Gumaedaehang.Services
                     }
                 }
                 
+                // ⭐ collecting 상태 2번 연속 감지 시 강제 완료
+                if (storeState.State == "collecting")
+                {
+                    // 연속 카운터 증가
+                    storeState.StuckCount++;
+                    
+                    if (storeState.StuckCount >= 2)
+                    {
+                        LogWindow.AddLogStatic($"{storeId}: collecting 상태 2번 연속 - 강제 완료 처리");
+                        
+                        lock (_statesLock)
+                        {
+                            var key = $"{storeId}:{runId}";
+                            if (_storeStates.ContainsKey(key))
+                            {
+                                _storeStates[key].State = "done";
+                                _storeStates[key].Lock = false;
+                                _storeStates[key].StuckCount = 0;
+                                _storeStates[key].UpdatedAt = DateTime.Now;
+                                storeState = _storeStates[key];
+                                
+                                // 🔥 순차 처리 - 다음 스토어로 이동
+                                lock (_storeProcessLock)
+                                {
+                                    _currentStoreIndex++;
+                                    LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                                }
+                                
+                                // 🔥 크롤링 완료 시 소싱 페이지 새로고침
+                                RefreshSourcingPage();
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // collecting 상태가 아니면 카운터 리셋
+                    storeState.StuckCount = 0;
+                }
+                
                 // ⭐ 타임아웃 체크 (30초 이상 collecting 상태면 강제 완료)
                 if (storeState.State == "collecting" && 
                     DateTime.Now - storeState.UpdatedAt > TimeSpan.FromSeconds(30))
@@ -1690,8 +1730,8 @@ namespace Gumaedaehang.Services
                     ExecutablePath = revisionInfo.GetExecutablePath(),
                     UserDataDir = profilePath,  // ⭐ 핵심: 동일한 프로필 사용
                     Args = new[] { 
-                        "--start-maximized",
-                        "--window-size=1920,1080",
+                        "--window-size=200,300",
+                        "--window-position=1720,780",
                         "--disable-blink-features=AutomationControlled",
                         "--disable-infobars",
                         "--no-sandbox"

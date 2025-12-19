@@ -753,6 +753,12 @@ async function visitSelectedStoresOnly(selectedStores) {
   
   // 첫 번째 스토어부터 시작
   await processStoreSequentially(0);
+  
+  // ⭐ 모든 스토어 방문 완료 후 즉시 창 닫기
+  console.log('🔥 네이버 가격비교 페이지 작업 완료 - 창 닫기');
+  setTimeout(() => {
+    window.close();
+  }, 1000);
 }
 
 // 스마트스토어 링크들을 순차적으로 방문 (공구탭으로 변환)

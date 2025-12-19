@@ -339,4 +339,10 @@ async function extractProductData() {
   } catch (error) {
     console.log(`❌ 상품 데이터 추출 전체 오류: ${error.message}`);
   }
+  
+  // ⭐ 상품 데이터 추출 완료 후 즉시 창 닫기
+  console.log('🔥 개별 상품 데이터 추출 완료 - 창 닫기');
+  setTimeout(() => {
+    window.close();
+  }, 500);
 }

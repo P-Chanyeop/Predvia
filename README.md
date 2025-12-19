@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.76-orange)
+![Release](https://img.shields.io/badge/Release-v1.77-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,22 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.76 - Chrome 앱 모드 창 데이터 추출 시스템 완전 구현)
+### 🔄 최신 업데이트 (v1.77 - Chrome 앱 모드 창 최적화 및 즉시 닫기 시스템 구현)
+- [x] **🎯 Chrome 앱 모드 창 크기 및 위치 최적화**
+  - **창 크기**: 1920×1080 → 200×300px (최소 크기)
+  - **창 위치**: 화면 오른쪽 하단 (1720, 780) 시계 근처 배치
+  - **포커싱 방지**: 백그라운드에서 조용히 작업 수행
+- [x] **🔥 즉시 창 닫기 시스템 완전 구현**
+  - **네이버 가격비교**: 스마트스토어 링크 수집 완료 후 1초 뒤 창 닫기
+  - **공구탭 체크**: 1000개 미만 스토어 즉시 닫기, 1000개 이상 전체상품 페이지 이동 후 닫기
+  - **전체상품 페이지**: 마지막 리뷰 상품 찾기 완료 후 0.5초 뒤 창 닫기
+  - **개별 상품 페이지**: 데이터 추출 완료 후 0.5초 뒤 창 닫기
+- [x] **⚡ collecting 상태 2번 연속 감지 시 강제 완료 처리**
+  - **문제 해결**: 공구 페이지 없는 스토어에서 무한 대기 문제 해결
+  - **빠른 감지**: 2번 연속 동일한 collecting 상태 시 즉시 다음 스토어로 이동
+  - **자동 복구**: 순차 처리 인덱스 자동 업데이트 및 소싱 페이지 새로고침
+
+### 🔄 이전 업데이트 (v1.76 - Chrome 앱 모드 창 데이터 추출 시스템 완전 구현)
 - [x] **🎯 Chrome 앱 모드 창에서 상품 데이터 추출 문제 완전 해결**
   - **문제 상황**: Chrome 앱 모드 작은 창(250×400px)에서 상품 이미지, 상품명 데이터가 추출되지 않던 문제
   - **근본 원인**: Manifest.json에서 개별 상품 페이지(`/products/*`)에 `all_frames: true` 속성 누락
@@ -1151,11 +1166,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.76 (Chrome 앱 모드 창 데이터 추출 시스템 완전 구현)
-  - Chrome 앱 모드 작은 창에서 상품 데이터 추출 문제 완전 해결
-  - Background.js 기반 자동 스크립트 주입으로 안정적인 데이터 수집
-  - 기존 v1.75 크롤링 시스템과 100% 호환성 보장
-  - 상품 이미지, 상품명 완전 추출 시스템 구현
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.77 (Chrome 앱 모드 창 최적화 및 즉시 닫기 시스템 구현)
+  - Chrome 앱 모드 창 크기를 최소 크기(200×300px)로 최적화하고 오른쪽 하단 배치
+  - 모든 작업 완료 후 즉시 창 닫기로 사용자 경험 및 시스템 성능 향상
+  - collecting 상태 2번 연속 감지 시 강제 완료 처리로 무한 대기 문제 해결
+  - 기존 v1.76 크롤링 시스템과 100% 호환성 보장
 
 #### ⚙️ 설정 (Settings)
 - **완전한 15.png/16.png 구현**: 라이트/다크모드 설정 페이지 완벽 재현
