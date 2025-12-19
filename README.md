@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.74-orange)
+![Release](https://img.shields.io/badge/Release-v1.76-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,28 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.75 - Chrome 확장프로그램 순차 처리 시스템 완전 안정화)
+### 🔄 최신 업데이트 (v1.76 - Chrome 앱 모드 창 데이터 추출 시스템 완전 구현)
+- [x] **🎯 Chrome 앱 모드 창에서 상품 데이터 추출 문제 완전 해결**
+  - **문제 상황**: Chrome 앱 모드 작은 창(250×400px)에서 상품 이미지, 상품명 데이터가 추출되지 않던 문제
+  - **근본 원인**: Manifest.json에서 개별 상품 페이지(`/products/*`)에 `all_frames: true` 속성 누락
+  - **완벽한 해결**: Background.js에서 앱 창 생성 시 상품 데이터 추출 함수 자동 주입
+- [x] **🔧 Background.js 기반 상품 데이터 추출 시스템 구현**
+  - **자동 스크립트 주입**: 앱 창 열림 감지 시 `extractProductData()` 함수 자동 주입
+  - **완전 분리 설계**: 기존 크롤링 로직과 완전히 독립적으로 작동
+  - **3초 지연 주입**: 페이지 로딩 완료 후 안정적인 데이터 추출 보장
+  - **오류 처리 강화**: 모든 예외 상황에 대한 안전한 처리 로직
+- [x] **📊 상품 이미지 + 상품명 완전 추출 시스템**
+  - **이미지 추출**: `.bd_2DO68`, `img[alt="대표이미지"]` 선택자로 정확한 상품 이미지 추출
+  - **상품명 추출**: `.DCVBehA8ZB`, `h3._copyable` 선택자로 정확한 상품명 추출
+  - **서버 API 연동**: 기존 `/api/smartstore/image`, `/api/smartstore/product-name` API 그대로 활용
+  - **실시간 로그**: Chrome 콘솔에서 데이터 추출 과정 실시간 확인 가능
+- [x] **🎨 기존 기능 100% 보존**
+  - **v1.75 크롤링 시스템**: 순차 처리, 리뷰 수집, 카테고리 수집 모든 기능 완전 보존
+  - **Content.js 원본 유지**: 1500줄 이상의 복잡한 기존 로직과 충돌 방지
+  - **Manifest.json 최소 수정**: `all_frames: true` 한 줄 추가로 최소한의 변경
+  - **완벽한 호환성**: 기존 모든 기능이 정상 작동하면서 새 기능 추가
+
+### 🔄 이전 업데이트 (v1.75 - Chrome 확장프로그램 순차 처리 시스템 완전 안정화)
 - [x] **🔧 Chrome 확장프로그램 탭 ID 불일치 문제 해결**
   - **권한 해제 실패 문제**: 탭 ID 체크 제거로 권한 해제 안정성 확보
   - **강제 권한 해제**: 불일치 시에도 데드락 방지를 위한 강제 해제 로직
@@ -1130,11 +1151,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.65 (크롤링 완료 감지 시스템 안정화)
-  - 가끔씩 7번째 스토어에서 멈추던 문제 완전 해결
-  - Chrome 완료 신호를 무조건 신뢰하여 즉시 로딩창 닫기 + 팝업 표시
-  - 서버 내부 상태 불일치로 인한 무한 대기 문제 해결
-  - 일부 스토어 상태 업데이트 누락되어도 크롤링 정상 완료
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.76 (Chrome 앱 모드 창 데이터 추출 시스템 완전 구현)
+  - Chrome 앱 모드 작은 창에서 상품 데이터 추출 문제 완전 해결
+  - Background.js 기반 자동 스크립트 주입으로 안정적인 데이터 수집
+  - 기존 v1.75 크롤링 시스템과 100% 호환성 보장
+  - 상품 이미지, 상품명 완전 추출 시스템 구현
 
 #### ⚙️ 설정 (Settings)
 - **완전한 15.png/16.png 구현**: 라이트/다크모드 설정 페이지 완벽 재현

@@ -39,6 +39,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
         
         sendResponse({ success: true, windowId: window.id });
+        
+        // ⭐ 상품 페이지인 경우 데이터 추출 스크립트 주입
+        if (request.url.includes('/products/')) {
+          const tabId = window.tabs && window.tabs[0] ? window.tabs[0].id : null;
+          if (tabId) {
+            setTimeout(() => {
+              chrome.scripting.executeScript({
+                target: { tabId: tabId },
+                func: extractProductData
+              }).catch(e => console.log('상품 데이터 추출 실패:', e));
+            }, 3000);
+          }
+        }
       });
       return true;
       
@@ -255,3 +268,75 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 console.log('🚀 Background Script 중앙 순차 처리 시스템 초기화 완료');
+
+// ⭐ 상품 데이터 추출 함수 (앱 창에서 실행됨)
+async function extractProductData() {
+  try {
+    const url = window.location.href;
+    const storeId = url.match(/smartstore\.naver\.com\/([^\/]+)/)?.[1];
+    const productId = url.match(/\/products\/(\d+)/)?.[1];
+    
+    if (!storeId || !productId) {
+      console.log('❌ 스토어ID 또는 상품ID 추출 실패');
+      return;
+    }
+    
+    console.log(`🛍️ 앱 창에서 상품 데이터 추출 시작: ${storeId}/${productId}`);
+    
+    // 페이지 로딩 대기
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // ⭐ 상품 이미지 추출
+    try {
+      const mainImage = document.querySelector('.bd_2DO68') || 
+                       document.querySelector('img[alt="대표이미지"]');
+      
+      if (mainImage && mainImage.src) {
+        const imageUrl = mainImage.src;
+        console.log(`🖼️ 상품 이미지 발견: ${imageUrl}`);
+        
+        await fetch('http://localhost:8080/api/smartstore/image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            storeId: storeId,
+            productId: productId,
+            imageUrl: imageUrl,
+            productUrl: url
+          })
+        });
+        console.log(`✅ 이미지 서버 전송 완료`);
+      }
+    } catch (error) {
+      console.log(`❌ 이미지 추출 오류: ${error.message}`);
+    }
+    
+    // ⭐ 상품명 추출
+    try {
+      const productNameElement = document.querySelector('.DCVBehA8ZB') || 
+                                document.querySelector('h3._copyable');
+      
+      if (productNameElement && productNameElement.textContent) {
+        const productName = productNameElement.textContent.trim();
+        console.log(`📝 상품명 발견: ${productName}`);
+        
+        await fetch('http://localhost:8080/api/smartstore/product-name', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            storeId: storeId,
+            productId: productId,
+            productName: productName,
+            productUrl: url
+          })
+        });
+        console.log(`✅ 상품명 서버 전송 완료`);
+      }
+    } catch (error) {
+      console.log(`❌ 상품명 추출 오류: ${error.message}`);
+    }
+    
+  } catch (error) {
+    console.log(`❌ 상품 데이터 추출 전체 오류: ${error.message}`);
+  }
+}
