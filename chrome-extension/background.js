@@ -15,6 +15,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('🔥 Background 메시지 수신:', request.action, request.storeId);
   
   switch (request.action) {
+    case 'openNewTab':
+      // ⭐ 새 탭으로 스토어 열기
+      chrome.tabs.create({
+        url: request.url,
+        active: false  // 백그라운드에서 열기
+      }, (tab) => {
+        console.log('✅ 새 탭 생성:', request.url);
+        sendResponse({ success: true, tabId: tab.id });
+      });
+      return true; // 비동기 응답을 위해 true 반환
+      
     case 'openAppWindow':
       // ⭐ 앱 모드 작은 창으로 열기
       chrome.windows.create({

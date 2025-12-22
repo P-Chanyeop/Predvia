@@ -180,13 +180,13 @@ async function scrollAndCollectLinks() {
   // 서버로 전송
   await sendSmartStoreLinksToServer(smartStoreLinks);
   
-  // ⭐ 크롤링 완료 후 플래그 리셋
-  try {
-    await fetch('http://localhost:8080/api/crawling/allow', { method: 'DELETE' });
-    console.log('🔄 크롤링 허용 플래그 리셋 완료');
-  } catch (error) {
-    console.log('❌ 플래그 리셋 오류:', error.message);
-  }
+  // ⭐ 네이버 가격비교에서 링크 수집 완료 후 스토어 접속 시작
+  console.log('🔥 네이버 가격비교 링크 수집 완료 - 스토어 접속 시작');
+  
+  // 스토어 접속 완료 후 창 닫기
+  setTimeout(() => {
+    window.close();
+  }, 5000); // 5초 후 창 닫기로 변경
 }
 
 // 유효한 스마트스토어 링크인지 확인
@@ -462,12 +462,120 @@ function extractProductTitle(linkElement) {
   }
 }
 
-// 서버로 스마트스토어 링크 전송 및 순차 접속
+// 서버로 스마트스토어 링크 전송 (링크만 전송, 순차 접속은 서버에서 처리)
 async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
   try {
     console.log('🔥🔥🔥 sendSmartStoreLinksToServer 함수 시작');
     
     // 링크가 전달되지 않으면 현재 페이지에서 추출
+    if (!smartStoreLinks) {
+      console.log('🔥 smartStoreLinks가 null이므로 추출 시작');
+      smartStoreLinks = extractSmartStoreLinks();
+      console.log('🔥 추출 결과:', smartStoreLinks.length, '개');
+    }
+    
+    if (smartStoreLinks.length === 0) {
+      console.log('⚠️ 추출된 스마트스토어 링크가 없습니다.');
+      console.log('🔥 페이지 URL:', window.location.href);
+      console.log('🔥 페이지 제목:', document.title);
+      console.log('🔥 페이지 내용 샘플:', document.body.textContent.substring(0, 500));
+      return;
+    }
+    
+    const data = {
+      smartStoreLinks: smartStoreLinks,
+      source: 'naver_price_comparison',
+      timestamp: new Date().toISOString(),
+      pageUrl: window.location.href
+    };
+    
+    console.log('🔥🔥🔥 요청 URL: http://localhost:8080/api/smartstore/links');
+    console.log('🔥🔥🔥 전송할 데이터 크기:', JSON.stringify(data).length, 'bytes');
+    console.log('전송할 데이터:', JSON.stringify({
+      smartStoreLinks: data.smartStoreLinks.slice(0, 5) // 처음 5개만 로그로 확인
+    }, null, 2));
+    
+    console.log('🔥🔥🔥 fetch 요청 시작...');
+    
+    const response = await fetch('http://localhost:8080/api/smartstore/links', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    console.log('🔥🔥🔥 응답 상태:', response.status);
+    
+    if (response.ok) {
+      const result = await response.text();
+      console.log('✅ 스마트스토어 링크 전송 성공:', result);
+      console.log(`📊 총 ${smartStoreLinks.length}개 링크 전송 완료`);
+      
+      // ⭐ 서버 응답 파싱하여 선택된 스토어 방문
+      try {
+        const responseData = JSON.parse(result);
+        console.log('🔥🔥🔥 서버 응답 데이터:', responseData);
+        
+        if (responseData.success && responseData.selectedStores && responseData.selectedStores.length > 0) {
+          console.log('🔥🔥🔥 visitSelectedStoresOnly 호출 시작');
+          await visitSelectedStoresOnly(responseData.selectedStores);
+        } else {
+          console.error('❌ 선택된 스토어 정보가 없습니다');
+        }
+      } catch (parseError) {
+        console.error('❌ 서버 응답 파싱 오류:', parseError);
+      }
+    } else {
+      console.error('❌ 스마트스토어 링크 전송 실패:', response.status, response.statusText);
+    }
+    
+  } catch (error) {
+    console.error('❌ 스마트스토어 링크 전송 오류:', error);
+  }
+}
+
+// 서버에서 선택된 스토어만 순차적으로 방문
+async function visitSelectedStoresOnly(selectedStores) {
+  console.log(`🚀 서버 선택 ${selectedStores.length}개 스토어 순차 접속 시작`);
+  
+  // ⭐ 재귀 함수로 순차 처리 보장
+  async function processStoreSequentially(index) {
+    if (index >= selectedStores.length) {
+      console.log('🎉 모든 선택된 스토어 방문 완료');
+      return;
+    }
+    
+    const store = selectedStores[index];
+    console.log(`📍 ${index + 1}/${selectedStores.length}: ${store.title} (${store.storeId}) 접속 시작`);
+    
+    try {
+      // ⭐ 스토어 URL로 새 탭 열기
+      const storeUrl = store.url || `https://smartstore.naver.com/${store.storeId}`;
+      
+      // 직접 새 탭 열기
+      window.open(storeUrl, '_blank');
+      console.log(`✅ ${store.title} 새 탭 열기 완료: ${storeUrl}`);
+      
+      // 다음 스토어 처리 전 대기
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 다음 스토어 처리
+      await processStoreSequentially(index + 1);
+    } catch (error) {
+      console.error(`❌ ${store.title} 처리 오류:`, error);
+      // 오류가 있어도 다음 스토어 계속 처리
+      await processStoreSequentially(index + 1);
+    }
+  }
+  
+  // 첫 번째 스토어부터 시작
+  await processStoreSequentially(0);
+}
+
+console.log('🎯 Predvia 스마트스토어 링크 수집 확장프로그램 로드 완료');
+    
+  /*  // 링크가 전달되지 않으면 현재 페이지에서 추출
     if (!smartStoreLinks) {
       console.log('🔥 smartStoreLinks가 null이므로 추출 시작');
       smartStoreLinks = extractSmartStoreLinks();
@@ -511,6 +619,7 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
     
     if (response.ok) {
       console.log('✅ 서버 통신 성공 - 응답 확인 중');
+      console.log('🔥🔥🔥 서버 응답 처리 시작');
       
       try {
         // ⭐ 응답 텍스트 먼저 확인
@@ -560,6 +669,7 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
             });
             
             // ⭐ 선택된 스토어만 방문
+            console.log('🔥🔥🔥 visitSelectedStoresOnly 호출 시작');
             await visitSelectedStoresOnly(responseData.selectedStores);
           } else {
             console.error('❌ 선택된 스토어 목록이 없거나 잘못됨');
@@ -611,7 +721,7 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
     }
   }
 }
-
+*/
 // ⭐ 선택된 스토어만 방문하는 함수
 async function visitSelectedStoresOnly(selectedStores) {
   console.log(`🚀 선택된 ${selectedStores.length}개 스토어만 순차 접속 시작`);
