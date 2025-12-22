@@ -560,16 +560,34 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
             });
             
             // ⭐ 선택된 스토어만 방문
-            await visitSelectedStoresOnly(responseData.selectedStores);
+            visitSelectedStoresOnly(responseData.selectedStores); // await 제거 - 백그라운드에서 실행
+            
+            // 🔥 네이버 가격비교 완료 - 즉시 창 닫기 (v1.78)
+            console.log('🔥 네이버 가격비교 링크 수집 완료 - 즉시 창 닫기');
+            setTimeout(() => {
+              window.close();
+            }, 500); // 1초 → 0.5초로 단축
           } else {
             console.error('❌ 선택된 스토어 목록이 없거나 잘못됨');
             console.log('🔄 폴백: 모든 스토어 방문으로 전환');
-            await visitSmartStoreLinksSequentially(smartStoreLinks);
+            visitSmartStoreLinksSequentially(smartStoreLinks); // await 제거
+            
+            // 🔥 폴백 완료 - 즉시 창 닫기 (v1.78)
+            console.log('🔥 폴백 시작 - 즉시 창 닫기');
+            setTimeout(() => {
+              window.close();
+            }, 500);
           }
         } else {
           console.error('❌ 서버에서 실패 응답:', responseData.error || '알 수 없는 오류');
           console.log('🔄 폴백: 모든 스토어 방문으로 전환');
-          await visitSmartStoreLinksSequentially(smartStoreLinks);
+          visitSmartStoreLinksSequentially(smartStoreLinks); // await 제거
+          
+          // 🔥 폴백 완료 - 즉시 창 닫기 (v1.78)
+          console.log('🔥 폴백 시작 - 즉시 창 닫기');
+          setTimeout(() => {
+            window.close();
+          }, 500);
         }
         
       } catch (processError) {
