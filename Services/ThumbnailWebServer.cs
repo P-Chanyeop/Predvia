@@ -489,6 +489,7 @@ namespace Gumaedaehang.Services
                 
                 LogWindow.AddLogStatic("✅ JSON 응답 직접 작성 완료");
                 LogWindow.AddLogStatic($"🔥🔥🔥 실제 응답 반환: {jsonString}");
+                
                 return Results.Ok();
             }
             catch (Exception ex)
