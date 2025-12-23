@@ -1,6 +1,30 @@
 // 개별 상품 페이지 전용 핸들러
 console.log('🔥🔥🔥 product-handler.js 로드됨 - ', window.location.href);
 
+// ⭐ 페이지 로드 후 창 크기 및 위치 강제 조절 (우하단 최소 크기)
+function forceWindowResize() {
+  try {
+    window.resizeTo(200, 300);
+    const screenWidth = window.screen.availWidth;
+    const screenHeight = window.screen.availHeight;
+    const windowWidth = 200;
+    const windowHeight = 300;
+    
+    // 우하단 위치 계산 (여백 20px)
+    const x = screenWidth - windowWidth - 20;
+    const y = screenHeight - windowHeight - 20;
+    
+    window.moveTo(x, y);
+    console.log(`🔧 상품페이지 창 크기 조절: ${windowWidth}x${windowHeight} at (${x}, ${y})`);
+  } catch (error) {
+    console.log('⚠️ 창 크기 조절 실패:', error.message);
+  }
+}
+
+// 즉시 실행 및 1초 후 재실행
+setTimeout(forceWindowResize, 100);
+setTimeout(forceWindowResize, 1000);
+
 // 페이지 로드 완료 대기
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initProductHandler);

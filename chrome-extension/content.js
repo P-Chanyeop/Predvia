@@ -3,6 +3,42 @@ console.log('🆕 Predvia 스마트스토어 링크 수집 확장프로그램 �
 console.log('🌐 현재 URL:', window.location.href);
 console.log('⏰ 현재 시간:', new Date().toLocaleString());
 
+// ⭐ 페이지 로드 후 창 크기 및 위치 강제 조절 (우하단 최소 크기)
+function forceWindowResize() {
+  try {
+    // 창 크기를 200x300으로 강제 조절
+    window.resizeTo(200, 300);
+    
+    // 창을 우하단으로 이동 (화면 크기 고려)
+    const screenWidth = window.screen.availWidth;
+    const screenHeight = window.screen.availHeight;
+    const windowWidth = 200;
+    const windowHeight = 300;
+    
+    // 우하단 위치 계산 (여백 20px)
+    const x = screenWidth - windowWidth - 20;
+    const y = screenHeight - windowHeight - 20;
+    
+    window.moveTo(x, y);
+    
+    console.log(`🔧 창 크기 및 위치 강제 조절: ${windowWidth}x${windowHeight} at (${x}, ${y})`);
+  } catch (error) {
+    console.log('⚠️ 창 크기 조절 실패:', error.message);
+  }
+}
+
+// 페이지 로드 완료 후 창 크기 조절 실행
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(forceWindowResize, 500);
+  });
+} else {
+  setTimeout(forceWindowResize, 500);
+}
+
+// 추가 안전장치: 1초 후 한 번 더 실행
+setTimeout(forceWindowResize, 1000);
+
 // ⭐ Background Script 기반 중앙 집중식 순차 처리 잠금
 async function requestProcessingPermission(storeId, storeTitle) {
   return new Promise((resolve) => {
@@ -563,20 +599,14 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
             visitSelectedStoresOnly(responseData.selectedStores); // await 제거 - 백그라운드에서 실행
             
             // 🔥 네이버 가격비교 완료 - 즉시 창 닫기 (v1.78)
-            console.log('🔥 네이버 가격비교 링크 수집 완료 - 즉시 창 닫기');
-            setTimeout(() => {
-              window.close();
-            }, 500); // 1초 → 0.5초로 단축
+            console.log('🔥 네이버 가격비교 링크 수집 완료 - 창 유지 (스토어 접속을 위해)');
           } else {
             console.error('❌ 선택된 스토어 목록이 없거나 잘못됨');
             console.log('🔄 폴백: 모든 스토어 방문으로 전환');
             visitSmartStoreLinksSequentially(smartStoreLinks); // await 제거
             
             // 🔥 폴백 완료 - 즉시 창 닫기 (v1.78)
-            console.log('🔥 폴백 시작 - 즉시 창 닫기');
-            setTimeout(() => {
-              window.close();
-            }, 500);
+            console.log('🔥 폴백 시작 - 창 유지 (스토어 접속을 위해)');
           }
         } else {
           console.error('❌ 서버에서 실패 응답:', responseData.error || '알 수 없는 오류');
@@ -584,10 +614,7 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
           visitSmartStoreLinksSequentially(smartStoreLinks); // await 제거
           
           // 🔥 폴백 완료 - 즉시 창 닫기 (v1.78)
-          console.log('🔥 폴백 시작 - 즉시 창 닫기');
-          setTimeout(() => {
-            window.close();
-          }, 500);
+          console.log('🔥 폴백 시작 - 창 유지 (스토어 접속을 위해)');
         }
         
       } catch (processError) {
@@ -773,10 +800,7 @@ async function visitSelectedStoresOnly(selectedStores) {
   await processStoreSequentially(0);
   
   // ⭐ 모든 스토어 방문 완료 후 즉시 창 닫기
-  console.log('🔥 네이버 가격비교 페이지 작업 완료 - 창 닫기');
-  setTimeout(() => {
-    window.close();
-  }, 1000);
+  console.log('🔥 네이버 가격비교 페이지 작업 완료 - 창 유지 (스토어 접속을 위해)');
 }
 
 // 스마트스토어 링크들을 순차적으로 방문 (공구탭으로 변환)

@@ -1,6 +1,30 @@
 console.log('🔥 all-products-handler.js 파일 로드됨!');
 console.log('🔥 현재 URL:', window.location.href);
 
+// ⭐ 페이지 로드 후 창 크기 및 위치 강제 조절 (우하단 최소 크기)
+function forceWindowResize() {
+  try {
+    window.resizeTo(200, 300);
+    const screenWidth = window.screen.availWidth;
+    const screenHeight = window.screen.availHeight;
+    const windowWidth = 200;
+    const windowHeight = 300;
+    
+    // 우하단 위치 계산 (여백 20px)
+    const x = screenWidth - windowWidth - 20;
+    const y = screenHeight - windowHeight - 20;
+    
+    window.moveTo(x, y);
+    console.log(`🔧 스마트스토어 창 크기 조절: ${windowWidth}x${windowHeight} at (${x}, ${y})`);
+  } catch (error) {
+    console.log('⚠️ 창 크기 조절 실패:', error.message);
+  }
+}
+
+// 즉시 실행 및 1초 후 재실행
+setTimeout(forceWindowResize, 100);
+setTimeout(forceWindowResize, 1000);
+
 // ⭐ 중복 실행 방지 가드
 if (window.__ALL_PRODUCTS_HANDLER_RUNNING__) {
   console.log('🚫 all-products-handler 이미 실행 중 - 중복 실행 방지');
