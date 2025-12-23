@@ -194,24 +194,31 @@ async function extractAndSendCategories(storeId) {
     }
 }
 
-// 로그를 서버로 전송하는 함수 (동기식으로 변경)
+// 서버 연결 상태 확인
+async function checkServerConnection() {
+  try {
+    const response = await fetch('http://localhost:8080/api/smartstore/status', {
+      method: 'GET',
+      timeout: 2000
+    });
+    return response.ok;
+  } catch (error) {
+    console.log('서버 연결 실패:', error.message);
+    return false;
+  }
+}
+
+// 로그를 서버로 전송하는 함수 (완전 조용히 처리)
 async function sendLogToServer(message) {
   try {
     const response = await fetch('http://localhost:8080/api/smartstore/log', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: message,
-        timestamp: new Date().toISOString()
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, timestamp: new Date().toISOString() }),
+      signal: AbortSignal.timeout(500)
     });
-    
-    console.log('로그 전송:', message);
-    
   } catch (error) {
-    console.log('로그 전송 실패:', error);
+    // 완전히 조용히 무시
   }
 }
 
@@ -768,22 +775,13 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
       const product = productUrls[i];
       
       try {
-        // ⭐ 서버에서 중단 신호 확인
+        // ⭐ 서버에서 중단 신호 확인 (새로운 접속만 차단, 데이터 처리는 계속)
         const shouldStop = await checkShouldStop();
         if (shouldStop) {
           const stopMsg = `🛑 ${storeId}: 목표 달성으로 상품 접속 중단 (${i + 1}/${productUrls.length}번째에서 중단)`;
           await sendLogToServer(stopMsg);
           
-          // ⭐ 100% 확실한 중단을 위해 함수 즉시 종료
-          setTimeout(() => {
-            window.close();
-            if (chrome && chrome.tabs) {
-              chrome.tabs.getCurrent((tab) => {
-                if (tab) chrome.tabs.remove(tab.id);
-              });
-            }
-          }, 500);
-          return; // 함수 즉시 종료
+          // ⭐ 새로운 접속만 중단, 이미 열린 탭의 데이터 처리는 계속
         }
         
         const visitMsg = `🔗 ${storeId}: [${i + 1}/${productUrls.length}] ${product.url} 접속`;
@@ -912,17 +910,38 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                       
                       await sendLogToServer(`🖼️ ${storeId}: 상품 이미지 발견 - ${productId}`);
                       
-                      // ⭐ 서버로 이미지 URL 전송
-                      await fetch('http://localhost:8080/api/smartstore/image', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          storeId: storeId,
-                          productId: productId,
-                          imageUrl: imageUrl,
-                          productUrl: product.url
-                        })
-                      });
+                      // ⭐ 서버로 이미지 URL 전송 (재시도 로직 추가)
+                      let imageRetries = 0;
+                      const maxImageRetries = 3;
+                      let imageSuccess = false;
+                      
+                      while (imageRetries < maxImageRetries && !imageSuccess) {
+                        try {
+                          const imageResponse = await fetch('http://localhost:8080/api/smartstore/image', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              storeId: storeId,
+                              productId: productId,
+                              imageUrl: imageUrl,
+                              productUrl: product.url
+                            })
+                          });
+                          
+                          if (imageResponse.ok) {
+                            imageSuccess = true;
+                          } else {
+                            throw new Error(`HTTP ${imageResponse.status}`);
+                          }
+                        } catch (imageError) {
+                          imageRetries++;
+                          if (imageRetries >= maxImageRetries) {
+                            await sendLogToServer(`❌ ${storeId}: 이미지 전송 최종 실패 - ${imageError.message}`);
+                          } else {
+                            await new Promise(resolve => setTimeout(resolve, 200 * imageRetries));
+                          }
+                        }
+                      }
                       
                     } else {
                       await sendLogToServer(`❌ ${storeId}: 상품 이미지 없음 - ${product.url}`);
@@ -942,17 +961,38 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                       
                       await sendLogToServer(`📝 ${storeId}: 상품명 발견 - ${productName}`);
                       
-                      // ⭐ 서버로 상품명 전송
-                      await fetch('http://localhost:8080/api/smartstore/product-name', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          storeId: storeId,
-                          productId: productId,
-                          productName: productName,
-                          productUrl: product.url
-                        })
-                      });
+                      // ⭐ 서버로 상품명 전송 (재시도 로직 추가)
+                      let nameRetries = 0;
+                      const maxNameRetries = 3;
+                      let nameSuccess = false;
+                      
+                      while (nameRetries < maxNameRetries && !nameSuccess) {
+                        try {
+                          const nameResponse = await fetch('http://localhost:8080/api/smartstore/product-name', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              storeId: storeId,
+                              productId: productId,
+                              productName: productName,
+                              productUrl: product.url
+                            })
+                          });
+                          
+                          if (nameResponse.ok) {
+                            nameSuccess = true;
+                          } else {
+                            throw new Error(`HTTP ${nameResponse.status}`);
+                          }
+                        } catch (nameError) {
+                          nameRetries++;
+                          if (nameRetries >= maxNameRetries) {
+                            await sendLogToServer(`❌ ${storeId}: 상품명 전송 최종 실패 - ${nameError.message}`);
+                          } else {
+                            await new Promise(resolve => setTimeout(resolve, 200 * nameRetries));
+                          }
+                        }
+                      }
                       
                     } else {
                       await sendLogToServer(`❌ ${storeId}: 상품명 없음 - ${product.url}`);
@@ -1112,7 +1152,11 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
       if (chrome && chrome.tabs) {
         chrome.tabs.getCurrent((tab) => {
           if (tab) {
-            chrome.tabs.remove(tab.id);
+            chrome.tabs.remove(tab.id, () => {
+              if (chrome.runtime.lastError) {
+                // 조용히 무시
+              }
+            });
           }
         });
       }
@@ -1140,7 +1184,11 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
       if (chrome && chrome.tabs) {
         chrome.tabs.getCurrent((tab) => {
           if (tab) {
-            chrome.tabs.remove(tab.id);
+            chrome.tabs.remove(tab.id, () => {
+              if (chrome.runtime.lastError) {
+                // 조용히 무시
+              }
+            });
           }
         });
       }

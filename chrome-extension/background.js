@@ -101,7 +101,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // 기존 탭 닫기 기능 유지
       if (sender.tab && sender.tab.id) {
         chrome.tabs.remove(sender.tab.id, () => {
-          console.log('Tab closed by background script');
+          if (chrome.runtime.lastError) {
+            // 조용히 무시
+          }
           sendResponse({success: true});
         });
       }

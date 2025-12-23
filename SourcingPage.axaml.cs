@@ -438,7 +438,14 @@ namespace Gumaedaehang
                 }
 
                 var imageFiles = Directory.GetFiles(imagesPath, "*_main.jpg");
+                var nameFiles = Directory.GetFiles(productDataPath, "*_name.txt");
                 
+                LogWindow.AddLogStatic($"🔍 파일 개수 확인: 이미지 {imageFiles.Length}개, 상품명 {nameFiles.Length}개");
+                
+                // 이미지 파일과 상품명 파일을 모두 수집
+                var allProducts = new HashSet<(string storeId, string productId)>();
+                
+                // 이미지 파일에서 상품 정보 추출
                 foreach (var imageFile in imageFiles)
                 {
                     var fileName = System.IO.Path.GetFileNameWithoutExtension(imageFile);
@@ -446,20 +453,46 @@ namespace Gumaedaehang
                     
                     if (parts.Length >= 3)
                     {
-                        // 올바른 파싱: 마지막에서 2번째가 productId, 나머지가 storeId
-                        var productId = parts[parts.Length - 2];  // "12512103209"
-                        var storeId = string.Join("_", parts.Take(parts.Length - 2));  // "mnd_store"
-                        
-                        // UI에 상품 추가
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            AddProductImageCard(storeId, productId, imageFile);
-                        });
+                        var productId = parts[parts.Length - 2];
+                        var storeId = string.Join("_", parts.Take(parts.Length - 2));
+                        allProducts.Add((storeId, productId));
                     }
                 }
                 
+                // 상품명 파일에서 상품 정보 추출 (이미지 없어도 카드 생성)
+                foreach (var nameFile in nameFiles)
+                {
+                    var fileName = System.IO.Path.GetFileNameWithoutExtension(nameFile);
+                    var parts = fileName.Split('_');
+                    
+                    if (parts.Length >= 3 && parts[parts.Length - 1] == "name")
+                    {
+                        var productId = parts[parts.Length - 2];
+                        var storeId = string.Join("_", parts.Take(parts.Length - 2));
+                        allProducts.Add((storeId, productId));
+                    }
+                }
+                
+                LogWindow.AddLogStatic($"✅ 실제 크롤링 데이터 로드 완료: {allProducts.Count}개 상품");
+                
+                // 모든 상품에 대해 카드 생성
+                foreach (var (storeId, productId) in allProducts)
+                {
+                    var imageFile = System.IO.Path.Combine(imagesPath, $"{storeId}_{productId}_main.jpg");
+                    if (!File.Exists(imageFile))
+                    {
+                        imageFile = ""; // 이미지 없음
+                    }
+                    
+                    // UI에 상품 추가
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        AddProductImageCard(storeId, productId, imageFile);
+                    });
+                }
+                
                 // 데이터가 있으면 표시
-                if (imageFiles.Length > 0)
+                if (allProducts.Count > 0)
                 {
                     Dispatcher.UIThread.Post(() =>
                     {
@@ -689,6 +722,12 @@ namespace Gumaedaehang
         // 실제 상품 이미지 카드 추가 메서드 (원본 더미데이터와 완전히 똑같이)
         public void AddProductImageCard(string storeId, string productId, string imageUrl)
         {
+            AddProductImageCard(storeId, productId, imageUrl, null);
+        }
+        
+        // 상품명과 함께 카드 추가 (오버로드)
+        public void AddProductImageCard(string storeId, string productId, string imageUrl, string? productName)
+        {
             try
             {
                 var container = this.FindControl<StackPanel>("RealDataContainer");
@@ -828,12 +867,19 @@ namespace Gumaedaehang
                 // 중복 카테고리 제거됨
 
                 // 원상품명 (실제 크롤링된 상품명 표시)
+                var originalProductName = !string.IsNullOrEmpty(productName) ? productName : GetOriginalProductName(storeId, productId);
                 var originalNameText = new TextBlock 
                 { 
-                    Text = "원상품명: " + GetOriginalProductName(storeId, productId), 
+                    Text = "원상품명: " + originalProductName, 
                     FontSize = 13,
                     FontFamily = new FontFamily("Malgun Gothic")
                 };
+                
+                // 상품명 입력박스에도 기본값 설정
+                if (!string.IsNullOrEmpty(productName))
+                {
+                    nameInputText.Text = productName;
+                }
 
                 // 키워드 태그들 (더미데이터 제거됨)
                 var keywordPanel = new WrapPanel();

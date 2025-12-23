@@ -205,38 +205,79 @@ async function testServerConnection() {
 async function scrollAndCollectLinks() {
   console.log('📜 페이지 끝까지 스크롤 - 스마트스토어 링크 수집');
   
-  let previousHeight = 0;
-  let currentHeight = document.body.scrollHeight;
-  let scrollAttempts = 0;
-  const maxScrollAttempts = 10;
+  let retryCount = 0;
+  const maxRetries = 3;
   
-  // 페이지 끝까지 반복 스크롤
-  while (previousHeight !== currentHeight && scrollAttempts < maxScrollAttempts) {
-    previousHeight = currentHeight;
+  while (retryCount < maxRetries) {
+    console.log(`🔄 시도 ${retryCount + 1}/${maxRetries}`);
     
-    // 페이지 끝까지 스크롤
-    window.scrollTo(0, document.body.scrollHeight);
-    console.log(`📍 스크롤 ${scrollAttempts + 1}회 - 높이: ${currentHeight}px`);
+    // 캐시 무력화를 위한 페이지 새로고침 (첫 시도 제외)
+    if (retryCount > 0) {
+      console.log('🔄 페이지 새로고침 중...');
+      const currentUrl = window.location.href;
+      const separator = currentUrl.includes('?') ? '&' : '?';
+      window.location.href = `${currentUrl}${separator}t=${Date.now()}`;
+      await new Promise(resolve => setTimeout(resolve, 3000)); // 페이지 로딩 대기
+    }
     
-    // 최소 대기 시간 (500ms)
-    await new Promise(resolve => setTimeout(resolve, 500));
+    let previousHeight = 0;
+    let currentHeight = document.body.scrollHeight;
+    let sameHeightCount = 0;
+    let scrollAttempts = 0;
+    const maxScrollAttempts = 15; // 더 많은 스크롤 시도
     
-    currentHeight = document.body.scrollHeight;
-    scrollAttempts++;
+    // 작은 단위로 여러번 스크롤
+    while (scrollAttempts < maxScrollAttempts && sameHeightCount < 6) {
+      previousHeight = currentHeight;
+      
+      // 작은 단위로 스크롤 (300px씩)
+      for (let i = 0; i < 5; i++) {
+        window.scrollBy(0, 300);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      console.log(`📍 스크롤 ${scrollAttempts + 1}회 - 높이: ${currentHeight}px`);
+      
+      // 최소 대기 시간
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      currentHeight = document.body.scrollHeight;
+      
+      if (currentHeight === previousHeight) {
+        sameHeightCount++;
+        console.log(`⏸️ 동일 높이 ${sameHeightCount}번째`);
+      } else {
+        sameHeightCount = 0;
+      }
+      
+      scrollAttempts++;
+    }
+    
+    console.log(`📜 스크롤 완료 - 총 ${scrollAttempts}회 스크롤`);
+    
+    // 최종 대기 후 링크 수집
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // 스마트스토어 링크 수집
+    const smartStoreLinks = extractSmartStoreLinks();
+    
+    console.log(`✅ 스크롤 완료: 총 ${smartStoreLinks.length}개 스마트스토어 링크 수집`);
+    
+    // 10개 이상 수집되면 성공
+    if (smartStoreLinks.length >= 10) {
+      console.log(`🎉 충분한 링크 수집 성공: ${smartStoreLinks.length}개`);
+      await sendSmartStoreLinksToServer(smartStoreLinks);
+      break;
+    } else {
+      console.log(`⚠️ 링크 부족 (${smartStoreLinks.length}개) - 재시도 필요`);
+      retryCount++;
+      
+      if (retryCount >= maxRetries) {
+        console.log(`❌ 최대 재시도 횟수 초과 - ${smartStoreLinks.length}개로 진행`);
+        await sendSmartStoreLinksToServer(smartStoreLinks);
+      }
+    }
   }
-  
-  console.log(`📜 스크롤 완료 - 총 ${scrollAttempts}회 스크롤`);
-  
-  // 최종 대기 후 링크 수집
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // 스마트스토어 링크 수집
-  const smartStoreLinks = extractSmartStoreLinks();
-  
-  console.log(`✅ 스크롤 완료: 총 ${smartStoreLinks.length}개 스마트스토어 링크 수집`);
-  
-  // 서버로 전송
-  await sendSmartStoreLinksToServer(smartStoreLinks);
   
   // ⭐ 크롤링 완료 후 플래그 리셋
   try {
@@ -376,18 +417,30 @@ async function extractAndSendProductNames() {
     // ⭐ 크롤링처럼 페이지 끝까지 스크롤 (1페이지 전체 상품명 수집)
     console.log('📜 페이지 끝까지 스크롤 - 상품명 수집');
     
+    // 🔥 백그라운드 탭에서도 스크롤 작동하도록 강제 포커스
+    window.focus();
+    
     let scrollCount = 0;
     let lastHeight = 0;
     
     while (scrollCount < 10) { // 최대 10회 스크롤
+      // 🔥 다중 스크롤 방식 (백그라운드에서도 작동)
       window.scrollTo(0, document.body.scrollHeight);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      document.documentElement.scrollTop = document.body.scrollHeight;
+      document.body.scrollTop = document.body.scrollHeight;
+      
+      // 🔥 프로그래밍 방식 스크롤 이벤트 강제 발생
+      window.dispatchEvent(new Event('scroll'));
+      document.dispatchEvent(new Event('scroll'));
+      
+      await new Promise(resolve => setTimeout(resolve, 1500)); // 1초→1.5초 증가
       
       const currentHeight = document.body.scrollHeight;
       console.log(`📍 스크롤 ${scrollCount + 1}회 - 높이: ${currentHeight}px`);
       
       if (currentHeight === lastHeight) {
-        break; // 더 이상 스크롤할 내용이 없음
+        // 🔥 높이 변화 없어도 2번 더 시도 (지연 로딩 대응)
+        if (scrollCount >= 2) break;
       }
       
       lastHeight = currentHeight;
@@ -396,8 +449,11 @@ async function extractAndSendProductNames() {
     
     console.log(`📜 스크롤 완료 - 총 ${scrollCount}회 스크롤`);
     
+    // 🔥 스마트스토어 링크 강제 로딩 (백그라운드에서도 작동)
+    await forceLoadSmartStoreLinks();
+    
     // 최종 대기 후 상품명 수집
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 2000)); // 1초→2초 증가
     
     // ⭐ 페이지 구조 분석 (디버깅용)
     console.log('🔍 페이지 구조 분석 시작');
@@ -1524,4 +1580,33 @@ function startAllStoresCompletionCheck() {
       console.error('❌ 완료 상태 체크 오류:', error);
     }
   }, 30000); // 30초마다 체크
+}
+
+// 🔥 백그라운드에서도 스마트스토어 링크 강제 로딩
+async function forceLoadSmartStoreLinks() {
+  console.log('🔥 스마트스토어 링크 강제 로딩 시작');
+  
+  // 1. 모든 이미지 강제 로드
+  const images = document.querySelectorAll('img[data-src], img[loading="lazy"]');
+  images.forEach(img => {
+    if (img.dataset.src) {
+      img.src = img.dataset.src;
+    }
+    img.loading = 'eager';
+  });
+  
+  // 2. 지연 로딩 요소들 강제 트리거
+  const lazyElements = document.querySelectorAll('[data-lazy], [data-src]');
+  lazyElements.forEach(el => {
+    // Intersection Observer 이벤트 강제 발생
+    const event = new Event('intersect');
+    el.dispatchEvent(event);
+  });
+  
+  // 3. 페이지 전체 다시 렌더링 강제
+  document.body.style.display = 'none';
+  document.body.offsetHeight; // 강제 리플로우
+  document.body.style.display = '';
+  
+  console.log('🔥 스마트스토어 링크 강제 로딩 완료');
 }

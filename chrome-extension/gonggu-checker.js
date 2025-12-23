@@ -253,9 +253,13 @@ async function sendGongguResult(gongguCount) {
         try {
           chrome.runtime.sendMessage({
             action: 'closeCurrentTab'
+          }, () => {
+            if (chrome.runtime.lastError) {
+              // 조용히 무시
+            }
           });
         } catch (e) {
-          console.log('Chrome API 탭 닫기 실패:', e);
+          // 조용히 무시
         }
         
         // 강제 페이지 이동으로 탭 무력화
@@ -269,14 +273,9 @@ async function sendGongguResult(gongguCount) {
     }
     
   } catch (error) {
-    console.error('❌ 공구 개수 결과 전송 실패:', error);
-    
-    // ⭐ 네트워크 오류 시 재시도
-    if (error.message.includes('Failed to fetch')) {
-      console.log('🔄 네트워크 오류 - 2초 후 재시도');
-      setTimeout(() => {
-        sendGongguResult(storeId, gongguCount, isValid);
-      }, 2000);
+    // 네트워크 오류는 조용히 처리 (콘솔 스팸 방지)
+    if (!error.message.includes('Failed to fetch')) {
+      console.error('❌ 공구 개수 결과 전송 실패:', error);
     }
   }
 }

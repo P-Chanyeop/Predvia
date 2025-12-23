@@ -635,12 +635,27 @@ namespace Gumaedaehang.Services
                     LogWindow.AddLogStatic($"✅ 순차 처리 승인: {visitData.StoreId} ({_currentStoreIndex + 1}/{_selectedStores.Count})");
                 }
 
-                // ⭐ 목표 달성 시 중단
+                // ⭐ 목표 달성 시 완전 중단 - 새로운 방문 차단
                 lock (_counterLock)
                 {
-                    if (_shouldStop || _productCount >= TARGET_PRODUCT_COUNT)
+                    if (_productCount >= TARGET_PRODUCT_COUNT)
                     {
                         LogWindow.AddLogStatic($"목표 달성으로 크롤링 중단: {_productCount}/{TARGET_PRODUCT_COUNT}");
+                        
+                        // 모든 스토어를 강제로 완료 상태로 변경
+                        foreach (var store in _storeStates.Keys.ToList())
+                        {
+                            if (_storeStates[store].State != "done")
+                            {
+                                _storeStates[store].State = "done";
+                                _storeStates[store].Lock = false;
+                                LogWindow.AddLogStatic($"🛑 {store}: 강제 완료 처리 (목표 달성)");
+                            }
+                        }
+                        
+                        _shouldStop = true;
+                        _isCrawlingActive = false;
+                        
                         return Results.Ok(new { 
                             success = true, 
                             stop = true,
@@ -993,12 +1008,51 @@ namespace Gumaedaehang.Services
                 {
                     LogWindow.AddLogStatic($"📊 {productData.StoreId}: {productData.ProductCount}개 상품 데이터 수신");
                     
-                    // ⭐ 상품 카운터 업데이트 (실제 수집된 상품 수 반영)
-                    lock (_counterLock)
+                    // ⭐ 100개 달성 체크 (HandleProductName에서 카운터 증가)
+                    if (_productCount >= 100)
                     {
-                        _productCount += productData.ProductCount;
-                        LogWindow.AddLogStatic($"📊 전체 상품 수 업데이트: {_productCount}/100개");
+                        LogWindow.AddLogStatic("🎉 목표 달성! 100개 상품 수집 완료 - 크롤링 중단");
+                        
+                        // ⭐ 크롤링 완전 중단 신호 설정
+                        _shouldStop = true;
+                        _isCrawlingActive = false;
+                        
+                        // ⭐ 모든 스토어를 done 상태로 변경하여 Chrome 중단
+                        lock (_statesLock)
+                        {
+                            foreach (var storeId in _storeStates.Keys.ToList())
+                            {
+                                var state = _storeStates[storeId];
+                                if (state.State != "done")
+                                {
+                                    state.State = "done";
+                                    state.Lock = false;
+                                    LogWindow.AddLogStatic($"🛑 {storeId}: 강제 완료 처리 (목표 달성)");
+                                }
+                            }
+                        }
+                        
+                        // 🔄 로딩창 숨김
+                        LoadingHelper.HideLoadingFromSourcingPage();
+                        
+                        // ⭐ Chrome 앱 창들 닫기
+                        _ = Task.Run(async () => await CloseAllChromeApps());
+                        
+                        // ⭐ 팝업창으로 최종 결과 표시
+                        ShowCrawlingResultPopup(100, "목표 달성");
+                        
+                        return Results.Json(new { 
+                            success = true,
+                            totalProducts = 100,
+                            targetProducts = TARGET_PRODUCT_COUNT,
+                            shouldStop = true,
+                            message = "목표 달성으로 크롤링 완료"
+                        });
                     }
+                    
+                    // ⭐ 상품 카운터 업데이트 (실제 수집된 상품 수 반영)
+                    // 주의: HandleProductName에서도 카운터가 증가하므로 여기서는 증가하지 않음
+                    LogWindow.AddLogStatic($"📊 {productData.StoreId}: {productData.ProductCount}개 상품 데이터 수신");
                     
                     // ⭐ 정상 완료 시 다음 스토어로 이동
                     lock (_storeProcessLock)
@@ -2326,12 +2380,7 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                // 🚨 크롤링 중단 상태 체크
-                if (!_isCrawlingActive || _shouldStop)
-                {
-                    LogWindow.AddLogStatic("⏹️ 크롤링 중단됨 - 이미지 처리 스킵");
-                    return Results.Ok(new { success = false, message = "크롤링 중단됨" });
-                }
+                // 목표 달성과 관계없이 이미 접속한 상품의 이미지는 반드시 처리
                 var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
                 LogWindow.AddLogStatic($"🖼️ 이미지 처리 요청: {body}");
 
@@ -2430,12 +2479,7 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                // 🚨 크롤링 중단 상태 체크
-                if (!_isCrawlingActive || _shouldStop)
-                {
-                    LogWindow.AddLogStatic("⏹️ 크롤링 중단됨 - 상품명 처리 스킵");
-                    return Results.Ok(new { success = false, message = "크롤링 중단됨" });
-                }
+                // 목표 달성과 관계없이 이미 접속한 상품의 상품명은 반드시 처리
                 var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
                 LogWindow.AddLogStatic($"📝 상품명 처리 요청: {body}");
 
@@ -2476,12 +2520,22 @@ namespace Gumaedaehang.Services
 
                 await File.WriteAllTextAsync(filePath, nameData.ProductName, System.Text.Encoding.UTF8);
                 
-                // 🔥 상품 카운터 증가 및 100개 달성 체크
+                // 🔥 파일 저장 성공 후에만 카운터 증가
                 _productCount++;
                 var percentage = (_productCount * 100.0) / 100;
                 
                 LogWindow.AddLogStatic($"✅ 상품명 저장 완료: {fileName} - {nameData.ProductName}");
                 LogWindow.AddLogStatic($"📊 실시간 진행률: {_productCount}/100개 ({percentage:F1}%)");
+                
+                // 🔥 소싱 페이지에 실시간 카드 추가
+                try
+                {
+                    await AddProductCardToSourcingPage(nameData.StoreId, nameData.ProductId, nameData.ProductName);
+                }
+                catch (Exception cardEx)
+                {
+                    LogWindow.AddLogStatic($"⚠️ 카드 추가 오류: {cardEx.Message}");
+                }
                 
                 // 🚨 100개 달성 시 크롤링 완전 중단
                 if (_productCount >= 100)
@@ -2510,11 +2564,11 @@ namespace Gumaedaehang.Services
                     // 🔄 로딩창 숨김 - 소싱 페이지에서 직접 처리
                     LoadingHelper.HideLoadingFromSourcingPage();
                     
-                    // ⭐ 크롬 탭 자동 닫기 제거 (테스트용)
-                    // _ = Task.Run(() => CloseAllChromeTabs());
+                    // ⭐ Chrome 앱 창들 닫기
+                    _ = Task.Run(async () => await CloseAllChromeApps());
                     
                     // ⭐ 팝업창으로 최종 결과 표시
-                    ShowCrawlingResultPopup(_productCount, "목표 달성");
+                    ShowCrawlingResultPopup(100, "목표 달성");
                     
                     return;
                 }
@@ -2522,6 +2576,39 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 상품명 저장 실패: {ex.Message}");
+            }
+        }
+        
+        // 🔥 소싱 페이지에 실시간 카드 추가
+        private async Task AddProductCardToSourcingPage(string storeId, string productId, string productName)
+        {
+            try
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    var mainWindow = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                        ? desktop.MainWindow as MainWindow
+                        : null;
+                        
+                    if (mainWindow?.SourcingPageInstance != null)
+                    {
+                        // 이미지 파일 경로 생성
+                        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                        var imageDir = System.IO.Path.Combine(appDataPath, "Predvia", "Images");
+                        var imageFileName = $"{storeId}_{productId}_main.jpg";
+                        var imagePath = System.IO.Path.Combine(imageDir, imageFileName);
+                        
+                        // 이미지 파일이 있으면 파일 경로, 없으면 상품명 사용
+                        var imageUrl = File.Exists(imagePath) ? imagePath : productName;
+                        
+                        mainWindow.SourcingPageInstance.AddProductImageCard(storeId, productId, imageUrl, productName);
+                        LogWindow.AddLogStatic($"🆔 새 카드 ID 생성: {_productCount}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 카드 추가 실패: {ex.Message}");
             }
         }
 
