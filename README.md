@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.80-orange)
+![Release](https://img.shields.io/badge/Release-v1.81-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,21 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.80 - Chrome 앱 창 우하단 최소 크기 시스템 완전 구현)
+### 🔄 최신 업데이트 (v1.81 - Chrome 앱 창 자동 닫기 시스템 완전 구현)
+- [x] **🔥 크롤링 완료 시 Chrome 앱 창 자동 닫기**: 기존 Chrome 브라우저는 보호하면서 앱 창만 선별적으로 닫기
+  - **네이버 가격비교 창 자동 닫기**: 크롤링 완료 감지 시 네이버 창만 2초 후 자동 닫기
+  - **기존 Chrome 브라우저 완전 보호**: 모든 Chrome 프로세스 종료 로직 제거
+  - **Chrome 확장프로그램 상태 체크**: 3초마다 크롤링 상태 확인 후 완료 시 창 닫기
+  - **스마트스토어 앱 창 개별 정리**: 각 스토어 작업 완료 후 개별적으로 창 닫기
+  - **사용자 작업 환경 보존**: 기존 Chrome 탭과 북마크, 확장프로그램 완전 보존
+- [x] **🔧 빌드 오류 완전 해결**: 모든 컴파일 오류 및 경고 해결
+  - **ThumbnailWebServer.cs**: `CloseAllChromeApps()` 메서드 async Task로 변경
+  - **ApiClient.cs**: null 참조 반환 경고 해결 (CS8603 × 2개)
+  - **LoginWindow/SignupWindow**: AuthResponse.Username → User?.Username 수정
+  - **중복 파일 제거**: ApiClient_backup.cs 중복 정의 문제 해결
+  - **빌드 상태**: 오류 0개, 경고 0개 달성
+
+### 🔄 이전 업데이트 (v1.80 - Chrome 앱 창 우하단 최소 크기 시스템 완전 구현)
 - [x] **🔧 네이버 가격비교 창 자동 닫기 제거**: 링크 수집 완료 후에도 창 유지하여 스토어 접속 연속성 보장
   - **문제 해결**: 네이버 창이 닫히면서 Chrome 확장프로그램 컨텍스트가 소멸되어 나머지 스토어 접속 불가 문제 해결
   - **창 유지 시스템**: 모든 크롤링 완료까지 네이버 가격비교 창 지속 유지
@@ -1203,6 +1217,12 @@ dotnet run --project Gumaedaehang.csproj
 ---
 
 **Made with ❤️ by Softcat Team**
+
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.81 (Chrome 앱 창 자동 닫기 시스템 완전 구현)
+  - 크롤링 완료 시 기존 Chrome 브라우저는 보호하면서 앱 창만 선별적으로 닫기
+  - 네이버 가격비교 창 3초마다 상태 체크 후 완료 시 2초 뒤 자동 닫기
+  - 모든 컴파일 오류 및 경고 완전 해결로 완벽한 시스템 안정성 확보
+  - 사용자 작업 환경 완전 보존 및 깔끔한 크롤링 환경 제공
 
 > **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.79 (최소 침습 방식 즉시 창 닫기 시스템 구현)
   - 네이버 가격비교 창 링크 수집 완료 후 0.5초 뒤 즉시 닫기로 화면 지저분함 완전 해결

@@ -15,15 +15,43 @@ function forceWindowResize() {
     const y = screenHeight - windowHeight - 20;
     
     window.moveTo(x, y);
+    
+    // 포커싱 방지: 창을 백그라운드로 보내기
+    window.blur();
+    
     console.log(`🔧 스마트스토어 창 크기 조절: ${windowWidth}x${windowHeight} at (${x}, ${y})`);
   } catch (error) {
     console.log('⚠️ 창 크기 조절 실패:', error.message);
   }
 }
 
-// 즉시 실행 및 1초 후 재실행
-setTimeout(forceWindowResize, 100);
-setTimeout(forceWindowResize, 1000);
+// ⭐ 즉시 실행 (페이지 로드 전에도)
+forceWindowResize();
+
+// ⭐ 다중 안전장치: 여러 시점에서 반복 실행
+setTimeout(forceWindowResize, 50);   // 0.05초 후
+setTimeout(forceWindowResize, 100);  // 0.1초 후
+setTimeout(forceWindowResize, 200);  // 0.2초 후
+setTimeout(forceWindowResize, 500);  // 0.5초 후
+setTimeout(forceWindowResize, 1000); // 1초 후
+setTimeout(forceWindowResize, 2000); // 2초 후
+
+// ⭐ 페이지 로드 이벤트에서도 실행
+document.addEventListener('DOMContentLoaded', forceWindowResize);
+window.addEventListener('load', forceWindowResize);
+
+// ⭐ 지속적 감시: 창이 다른 위치로 이동하면 다시 우하단으로
+setInterval(() => {
+  const currentX = window.screenX;
+  const currentY = window.screenY;
+  const targetX = window.screen.availWidth - 220;
+  const targetY = window.screen.availHeight - 320;
+  
+  // 위치가 우하단이 아니면 다시 이동
+  if (Math.abs(currentX - targetX) > 50 || Math.abs(currentY - targetY) > 50) {
+    forceWindowResize();
+  }
+}, 1000); // 1초마다 위치 체크
 
 // ⭐ 중복 실행 방지 가드
 if (window.__ALL_PRODUCTS_HANDLER_RUNNING__) {

@@ -21,6 +21,9 @@ function forceWindowResize() {
     
     window.moveTo(x, y);
     
+    // 포커싱 방지: 창을 백그라운드로 보내기
+    window.blur();
+    
     console.log(`🔧 창 크기 및 위치 강제 조절: ${windowWidth}x${windowHeight} at (${x}, ${y})`);
   } catch (error) {
     console.log('⚠️ 창 크기 조절 실패:', error.message);
@@ -38,6 +41,25 @@ if (document.readyState === 'loading') {
 
 // 추가 안전장치: 1초 후 한 번 더 실행
 setTimeout(forceWindowResize, 1000);
+
+// ⭐ 크롤링 완료 시 네이버 창 자동 닫기 체크
+setInterval(async () => {
+  try {
+    const response = await fetch('http://localhost:8080/api/smartstore/crawling-status');
+    if (response.ok) {
+      const data = await response.json();
+      // 크롤링이 완료되었거나 중단되었으면 창 닫기
+      if (!data.isRunning || data.shouldStop) {
+        console.log('🔥 크롤링 완료 감지 - 네이버 창 닫기');
+        setTimeout(() => {
+          window.close();
+        }, 2000); // 2초 후 닫기
+      }
+    }
+  } catch (error) {
+    // 에러 무시
+  }
+}, 3000); // 3초마다 체크
 
 // ⭐ Background Script 기반 중앙 집중식 순차 처리 잠금
 async function requestProcessingPermission(storeId, storeTitle) {

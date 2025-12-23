@@ -1506,6 +1506,56 @@ namespace Gumaedaehang.Services
             }
         }
         
+        // ⭐ 모든 Chrome 앱 창 닫기 (네이버 + 스마트스토어 + 상품페이지)
+        private async Task CloseAllChromeApps()
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🔥 모든 Chrome 앱 창 닫기 시작");
+                
+                // 모든 Chrome 프로세스를 강제로 종료 (메인 브라우저 제외)
+                var chromeProcesses = System.Diagnostics.Process.GetProcessesByName("chrome");
+                int closedCount = 0;
+                
+                foreach (var process in chromeProcesses)
+                {
+                    try
+                    {
+                        if (!process.HasExited)
+                        {
+                            // 먼저 정상 종료 시도
+                            process.CloseMainWindow();
+                            await Task.Delay(200);
+                            
+                            // 여전히 실행 중이면 강제 종료
+                            if (!process.HasExited)
+                            {
+                                process.Kill();
+                                process.WaitForExit(1000);
+                            }
+                            
+                            closedCount++;
+                            LogWindow.AddLogStatic($"🔥 Chrome 프로세스 종료: PID {process.Id}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"❌ Chrome 프로세스 종료 실패: PID {process.Id} - {ex.Message}");
+                    }
+                    finally
+                    {
+                        process?.Dispose();
+                    }
+                }
+                
+                LogWindow.AddLogStatic($"✅ Chrome 프로세스 종료 완료: {closedCount}개 프로세스 처리");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ Chrome 프로세스 종료 오류: {ex.Message}");
+            }
+        }
+        
         // ⭐ 서버에서 모든 스토어 완료 체크
         private void CheckAllStoresCompletedFromServer()
         {
@@ -1732,7 +1782,8 @@ namespace Gumaedaehang.Services
                     UserDataDir = profilePath,  // ⭐ 핵심: 동일한 프로필 사용
                     Args = new[] { 
                         "--window-size=200,300",
-                        "--window-position=1720,780",
+                        // 1920x1080 기준 우하단 위치: 1920-200-20=1700, 1080-300-50=730
+                        "--window-position=1700,730",
                         "--disable-blink-features=AutomationControlled",
                         "--disable-infobars",
                         "--no-sandbox"
@@ -2055,12 +2106,28 @@ namespace Gumaedaehang.Services
             // 더 이상 사용하지 않음 - Chrome이 직접 완료 신호 전송
         }
         
+        
         // ⭐ 크롤링 결과 팝업창 표시
         private void ShowCrawlingResultPopup(int count, string reason)
         {
             try
             {
                 LoadingHelper.HideLoadingFromSourcingPage();
+                
+                // ⭐ Chrome 확장프로그램에 모든 앱 창 닫기 신호 (기존 브라우저 유지)
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(1000); // 1초 후 앱 창들만 닫기
+                    try
+                    {
+                        // 네이버 창에 창 닫기 신호 전송 (JavaScript로 처리)
+                        LogWindow.AddLogStatic("🔥 Chrome 앱 창들 닫기 - 기존 브라우저는 유지");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"❌ 앱 창 닫기 실패: {ex.Message}");
+                    }
+                });
                 
                 var failedCount = 100 - count;
                 

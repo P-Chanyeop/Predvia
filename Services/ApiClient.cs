@@ -38,7 +38,7 @@ namespace Gumaedaehang.Services
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
                     var authResponse = JsonSerializer.Deserialize<AuthResponse>(responseContent);
-                    return authResponse;
+                    return authResponse ?? new AuthResponse { IsSuccess = false, Message = "로그인 응답이 null입니다." };
                 }
                 else
                 {
@@ -73,7 +73,7 @@ namespace Gumaedaehang.Services
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
                     var authResponse = JsonSerializer.Deserialize<AuthResponse>(responseContent);
-                    return authResponse;
+                    return authResponse ?? new AuthResponse { IsSuccess = false, Message = "회원가입 응답이 null입니다." };
                 }
                 else
                 {
@@ -100,15 +100,24 @@ namespace Gumaedaehang.Services
             {
                 return new AuthResponse
                 {
-                    Success = true,
-                    Token = "test_token_" + Guid.NewGuid().ToString(),
-                    Username = username,
-                    Message = "로그인 성공"
+                    IsSuccess = true,
+                    Message = "로그인 성공",
+                    Token = "test-token-12345",
+                    User = new UserInfo
+                    {
+                        Id = 1,
+                        Username = username,
+                        Email = $"{username}@test.com"
+                    }
                 };
             }
             else
             {
-                throw new ApiException("로그인 실패", "아이디 또는 비밀번호가 올바르지 않습니다.");
+                return new AuthResponse
+                {
+                    IsSuccess = false,
+                    Message = "잘못된 사용자명 또는 비밀번호입니다."
+                };
             }
         }
 
@@ -117,45 +126,70 @@ namespace Gumaedaehang.Services
         {
             await Task.Delay(500); // API 호출 시뮬레이션을 위한 지연
 
-            // 비밀번호 확인 검증
+            // 비밀번호 확인
             if (password != confirmPassword)
             {
-                throw new ApiException("회원가입 실패", "비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+                return new AuthResponse
+                {
+                    IsSuccess = false,
+                    Message = "비밀번호가 일치하지 않습니다."
+                };
             }
 
-            // 사용자 이름 중복 검사 (테스트 계정과 중복되면 안됨)
-            if (username == "admin" || username == "test")
+            // 사용자명 길이 확인
+            if (username.Length < 3)
             {
-                throw new ApiException("회원가입 실패", "이미 사용 중인 아이디입니다.");
+                return new AuthResponse
+                {
+                    IsSuccess = false,
+                    Message = "사용자명은 3자 이상이어야 합니다."
+                };
             }
 
             return new AuthResponse
             {
-                Success = true,
-                Token = "test_token_" + Guid.NewGuid().ToString(),
-                Username = username,
-                Message = "회원가입 성공"
+                IsSuccess = true,
+                Message = "회원가입 성공",
+                Token = "test-token-67890",
+                User = new UserInfo
+                {
+                    Id = 2,
+                    Username = username,
+                    Email = $"{username}@test.com"
+                }
             };
+        }
+
+        public void Dispose()
+        {
+            _httpClient?.Dispose();
         }
     }
 
-    // API 응답 클래스
+    // API 응답 모델
     public class AuthResponse
     {
-        public bool Success { get; set; }
-        public string? Token { get; set; }
-        public string? Username { get; set; }
-        public string? Message { get; set; }
+        public bool IsSuccess { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string Token { get; set; } = string.Empty;
+        public UserInfo? User { get; set; }
+    }
+
+    public class UserInfo
+    {
+        public int Id { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
     }
 
     // API 예외 클래스
     public class ApiException : Exception
     {
-        public string ErrorDetails { get; }
+        public string Details { get; }
 
-        public ApiException(string message, string errorDetails) : base(message)
+        public ApiException(string message, string details) : base(message)
         {
-            ErrorDetails = errorDetails;
+            Details = details;
         }
     }
 }

@@ -106,7 +106,7 @@ namespace Gumaedaehang
                 var response = await _apiClient.LoginTestModeAsync(username, password);
                 
                 // 로그인 성공 처리
-                AuthManager.Instance.Login(response.Username, response.Token);
+                AuthManager.Instance.Login(response.User?.Username ?? username, response.Token);
                 
                 // API 키 인증 창으로 이동
                 var apiKeyAuthWindow = new ApiKeyAuthWindow();

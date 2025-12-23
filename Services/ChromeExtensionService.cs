@@ -22,16 +22,15 @@ namespace Gumaedaehang.Services
                 var encodedKeyword = Uri.EscapeDataString(keyword);
                 var naverUrl = $"https://search.shopping.naver.com/search/all?adQuery={encodedKeyword}&origQuery={encodedKeyword}&pagingIndex=1&pagingSize=40&productSet=overseas&query={encodedKeyword}&sort=rel&timestamp=&viewType=list";
                 
-                // Chrome을 확장프로그램과 함께 실행하면서 바로 네이버 페이지로 이동 (앱 모드 우하단 최소 창, 포커싱 없음)
-                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{naverUrl}\" --window-size=200,300 --window-position=1720,780 --no-first-run --no-default-browser-check --disable-web-security";
+                // Chrome을 확장프로그램과 함께 실행하면서 바로 네이버 페이지로 이동 (앱 모드 일반 크기, JavaScript로 우하단 이동)
+                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{naverUrl}\" --window-size=800,600 --window-position=100,100 --no-first-run --no-default-browser-check --disable-web-security";
                 
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = GetChromePath(),
                     Arguments = chromeArgs,
                     UseShellExecute = false,
-                    CreateNoWindow = false,
-                    WindowStyle = ProcessWindowStyle.Minimized  // 포커싱 방지
+                    CreateNoWindow = false
                 };
                 
                 var process = Process.Start(processInfo);
@@ -85,16 +84,15 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                // Chrome을 확장프로그램과 함께 실행하면서 네이버 가격비교 페이지로 이동 (앱 모드 우하단 최소 창, 포커싱 없음)
-                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{searchUrl}\" --window-size=200,300 --window-position=1720,780 --no-first-run --no-default-browser-check --disable-web-security --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"";
+                // Chrome을 확장프로그램과 함께 실행하면서 네이버 가격비교 페이지로 이동 (앱 모드 일반 크기, JavaScript로 우하단 이동)
+                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{searchUrl}\" --window-size=800,600 --window-position=100,100 --no-first-run --no-default-browser-check --disable-web-security --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"";
                 
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = GetChromePath(),
                     Arguments = chromeArgs,
                     UseShellExecute = false,
-                    CreateNoWindow = false,
-                    WindowStyle = ProcessWindowStyle.Minimized  // 포커싱 방지
+                    CreateNoWindow = false
                 };
                 
                 var process = Process.Start(processInfo);
@@ -118,16 +116,16 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                // Chrome 새 창에서 URL 열기 (확장프로그램 로드) - 앱 모드 우하단 최소 창, 포커싱 없음
-                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{url}\" --window-size=200,300 --window-position=1720,780 --no-first-run --no-default-browser-check --disable-web-security";
+                // Chrome 새 창에서 URL 열기 (확장프로그램 로드) - 앱 모드 우하단 최소 창, 처음부터 우하단 배치
+                // 1920x1080 기준 우하단 위치: 1920-200-20=1700, 1080-300-50=730
+                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{url}\" --window-size=200,300 --window-position=1700,730 --no-first-run --no-default-browser-check --disable-web-security";
                 
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = GetChromePath(),
                     Arguments = chromeArgs,
                     UseShellExecute = false,
-                    CreateNoWindow = false,
-                    WindowStyle = ProcessWindowStyle.Minimized  // 포커싱 방지
+                    CreateNoWindow = false
                 };
                 
                 var process = Process.Start(processInfo);
