@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.86-orange)
+![Release](https://img.shields.io/badge/Release-v1.87-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,16 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.85 - 가격 추출 정확도 완전 개선)
+### 🔄 최신 업데이트 (v1.87 - 개별 카드 삭제 버튼 기능 완전 구현)
+- [x] **🗑️ 개별 카드 삭제 버튼 완전 수정**: 카드 오른쪽 "삭제" 버튼 클릭 시 해당 카드만 정확히 삭제
+  - **문제 원인**: `AddProductImageCard` 메서드에서 `deleteButton`을 생성했지만 `ProductUIElements`에 저장하지 않아 이벤트 등록 안 됨
+  - **해결 방법**: `ProductUIElements` 생성 시 `DeleteButton = deleteButton`, `HoldButton = holdButton` 참조 추가
+  - **삭제 기능 구현**: `DeleteButton_Click` 메서드에서 UI와 메모리에서 완전 제거 로직 구현
+  - **완벽한 개별 삭제**: 선택한 카드만 즉시 삭제, 다른 카드에 영향 없음
+  - **상세한 로그 시스템**: 삭제 과정의 모든 단계를 작업로그에 실시간 표시
+- [x] **🔧 빌드 오류 해결**: 존재하지 않는 `UpdateSelectAllCheckBox` 메서드 호출 제거로 컴파일 오류 완전 해결
+
+### 🔄 이전 업데이트 (v1.85 - 가격 추출 정확도 완전 개선)
 - [x] **💰 "상품 가격" 요소 기반 정확한 가격 추출 시스템 구현**: HTML 구조 분석을 통한 정확한 가격 데이터 수집
   - **정확한 가격 요소 식별**: `<span class="blind">상품 가격</span>` 텍스트를 포함한 요소에서 가격 추출
   - **HTML 구조 기반 파싱**: `strong > span.blind + span.e1DMQNBPJ_ + span.won` 구조 정확히 파싱
@@ -1281,12 +1290,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.86 (체크박스 선택/삭제 기능 완전 구현)
-  - 체크박스 이벤트 등록 문제 완전 해결: LoadCrawledData()로 생성된 카드들의 체크박스 이벤트 자동 등록
-  - 전체선택/개별선택 기능 정상 작동: 100개 상품 카드의 체크박스 선택 및 해제 완벽 구현
-  - 선택된 카드 삭제 기능 완전 구현: UI와 메모리에서 선택된 상품 카드 완전 제거
-  - 체크박스 자연스러운 동작 허용: 이벤트 핸들러 간섭 제거로 사용자 클릭 정상 처리
-  - 완료 팝업 조기 표시 문제 해결: 전체 선택된 스토어 기준으로 정확한 완료 여부 판단
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.87 (개별 카드 삭제 버튼 기능 완전 구현)
+  - 개별 카드 삭제 버튼 완전 수정: 카드 오른쪽 "삭제" 버튼 클릭 시 해당 카드만 정확히 삭제
+  - 문제 원인 해결: ProductUIElements에 DeleteButton 참조 누락으로 인한 이벤트 등록 실패 문제 완전 해결
+  - 삭제 기능 구현: UI와 메모리에서 선택된 상품 카드 완전 제거 로직 구현
+  - 빌드 오류 해결: 존재하지 않는 UpdateSelectAllCheckBox 메서드 호출 제거로 컴파일 오류 완전 해결
 
 > **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.85 (가격 추출 정확도 완전 개선)
   - "상품 가격" 요소 기반 정확한 가격 추출로 649,900원, 754,200원 등 실제 상품 가격만 수집

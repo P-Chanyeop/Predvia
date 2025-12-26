@@ -1184,6 +1184,8 @@ namespace Gumaedaehang
                     KeywordPanel = keywordPanel,
                     KeywordInputBox = keywordInput,
                     AddKeywordButton = addButton,
+                    DeleteButton = deleteButton, // 삭제 버튼 참조 추가
+                    HoldButton = holdButton, // 보류 버튼 참조 추가
                     TaobaoPairingButton = pairingButton
                 };
                 
@@ -1567,7 +1569,34 @@ namespace Gumaedaehang
         // 삭제 버튼 클릭 이벤트
         private void DeleteButton_Click(int productId)
         {
-            Debug.WriteLine($"상품 {productId} 삭제 버튼 클릭됨");
+            try
+            {
+                LogWindow.AddLogStatic($"🗑️ 개별 삭제 버튼 클릭: 상품 {productId}");
+                
+                // 해당 상품 요소 찾기
+                if (_productElements.TryGetValue(productId, out var product) && product.Container != null)
+                {
+                    // UI에서 제거
+                    var container = this.FindControl<StackPanel>("RealDataContainer");
+                    if (container != null)
+                    {
+                        container.Children.Remove(product.Container);
+                        LogWindow.AddLogStatic($"✅ UI에서 상품 {productId} 제거 완료");
+                    }
+                    
+                    // 메모리에서 제거
+                    _productElements.Remove(productId);
+                    LogWindow.AddLogStatic($"✅ 메모리에서 상품 {productId} 제거 완료");
+                }
+                else
+                {
+                    LogWindow.AddLogStatic($"❌ 상품 {productId}를 찾을 수 없음");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 개별 삭제 오류: {ex.Message}");
+            }
         }
         
         // 상품 보류 버튼 클릭 이벤트
