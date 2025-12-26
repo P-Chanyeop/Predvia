@@ -2776,6 +2776,9 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                if (string.IsNullOrEmpty(priceString))
+                    return 0;
+                    
                 // "7,572원", "1,354원" 등에서 숫자만 추출
                 var numbers = System.Text.RegularExpressions.Regex.Replace(priceString, @"[^\d]", "");
                 return int.TryParse(numbers, out int price) ? price : 0;
@@ -3906,8 +3909,13 @@ public class ProductCategoryData
 
         public class PriceFilterSettings
         {
+            [JsonPropertyName("enabled")]
             public bool Enabled { get; set; }
+            
+            [JsonPropertyName("minPrice")]
             public int MinPrice { get; set; }
+            
+            [JsonPropertyName("maxPrice")]
             public int MaxPrice { get; set; }
         }
     }

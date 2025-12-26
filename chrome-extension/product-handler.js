@@ -377,7 +377,8 @@ async function extractProductPrice(storeId, productId) {
         return { filtered: true, price: foundPrice };
       }
       
-      return result.success ? priceData : null;
+      // 성공 시 priceData 반환, 실패 시 null
+      return (result.success !== false) ? priceData : null;
     }
     
     return null;
