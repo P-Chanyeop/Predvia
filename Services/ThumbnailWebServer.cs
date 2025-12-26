@@ -58,9 +58,9 @@ namespace Gumaedaehang.Services
         private bool _completionPopupShown = false; // 완료 팝업 중복 방지
         
         // ⭐ 가격 필터링 설정
-        private static int _minPrice = 0; // 최소 가격 (원)
-        private static int _maxPrice = 100000; // 최대 가격 (원)
-        private static bool _priceFilterEnabled = true; // 가격 필터링 활성화
+        private static int _minPrice = 1000; // 최소 가격 (원) - 사용자 친화적 기본값
+        private static int _maxPrice = 50000; // 최대 가격 (원) - 사용자 친화적 기본값  
+        private static bool _priceFilterEnabled = false; // 가격 필터링 비활성화 (사용자가 직접 설정)
         
         // ⭐ 중복 처리 방지를 위한 처리된 스토어 추적
         private readonly HashSet<string> _processedStores = new HashSet<string>();
