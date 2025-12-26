@@ -1719,7 +1719,12 @@ namespace Gumaedaehang.Services
                 }
                 
                 // 나머지 로직: 모든 스토어 완료 체크
-                bool allStoresCompleted = _storeStates.Values.All(state => state.Status == "done");
+                int totalSelectedStores = _selectedStores?.Count ?? 0;
+                int completedStores = _storeStates.Values.Count(s => s.State == "done");
+                bool allStoresCompleted = totalSelectedStores > 0 && completedStores >= totalSelectedStores;
+                
+                LogWindow.AddLogStatic($"🔍 모든 스토어 완료 여부: {allStoresCompleted} ({completedStores}/{totalSelectedStores})");
+                
                 if (allStoresCompleted)
                 {
                     LogWindow.AddLogStatic("🎉 모든 스토어 완료 - 크롤링 종료");

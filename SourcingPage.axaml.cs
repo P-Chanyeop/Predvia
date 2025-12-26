@@ -80,6 +80,7 @@ namespace Gumaedaehang
         private Button? _testDataButton;
         private Button? _testDataButton2;
         private CheckBox? _selectAllCheckBox;
+        private Button? _deleteSelectedButton;
         private bool _hasData = false;
         
         // 한글 입력 처리를 위한 타이머
@@ -168,6 +169,7 @@ namespace Gumaedaehang
                 _testDataButton = this.FindControl<Button>("TestDataButton");
                 _testDataButton2 = this.FindControl<Button>("TestDataButton2");
                 _selectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
+                _deleteSelectedButton = this.FindControl<Button>("DeleteSelectedButton");
                 
                 // 페어링 버튼 UI 요소 참조
                 _manualSourcingTextBox = this.FindControl<TextBox>("ManualSourcingTextBox");
@@ -498,6 +500,17 @@ namespace Gumaedaehang
                     {
                         _hasData = true;
                         UpdateViewVisibility();
+                        
+                        // ⭐ 카드 생성 완료 후 이벤트 핸들러 재등록
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            LogWindow.AddLogStatic($"🔗 {allProducts.Count}개 카드 생성 완료 - 이벤트 핸들러 재등록");
+                            foreach (var product in _productElements.Values)
+                            {
+                                RegisterProductEventHandlers(product);
+                            }
+                            LogWindow.AddLogStatic($"✅ 모든 체크박스 이벤트 등록 완료");
+                        }, Avalonia.Threading.DispatcherPriority.Background);
                     });
                 }
             }
@@ -749,6 +762,8 @@ namespace Gumaedaehang
                 };
 
                 var checkBox = new CheckBox { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+                
+                // 체크박스 이벤트는 RegisterProductEventHandlers에서 등록
                 var redDot = new Ellipse 
                 { 
                     Width = 8, 
@@ -1162,6 +1177,8 @@ namespace Gumaedaehang
                     ProductId = cardId,
                     StoreId = storeId,
                     RealProductId = productId,
+                    Container = productContainer, // 컨테이너 참조 추가
+                    CheckBox = checkBox, // 체크박스 참조 추가 - 메서드 시작 부분의 checkBox 변수
                     NameInputBox = nameInputText,
                     ByteCountTextBlock = byteCountText,
                     KeywordPanel = keywordPanel,
@@ -1172,8 +1189,16 @@ namespace Gumaedaehang
                 
                 _productElements[cardId] = productElement;
                 
-                // 이벤트 등록
+                // 이벤트 등록 - 체크박스가 null이 아닌지 확인
+                if (checkBox != null)
+                {
+                    LogWindow.AddLogStatic($"🔗 체크박스 참조 확인: 상품 {cardId}, CheckBox != null: {checkBox != null}");
+                }
+                
                 RegisterProductEventHandlers(productElement);
+                
+                // 전체선택 체크박스 상태 업데이트
+                UpdateSelectAllCheckBoxState();
                 
                 LogWindow.AddLogStatic($"✅ 상품 카드 생성 완료 - CardId: {cardId}, StoreId: {storeId}, ProductId: {productId}");
 
@@ -1224,6 +1249,11 @@ namespace Gumaedaehang
                 _selectAllCheckBox.IsCheckedChanged += SelectAllCheckBox_Changed;
             }
             
+            if (_deleteSelectedButton != null)
+            {
+                _deleteSelectedButton.Click += DeleteSelectedButton_Click;
+            }
+            
             // 상품별 이벤트 핸들러 등록
             foreach (var product in _productElements.Values)
             {
@@ -1236,7 +1266,16 @@ namespace Gumaedaehang
         {
             if (product.CheckBox != null)
             {
-                product.CheckBox.IsCheckedChanged += (s, e) => ProductCheckBox_Changed(product.ProductId);
+                LogWindow.AddLogStatic($"🔗 체크박스 이벤트 등록: 상품 {product.ProductId}");
+                // 이벤트 핸들러에서 상태 변경하지 않고 단순 로그만
+                product.CheckBox.IsCheckedChanged += (s, e) => {
+                    LogWindow.AddLogStatic($"✅ 체크박스 클릭됨: 상품 {product.ProductId}, 상태: {product.CheckBox.IsChecked}");
+                    // ProductCheckBox_Changed 호출 제거 - 자연스러운 체크박스 동작 허용
+                };
+            }
+            else
+            {
+                LogWindow.AddLogStatic($"❌ 체크박스가 null: 상품 {product.ProductId}");
             }
             
             if (product.AddKeywordButton != null)
@@ -1298,15 +1337,23 @@ namespace Gumaedaehang
         // 전체 선택 체크박스 변경 이벤트
         private void SelectAllCheckBox_Changed(object? sender, RoutedEventArgs e)
         {
+            LogWindow.AddLogStatic($"🔄 전체선택 체크박스 클릭됨: {_selectAllCheckBox?.IsChecked}");
+            
             if (_selectAllCheckBox != null)
             {
                 bool isChecked = _selectAllCheckBox.IsChecked ?? false;
+                LogWindow.AddLogStatic($"🔄 {_productElements.Count}개 상품 체크박스 상태를 {isChecked}로 변경");
                 
                 foreach (var product in _productElements.Values)
                 {
                     if (product.CheckBox != null)
                     {
                         product.CheckBox.IsChecked = isChecked;
+                        LogWindow.AddLogStatic($"✅ 상품 {product.ProductId} 체크박스: {isChecked}");
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic($"❌ 상품 {product.ProductId} 체크박스가 null");
                     }
                 }
             }
@@ -1315,7 +1362,8 @@ namespace Gumaedaehang
         // 개별 상품 체크박스 변경 이벤트
         private void ProductCheckBox_Changed(int productId)
         {
-            UpdateSelectAllCheckBoxState();
+            // 전체선택 상태 업데이트는 잠시 비활성화
+            // UpdateSelectAllCheckBoxState();
             Debug.WriteLine($"상품 {productId} 체크박스 상태 변경됨");
         }
         
@@ -1347,6 +1395,47 @@ namespace Gumaedaehang
             else
             {
                 _selectAllCheckBox.IsChecked = null; // 부분 선택
+            }
+        }
+        
+        // 선택된 카드 삭제 버튼 클릭
+        private void DeleteSelectedButton_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var selectedProducts = _productElements.Where(p => p.Value.CheckBox?.IsChecked == true).ToList();
+                
+                if (selectedProducts.Count == 0)
+                {
+                    LogWindow.AddLogStatic("❌ 삭제할 상품이 선택되지 않았습니다.");
+                    return;
+                }
+                
+                LogWindow.AddLogStatic($"🗑️ {selectedProducts.Count}개 상품 카드 삭제 시작");
+                
+                foreach (var product in selectedProducts)
+                {
+                    var cardId = product.Key;
+                    var productElement = product.Value;
+                    
+                    // UI에서 카드 제거
+                    if (productElement.Container?.Parent is Panel parentPanel)
+                    {
+                        parentPanel.Children.Remove(productElement.Container);
+                    }
+                    
+                    // 메모리에서 제거
+                    _productElements.Remove(cardId);
+                }
+                
+                // 전체선택 체크박스 상태 업데이트
+                UpdateSelectAllCheckBoxState();
+                
+                LogWindow.AddLogStatic($"✅ {selectedProducts.Count}개 상품 카드 삭제 완료");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 카드 삭제 오류: {ex.Message}");
             }
         }
         
@@ -2921,7 +3010,7 @@ namespace Gumaedaehang
             try
             {
                 var text = nameInputBox.Text ?? "";
-                var byteCount = System.Text.Encoding.UTF8.GetByteCount(text);
+                var byteCount = CalculateByteCount(text); // 통일된 계산 방식 사용
                 
                 byteCountText.Text = $"{byteCount}/50 byte";
                 
@@ -3305,6 +3394,7 @@ namespace Gumaedaehang
         public int ProductId { get; set; }
         public string? StoreId { get; set; } // 실제 스토어 ID
         public string? RealProductId { get; set; } // 실제 상품 ID
+        public StackPanel? Container { get; set; } // 상품 카드 컨테이너
         public CheckBox? CheckBox { get; set; }
         public Ellipse? CategoryStatusIndicator { get; set; }
         public Ellipse? NameStatusIndicator { get; set; }
