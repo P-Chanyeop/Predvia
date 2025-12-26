@@ -1001,6 +1001,102 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                     await sendLogToServer(`❌ ${storeId}: 상품명 추출 오류 - ${nameError.message}`);
                   }
 
+                  // ⭐ 가격 정보 추출
+                  try {
+                    console.log(`💰 ${storeId}: 가격 정보 수집 시작`);
+                    
+                    // 다양한 가격 선택자 시도
+                    const priceElement = productTab.document.querySelector('.Xu9MEKUuIo .e1DMQNBPJ_') || 
+                                        productTab.document.querySelector('.price_num') ||
+                                        productTab.document.querySelector('[class*="price"]') ||
+                                        productTab.document.querySelector('*:contains("원")') ||
+                                        Array.from(productTab.document.querySelectorAll('*')).find(el => 
+                                          el.textContent && el.textContent.includes('원') && 
+                                          /\d+[,\d]*원/.test(el.textContent)
+                                        );
+                    
+                    let price = 0;
+                    let priceText = "";
+                    
+                    if (priceElement && priceElement.textContent) {
+                      // 가격 텍스트에서 숫자만 추출
+                      const fullText = priceElement.textContent.trim();
+                      const priceMatch = fullText.match(/(\d+[,\d]*)\s*원/);
+                      
+                      if (priceMatch) {
+                        priceText = priceMatch[0]; // "26,800원" 형태
+                        price = parseInt(priceMatch[1].replace(/,/g, '')) || 0; // 26800
+                      } else {
+                        // 숫자만 있는 경우
+                        const numericText = fullText.replace(/[^0-9]/g, '');
+                        price = parseInt(numericText) || 0;
+                        priceText = `${price.toLocaleString()}원`;
+                      }
+                    }
+                    
+                    // 가격을 찾지 못한 경우 전체 페이지에서 "원" 텍스트 검색
+                    if (price === 0) {
+                      const allElements = productTab.document.querySelectorAll('*');
+                      for (let element of allElements) {
+                        if (element.textContent && element.textContent.includes('원')) {
+                          const text = element.textContent.trim();
+                          const priceMatch = text.match(/(\d+[,\d]*)\s*원/);
+                          if (priceMatch) {
+                            price = parseInt(priceMatch[1].replace(/,/g, '')) || 0;
+                            priceText = priceMatch[0];
+                            break;
+                          }
+                        }
+                      }
+                    }
+                    
+                    if (price > 0) {
+                      const productId = product.url.split('/products/')[1];
+                      
+                      console.log(`💰 ${storeId}: 가격 발견 - ${priceText}`);
+                      
+                      // ⭐ 서버로 가격 정보 전송
+                      let priceRetries = 0;
+                      const maxPriceRetries = 3;
+                      let priceSuccess = false;
+                      
+                      while (priceRetries < maxPriceRetries && !priceSuccess) {
+                        try {
+                          const priceResponse = await fetch('http://localhost:8080/api/smartstore/product-price', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              storeId: storeId,
+                              productId: productId,
+                              price: price,
+                              priceText: priceText,
+                              productUrl: product.url
+                            })
+                          });
+                          
+                          if (priceResponse.ok) {
+                            priceSuccess = true;
+                            console.log(`✅ ${storeId}: 가격 전송 완료 - ${priceText}`);
+                          } else {
+                            throw new Error(`HTTP ${priceResponse.status}`);
+                          }
+                        } catch (priceError) {
+                          priceRetries++;
+                          if (priceRetries >= maxPriceRetries) {
+                            console.log(`❌ ${storeId}: 가격 전송 최종 실패 - ${priceError.message}`);
+                          } else {
+                            await new Promise(resolve => setTimeout(resolve, 200 * priceRetries));
+                          }
+                        }
+                      }
+                      
+                    } else {
+                      console.log(`❌ ${storeId}: 가격 정보 없음 - ${product.url}`);
+                    }
+                  } catch (priceError) {
+                    console.log(`❌ ${storeId}: 가격 추출 오류 - ${priceError.message}`);
+                  }
+
                   // ⭐ 리뷰 데이터 수집
                   try {
                     await sendLogToServer(`📊 ${storeId}: 리뷰 수집 시작`);

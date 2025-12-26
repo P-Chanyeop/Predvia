@@ -36,7 +36,7 @@
     },
     {
       "matches": ["*://smartstore.naver.com/*/products/*"],
-      "js": ["content.js"],
+      "js": ["product-handler.js"],
       "run_at": "document_end",
       "all_frames": true
     },

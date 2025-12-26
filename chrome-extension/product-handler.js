@@ -1,6 +1,19 @@
 // 개별 상품 페이지 전용 핸들러
 console.log('🔥🔥🔥 product-handler.js 로드됨 - ', window.location.href);
 
+// ⭐ 서버로 로그 전송 함수 추가
+function sendLogToServer(message) {
+  try {
+    fetch('http://localhost:8080/api/smartstore/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: message, timestamp: new Date().toISOString() })
+    }).catch(() => {}); // 조용한 처리
+  } catch (error) {
+    // 조용한 처리 - 오류 시 콘솔 스팸 방지
+  }
+}
+
 // ⭐ 페이지 로드 후 창 크기 및 위치 강제 조절 (우하단 최소 크기)
 function forceWindowResize() {
   try {
@@ -64,6 +77,7 @@ async function initProductHandler() {
   try {
     const url = window.location.href;
     console.log('🔥 상품 페이지 핸들러 시작:', url);
+    sendLogToServer(`🔥 상품 페이지 핸들러 시작: ${url}`);
     
     // URL에서 스토어ID와 상품ID 추출
     const storeMatch = url.match(/smartstore\.naver\.com\/([^\/]+)/);
@@ -71,6 +85,7 @@ async function initProductHandler() {
     
     if (!storeMatch || !productMatch) {
       console.log('❌ 스토어ID 또는 상품ID 추출 실패');
+      sendLogToServer(`❌ 스토어ID 또는 상품ID 추출 실패: ${url}`);
       return;
     }
     
@@ -78,6 +93,7 @@ async function initProductHandler() {
     const productId = productMatch[1];
     
     console.log(`🎯 상품 데이터 수집 시작: ${storeId}/${productId}`);
+    sendLogToServer(`🎯 상품 데이터 수집 시작: ${storeId}/${productId}`);
     
     // 2초 대기 후 데이터 수집
     setTimeout(async () => {
@@ -86,6 +102,7 @@ async function initProductHandler() {
     
   } catch (error) {
     console.error('❌ 상품 핸들러 오류:', error);
+    sendLogToServer(`❌ 상품 핸들러 오류: ${error.message}`);
   }
 }
 
@@ -102,6 +119,9 @@ async function collectProductPageData(storeId, productId) {
     
     // 3. 리뷰 데이터 추출
     const reviewData = await extractProductReviews(storeId, productId);
+    
+    // 4. 가격 정보 추출
+    const priceData = await extractProductPrice(storeId, productId);
     
     console.log(`✅ ${storeId}/${productId}: 데이터 수집 완료`);
     
@@ -291,7 +311,61 @@ async function extractProductReviews(storeId, productId) {
     return reviewData;
     
   } catch (error) {
-    console.error(`❌ ${storeId}/${productId}: 리뷰 추출 실패:`, error);
+    // 조용한 처리 - 리뷰 추출 실패
+    return null;
+  }
+}
+
+// 가격 정보 추출
+async function extractProductPrice(storeId, productId) {
+  try {
+    // 가격 선택자들 (상품명과 똑같은 방식)
+    const selectors = [
+      'span',
+      'div', 
+      'strong',
+      '.price'
+    ];
+    
+    let foundPrice = null;
+    
+    for (const selector of selectors) {
+      const elements = document.querySelectorAll(selector);
+      
+      for (const element of elements) {
+        const text = element.textContent?.trim();
+        if (text && text.includes('원') && /\d{1,3}(?:,\d{3})*\s*원/.test(text)) {
+          const match = text.match(/(\d{1,3}(?:,\d{3})*)\s*원/);
+          if (match) {
+            foundPrice = match[0];
+            break;
+          }
+        }
+      }
+      
+      if (foundPrice) break;
+    }
+    
+    if (foundPrice) {
+      const priceData = {
+        storeId: storeId,
+        productId: productId,
+        price: foundPrice,
+        timestamp: new Date().toISOString(),
+        productUrl: window.location.href
+      };
+      
+      await fetch('http://localhost:8080/api/smartstore/product-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(priceData)
+      });
+      
+      return priceData;
+    }
+    
+    return null;
+  } catch (error) {
     return null;
   }
 }

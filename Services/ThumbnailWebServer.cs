@@ -55,9 +55,13 @@ namespace Gumaedaehang.Services
         private readonly object _storeProcessLock = new object(); // 스토어 처리 동기화
         private bool _shouldStop = false;
         private readonly object _counterLock = new object();
+        private bool _completionPopupShown = false; // 완료 팝업 중복 방지
         
         // ⭐ 중복 처리 방지를 위한 처리된 스토어 추적
         private readonly HashSet<string> _processedStores = new HashSet<string>();
+        
+        // ⭐ 상품별 중복 카운팅 방지
+        private readonly HashSet<string> _processedProducts = new HashSet<string>();
         
         // ⭐ 크롤링 허용 플래그
         private bool _crawlingAllowed = false;
@@ -124,6 +128,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/stop", HandleStopCrawling); // ⭐ 크롤링 중단 API 추가
                 _app.MapPost("/api/smartstore/image", HandleProductImage); // ⭐ 상품 이미지 처리 API 추가
                 _app.MapPost("/api/smartstore/product-name", HandleProductName); // ⭐ 상품명 처리 API 추가
+                _app.MapPost("/api/smartstore/product-price", HandleProductPrice); // ⭐ 가격 처리 API 추가
                 _app.MapPost("/api/smartstore/reviews", HandleProductReviews); // ⭐ 리뷰 처리 API 추가
                 _app.MapPost("/api/smartstore/categories", HandleCategories); // ⭐ 카테고리 처리 API 추가
                 _app.MapPost("/api/smartstore/product-categories", HandleProductCategories); // ⭐ 개별 상품 카테고리 처리 API 추가
@@ -157,6 +162,7 @@ namespace Gumaedaehang.Services
                 {
                     _productCount = 0;
                     _shouldStop = false;
+                    _completionPopupShown = false; // 팝업 플래그 초기화
                 }
                 
                 lock (_statesLock)
@@ -165,6 +171,8 @@ namespace Gumaedaehang.Services
                 }
                 
                 _selectedStores.Clear();
+                _processedStores.Clear(); // 처리된 스토어 목록도 초기화
+                _isCrawlingActive = false; // 크롤링 비활성화 상태로 시작
                 _currentStoreIndex = 0; // 순차 처리 인덱스 초기화
                 LogWindow.AddLogStatic("✅ 서버 변수 초기화 완료");
 
@@ -397,6 +405,7 @@ namespace Gumaedaehang.Services
                     _productCount = 0;
                     _shouldStop = false;
                     _processedStores.Clear(); // ⭐ 처리된 스토어 목록도 초기화
+                    _processedProducts.Clear(); // ⭐ 처리된 상품 목록도 초기화
                     LogWindow.AddLogStatic($"🔄 상품 카운터 초기화: 0/{TARGET_PRODUCT_COUNT}개");
                 }
 
@@ -1565,9 +1574,8 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                LogWindow.AddLogStatic("🔥 모든 Chrome 앱 창 닫기 시작");
+                LogWindow.AddLogStatic("🔥 Chrome 앱 창들 닫기 - 기존 브라우저는 유지");
                 
-                // 모든 Chrome 프로세스를 강제로 종료 (메인 브라우저 제외)
                 var chromeProcesses = System.Diagnostics.Process.GetProcessesByName("chrome");
                 int closedCount = 0;
                 
@@ -1575,26 +1583,36 @@ namespace Gumaedaehang.Services
                 {
                     try
                     {
-                        if (!process.HasExited)
+                        if (!process.HasExited && process.MainWindowHandle != IntPtr.Zero)
                         {
-                            // 먼저 정상 종료 시도
-                            process.CloseMainWindow();
-                            await Task.Delay(200);
-                            
-                            // 여전히 실행 중이면 강제 종료
-                            if (!process.HasExited)
+                            // 창 크기로 앱 모드 판별 (앱 모드는 보통 작은 크기)
+                            var windowRect = new System.Drawing.Rectangle();
+                            if (GetWindowRect(process.MainWindowHandle, out windowRect))
                             {
-                                process.Kill();
-                                process.WaitForExit(1000);
+                                int width = windowRect.Width;
+                                int height = windowRect.Height;
+                                
+                                // 작은 창 크기면 앱 모드로 판단 (250x400 근처)
+                                if (width <= 500 && height <= 600)
+                                {
+                                    process.CloseMainWindow();
+                                    await Task.Delay(200);
+                                    
+                                    if (!process.HasExited)
+                                    {
+                                        process.Kill();
+                                        process.WaitForExit(1000);
+                                    }
+                                    
+                                    closedCount++;
+                                    LogWindow.AddLogStatic($"🔥 Chrome 앱 모드 창 종료: PID {process.Id} ({width}x{height})");
+                                }
                             }
-                            
-                            closedCount++;
-                            LogWindow.AddLogStatic($"🔥 Chrome 프로세스 종료: PID {process.Id}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        LogWindow.AddLogStatic($"❌ Chrome 프로세스 종료 실패: PID {process.Id} - {ex.Message}");
+                        LogWindow.AddLogStatic($"❌ Chrome 앱 창 종료 실패: PID {process.Id} - {ex.Message}");
                     }
                     finally
                     {
@@ -1602,42 +1620,72 @@ namespace Gumaedaehang.Services
                     }
                 }
                 
-                LogWindow.AddLogStatic($"✅ Chrome 프로세스 종료 완료: {closedCount}개 프로세스 처리");
+                LogWindow.AddLogStatic($"✅ Chrome 앱 창 종료 완료: {closedCount}개 앱 창 처리");
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ Chrome 프로세스 종료 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ Chrome 앱 창 종료 오류: {ex.Message}");
             }
         }
+        
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out System.Drawing.Rectangle lpRect);
         
         // ⭐ 서버에서 모든 스토어 완료 체크
         private void CheckAllStoresCompletedFromServer()
         {
             try
             {
-                var currentCount = GetCurrentProductCount();
-                var totalStores = _selectedStores?.Count ?? 0;
-                
-                if (totalStores == 0)
+                // ⭐ 이미 팝업이 표시되었으면 중복 실행 방지
+                if (_completionPopupShown)
                 {
-                    LogWindow.AddLogStatic("⚠️ 선택된 스토어가 없어서 완료 체크 건너뜀");
                     return;
                 }
                 
-                // done 상태인 스토어 개수 확인
-                int completedStores = 0;
-                lock (_statesLock)
+                // ⭐ 100개 달성 체크 - 정확한 파일 개수로 확인
+                var actualCount = GetCurrentProductCount();
+                if (actualCount >= TARGET_PRODUCT_COUNT)
                 {
-                    completedStores = _storeStates.Values
-                        .Where(s => s.State == "done")
-                        .Select(s => s.StoreId)
-                        .Distinct()
-                        .Count();
+                    LogWindow.AddLogStatic("🎉 목표 달성! 100개 상품 수집 완료 - 크롤링 중단");
+                    
+                    // ⭐ 크롤링 완전 중단 신호 설정
+                    _shouldStop = true;
+                    _isCrawlingActive = false;
+                    _completionPopupShown = true; // 팝업 플래그 설정
+                    
+                    // ⭐ 모든 스토어를 done 상태로 변경하여 Chrome 중단
+                    lock (_statesLock)
+                    {
+                        foreach (var storeId in _selectedStores.Select(s => s.StoreId))
+                        {
+                            if (_storeStates.ContainsKey(storeId))
+                            {
+                                var state = _storeStates[storeId];
+                                if (state.State != "done")
+                                {
+                                    state.State = "done";
+                                    state.Lock = false;
+                                    LogWindow.AddLogStatic($"🛑 {storeId}: 강제 완료 처리 (목표 달성)");
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 🔄 로딩창 숨김
+                    LoadingHelper.HideLoadingFromSourcingPage();
+                    
+                    // ⭐ Chrome 앱 창들 닫기
+                    _ = Task.Run(async () => await CloseAllChromeApps());
+                    
+                    // ⭐ 팝업창으로 최종 결과 표시
+                    ShowCrawlingResultPopup(actualCount, "목표 달성");
+                    
+                    return;
                 }
                 
-                LogWindow.AddLogStatic($"📊 완료 상태 체크: {completedStores}/{totalStores} 스토어 완료, {currentCount}/100개 수집");
+                // 나머지 로직은 제거 (100개 달성이 우선)
+                LogWindow.AddLogStatic("📊 100개 미달성 - 크롤링 계속 진행");
                 
-                // Chrome에서 완료 신호를 보낼 때까지 대기 (서버 측 자동 팝업 제거)
             }
             catch (Exception ex)
             {
@@ -2109,6 +2157,13 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ 이미 팝업이 표시되었으면 중복 실행 방지
+                if (_completionPopupShown)
+                {
+                    LogWindow.AddLogStatic("⚠️ 완료 팝업 이미 표시됨 - 중복 요청 무시");
+                    return Task.FromResult(Results.Ok(new { success = false, message = "Already completed" }));
+                }
+                
                 LogWindow.AddLogStatic("🎉 Chrome에서 모든 스토어 완료 신호 수신");
                 
                 // Chrome의 판단을 신뢰하고 무조건 완료 처리
@@ -2166,6 +2221,15 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ 이미 팝업이 표시되었으면 중복 실행 방지
+                if (_completionPopupShown)
+                {
+                    LogWindow.AddLogStatic("⚠️ 완료 팝업 이미 표시됨 - 중복 실행 방지");
+                    return;
+                }
+                
+                _completionPopupShown = true; // 플래그 설정
+                
                 LoadingHelper.HideLoadingFromSourcingPage();
                 
                 // ⭐ Chrome 확장프로그램에 모든 앱 창 닫기 신호 (기존 브라우저 유지)
@@ -2380,7 +2444,14 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                // 목표 달성과 관계없이 이미 접속한 상품의 이미지는 반드시 처리
+                // 100개 달성 시 즉시 차단
+                if (_productCount >= 100)
+                {
+                    LogWindow.AddLogStatic("🛑 100개 달성으로 이미지 처리 차단");
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, message = "목표 달성으로 차단" }));
+                    return Results.Ok();
+                }
+
                 var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
                 LogWindow.AddLogStatic($"🖼️ 이미지 처리 요청: {body}");
 
@@ -2479,6 +2550,26 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ 100개 달성 시 즉시 차단
+                bool shouldStop = false;
+                lock (_counterLock)
+                {
+                    shouldStop = _productCount >= 100;
+                }
+                
+                if (shouldStop)
+                {
+                    LogWindow.AddLogStatic("🛑 100개 달성으로 상품명 처리 차단");
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    context.Response.StatusCode = 200;
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(new { 
+                        success = true,
+                        stop = true,
+                        message = "Target reached - no more processing"
+                    }));
+                    return Results.Ok();
+                }
+                
                 // 목표 달성과 관계없이 이미 접속한 상품의 상품명은 반드시 처리
                 var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
                 LogWindow.AddLogStatic($"📝 상품명 처리 요청: {body}");
@@ -2493,12 +2584,35 @@ namespace Gumaedaehang.Services
                 // 상품명 저장
                 await SaveProductName(nameData);
 
+                // ⭐ 100개 달성 시 중단 신호 응답
+                bool shouldStopAfterSave = false;
+                lock (_counterLock)
+                {
+                    shouldStopAfterSave = _productCount >= 100;
+                }
+                
+                if (shouldStopAfterSave)
+                {
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    context.Response.StatusCode = 200;
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(new { 
+                        success = true,
+                        stop = true,
+                        message = "Target reached after save"
+                    }));
+                    return Results.Ok();
+                }
+
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 200;
                 await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
                 return Results.Ok();
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 상품명 처리 오류: {ex.Message}");
+                context.Response.ContentType = "application/json; charset=utf-8";
+                context.Response.StatusCode = 500;
                 await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = ex.Message }));
                 return Results.Ok();
             }
@@ -2520,12 +2634,27 @@ namespace Gumaedaehang.Services
 
                 await File.WriteAllTextAsync(filePath, nameData.ProductName, System.Text.Encoding.UTF8);
                 
-                // 🔥 파일 저장 성공 후에만 카운터 증가
-                _productCount++;
-                var percentage = (_productCount * 100.0) / 100;
+                // 🔥 상품별 중복 카운팅 방지
+                var productKey = $"{nameData.StoreId}_{nameData.ProductId}";
+                bool isNewProduct = false;
+                
+                lock (_counterLock)
+                {
+                    if (!_processedProducts.Contains(productKey))
+                    {
+                        _processedProducts.Add(productKey);
+                        _productCount++;
+                        isNewProduct = true;
+                    }
+                }
+                
+                if (isNewProduct)
+                {
+                    var percentage = (_productCount * 100.0) / 100;
+                    LogWindow.AddLogStatic($"📊 실시간 진행률: {_productCount}/100개 ({percentage:F1}%)");
+                }
                 
                 LogWindow.AddLogStatic($"✅ 상품명 저장 완료: {fileName} - {nameData.ProductName}");
-                LogWindow.AddLogStatic($"📊 실시간 진행률: {_productCount}/100개 ({percentage:F1}%)");
                 
                 // 🔥 소싱 페이지에 실시간 카드 추가
                 try
@@ -2570,12 +2699,69 @@ namespace Gumaedaehang.Services
                     // ⭐ 팝업창으로 최종 결과 표시
                     ShowCrawlingResultPopup(100, "목표 달성");
                     
+                    // ⭐ 즉시 반환 (비동기 메서드에서는 return만)
                     return;
                 }
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 상품명 저장 실패: {ex.Message}");
+            }
+        }
+
+        // ⭐ 가격 처리 API
+        private async Task<IResult> HandleProductPrice(HttpContext context)
+        {
+            try
+            {
+                // 100개 달성 시 즉시 차단
+                if (_productCount >= 100)
+                {
+                    LogWindow.AddLogStatic("🛑 100개 달성으로 가격 처리 차단");
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, message = "목표 달성으로 차단" }));
+                    return Results.Ok();
+                }
+
+                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                LogWindow.AddLogStatic($"💰 가격 처리 요청: {body}");
+
+                var priceData = JsonSerializer.Deserialize<ProductPriceData>(body);
+                if (priceData == null)
+                {
+                    return Results.Json(new { success = false, error = "Invalid price data" });
+                }
+
+                await SaveProductPrice(priceData);
+                
+                return Results.Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 가격 처리 오류: {ex.Message}");
+                return Results.Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // ⭐ 가격 저장 메서드
+        private async Task SaveProductPrice(ProductPriceData priceData)
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var dataDir = System.IO.Path.Combine(appDataPath, "Predvia", "ProductData");
+                Directory.CreateDirectory(dataDir);
+
+                // 파일명 생성: {storeId}_{productId}_price.txt
+                var fileName = $"{priceData.StoreId}_{priceData.ProductId}_price.txt";
+                var filePath = System.IO.Path.Combine(dataDir, fileName);
+
+                await File.WriteAllTextAsync(filePath, priceData.Price.ToString(), System.Text.Encoding.UTF8);
+                
+                LogWindow.AddLogStatic($"✅ 가격 저장 완료: {fileName} - {priceData.PriceText}");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 가격 저장 실패: {ex.Message}");
             }
         }
         
@@ -2869,6 +3055,7 @@ namespace Gumaedaehang.Services
                 _productCount = 0;
                 _isCrawlingActive = true;
                 _processedStores.Clear();
+                _processedProducts.Clear(); // ⭐ 상품 목록도 초기화
                 
                 LogWindow.AddLogStatic("✅ 기존 데이터 초기화 완료 - 새로운 크롤링 준비됨");
             }
@@ -3436,6 +3623,25 @@ public class ProductCategoryData
         
         [JsonPropertyName("productName")]
         public string ProductName { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productUrl")]
+        public string ProductUrl { get; set; } = string.Empty;
+    }
+
+    // ⭐ 가격 데이터 모델
+    public class ProductPriceData
+    {
+        [JsonPropertyName("storeId")]
+        public string StoreId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
+        
+        [JsonPropertyName("price")]
+        public string Price { get; set; } = string.Empty;
+        
+        [JsonPropertyName("priceText")]
+        public string PriceText { get; set; } = string.Empty;
         
         [JsonPropertyName("productUrl")]
         public string ProductUrl { get; set; } = string.Empty;

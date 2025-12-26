@@ -72,6 +72,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         for (const [windowId, windowInfo] of globalProcessingState.openWindows.entries()) {
           if (windowInfo.storeId === request.storeId) {
             chrome.windows.remove(windowId, () => {
+              if (chrome.runtime.lastError) {
+                // 조용한 처리 - 이미 닫힌 창
+                return;
+              }
               console.log(`🗂️ 앱 창 닫기: ${windowInfo.url}`);
               globalProcessingState.openWindows.delete(windowId);
             });
