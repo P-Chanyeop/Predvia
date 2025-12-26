@@ -881,13 +881,36 @@ namespace Gumaedaehang
 
                 // 중복 카테고리 제거됨
 
-                // 원상품명 (실제 크롤링된 상품명 표시)
+                // 원상품명 (실제 크롤링된 상품명 표시) - 클릭 시 상품 상세페이지로 이동
                 var originalProductName = !string.IsNullOrEmpty(productName) ? productName : GetOriginalProductName(storeId, productId);
                 var originalNameText = new TextBlock 
                 { 
                     Text = "원상품명: " + originalProductName, 
                     FontSize = 13,
-                    FontFamily = new FontFamily("Malgun Gothic")
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Foreground = new SolidColorBrush(Color.Parse("#0066CC")), // 링크 색상
+                    TextDecorations = TextDecorations.Underline, // 밑줄
+                    Cursor = new Cursor(StandardCursorType.Hand) // 손가락 커서
+                };
+                
+                // 원상품명 클릭 이벤트 - 상품 상세페이지로 이동
+                originalNameText.PointerPressed += (s, e) => {
+                    try 
+                    {
+                        var productUrl = $"https://smartstore.naver.com/{storeId}/products/{productId}";
+                        LogWindow.AddLogStatic($"🔗 상품 상세페이지 열기: {productUrl}");
+                        
+                        var startInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = productUrl,
+                            UseShellExecute = true
+                        };
+                        System.Diagnostics.Process.Start(startInfo);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"❌ 상품 페이지 열기 오류: {ex.Message}");
+                    }
                 };
                 
                 // 상품명 입력박스에도 기본값 설정

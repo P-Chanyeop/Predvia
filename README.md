@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.87-orange)
+![Release](https://img.shields.io/badge/Release-v1.88-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,16 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.87 - 개별 카드 삭제 버튼 기능 완전 구현)
+### 🔄 최신 업데이트 (v1.88 - 원상품명 클릭 상품 상세페이지 이동 기능 구현)
+- [x] **🔗 원상품명 클릭 상품 상세페이지 이동**: 크롤링된 카드의 "원상품명" 텍스트 클릭 시 해당 상품의 네이버 스마트스토어 상세페이지로 이동
+  - **시각적 링크 표시**: 파란색(`#0066CC`) + 밑줄 + 손가락 커서로 클릭 가능함을 명확히 표시
+  - **클릭 이벤트**: `PointerPressed` 이벤트로 원상품명 텍스트 클릭 감지
+  - **URL 자동 생성**: `https://smartstore.naver.com/{storeId}/products/{productId}` 형식으로 정확한 상품 URL 생성
+  - **기본 브라우저 열기**: Chrome 앱이 아닌 사용자의 기본 브라우저에서 상품 페이지 열기
+  - **완벽한 오류 처리**: 페이지 열기 성공/실패를 작업로그에 실시간 표시
+  - **사용자 편의성**: 크롤링된 상품의 원본 페이지에 원클릭으로 즉시 접근 가능
+
+### 🔄 이전 업데이트 (v1.86 - 체크박스 선택/삭제 기능 완전 구현)
 - [x] **🗑️ 개별 카드 삭제 버튼 완전 수정**: 카드 오른쪽 "삭제" 버튼 클릭 시 해당 카드만 정확히 삭제
   - **문제 원인**: `AddProductImageCard` 메서드에서 `deleteButton`을 생성했지만 `ProductUIElements`에 저장하지 않아 이벤트 등록 안 됨
   - **해결 방법**: `ProductUIElements` 생성 시 `DeleteButton = deleteButton`, `HoldButton = holdButton` 참조 추가
@@ -1290,11 +1299,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.87 (개별 카드 삭제 버튼 기능 완전 구현)
-  - 개별 카드 삭제 버튼 완전 수정: 카드 오른쪽 "삭제" 버튼 클릭 시 해당 카드만 정확히 삭제
-  - 문제 원인 해결: ProductUIElements에 DeleteButton 참조 누락으로 인한 이벤트 등록 실패 문제 완전 해결
-  - 삭제 기능 구현: UI와 메모리에서 선택된 상품 카드 완전 제거 로직 구현
-  - 빌드 오류 해결: 존재하지 않는 UpdateSelectAllCheckBox 메서드 호출 제거로 컴파일 오류 완전 해결
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.88 (원상품명 클릭 상품 상세페이지 이동 기능 구현)
+  - 원상품명 클릭 상품 상세페이지 이동: 크롤링된 카드의 "원상품명" 텍스트 클릭 시 해당 상품의 네이버 스마트스토어 상세페이지로 이동
+  - 시각적 링크 표시: 파란색 + 밑줄 + 손가락 커서로 클릭 가능함을 명확히 표시
+  - URL 자동 생성: 정확한 상품 URL 생성 및 기본 브라우저에서 열기
+  - 사용자 편의성: 크롤링된 상품의 원본 페이지에 원클릭으로 즉시 접근 가능
 
 > **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.85 (가격 추출 정확도 완전 개선)
   - "상품 가격" 요소 기반 정확한 가격 추출로 649,900원, 754,200원 등 실제 상품 가격만 수집
