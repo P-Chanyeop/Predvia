@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.83-orange)
+![Release](https://img.shields.io/badge/Release-v1.84-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,24 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.83 - 중복 카운팅 문제 완전 해결 및 크롤링 시스템 안정화)
+### 🔄 최신 업데이트 (v1.84 - 가격 필터링 UI 연동 완전 구현)
+- [x] **💰 가격 필터링 UI 연동 시스템 완전 구현**: 소싱 페이지의 가격 입력박스와 서버 연동 완료
+  - **UI 요소 연결 문제 해결**: MinPriceTextBox, MaxPriceTextBox Name 속성 추가로 C# 코드에서 접근 가능
+  - **FindControl 대안 시스템**: UI 요소가 null인 경우 FindControl로 재탐색하는 안전장치 구현
+  - **완벽한 가격 파싱**: "50,000원" → 50000 숫자 변환, 쉼표 및 "원" 문자 제거 처리
+  - **서버 API 연동**: HTTP POST로 `/api/price-filter/settings` 엔드포인트에 가격 설정 전송
+  - **실시간 디버깅 로그**: UI 요소 상태, 파싱 과정, 서버 응답을 상세히 추적하는 로그 시스템
+  - **사용자 친화적 UI**: 가격 범위 설정 후 "설정" 버튼 클릭으로 간편한 필터링 적용
+- [x] **🔧 가격 필터링 활성화 문제 해결**: _priceFilterEnabled 기본값을 true로 변경
+  - **문제 원인**: 서버에서 _priceFilterEnabled가 false로 설정되어 모든 상품이 동일 가격으로 처리
+  - **해결 방법**: 기본값을 true로 변경하여 가격 필터링 시스템 활성화
+  - **다양한 가격 확인**: 실제 폴더에서 718원, 21,512원 등 다양한 가격 파일 존재 확인
+- [x] **🎯 완료창 표시 문제 해결**: 10개 스토어 완료 후 팝업창이 나타나지 않는 문제 수정
+  - **완료 감지 로직**: `bool allStoresCompleted = _storeStates.Values.All(state => state.Status == "done")` 구현
+  - **자동 팝업 표시**: 모든 스토어 완료 시 수집 결과 팝업창 자동 표시
+  - **Chrome 탭 자동 닫기**: 크롤링 완료 시 모든 Chrome 프로세스 안전한 종료
+
+### 🔄 이전 업데이트 (v1.83 - 중복 카운팅 문제 완전 해결 및 크롤링 시스템 안정화)
 - [x] **🎯 중복 카운팅 문제 완전 해결**: 동일 상품에 대해 이미지/상품명/가격이 각각 별도로 카운팅되어 진행률이 중복 증가하는 문제 완전 해결
   - **HashSet 기반 중복 방지**: `_processedProducts` HashSet으로 상품별 중복 처리 완전 차단
   - **상품 키 생성**: `{storeId}_{productId}` 형식으로 고유 상품 식별자 생성
@@ -1245,6 +1262,12 @@ dotnet run --project Gumaedaehang.csproj
 ---
 
 **Made with ❤️ by Softcat Team**
+
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.84 (가격 필터링 UI 연동 완전 구현)
+  - 소싱 페이지의 가격 입력박스와 서버 연동 완료로 사용자가 설정한 가격 범위로 정확한 필터링 가능
+  - UI 요소 null 문제 해결 및 FindControl 대안 시스템으로 안정적인 UI 연동 보장
+  - 완벽한 가격 파싱 시스템으로 "50,000원" 형태 입력을 숫자로 정확히 변환
+  - 실시간 디버깅 로그로 가격 설정 과정의 모든 단계를 투명하게 추적 가능
 
 > **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.83 (중복 카운팅 문제 완전 해결 및 크롤링 시스템 안정화)
   - 동일 상품에 대해 이미지/상품명/가격이 각각 별도로 카운팅되어 진행률이 중복 증가하는 문제 완전 해결

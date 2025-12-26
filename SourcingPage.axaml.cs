@@ -3095,38 +3095,68 @@ namespace Gumaedaehang
         {
             try
             {
+                LogWindow.AddLogStatic($"🔍 UI 요소 체크 - MinPriceTextBox: {MinPriceTextBox != null}");
+                LogWindow.AddLogStatic($"🔍 UI 요소 체크 - MaxPriceTextBox: {MaxPriceTextBox != null}");
+                
+                if (MinPriceTextBox == null || MaxPriceTextBox == null)
+                {
+                    LogWindow.AddLogStatic("❌ UI 요소를 찾을 수 없습니다. FindControl로 다시 시도합니다.");
+                    
+                    var minBox = this.FindControl<TextBox>("MinPriceTextBox");
+                    var maxBox = this.FindControl<TextBox>("MaxPriceTextBox");
+                    
+                    LogWindow.AddLogStatic($"🔍 FindControl 결과 - Min: {minBox != null}, Max: {maxBox != null}");
+                    
+                    if (minBox != null && maxBox != null)
+                    {
+                        LogWindow.AddLogStatic($"🔍 FindControl 값 - Min: '{minBox.Text}', Max: '{maxBox.Text}'");
+                        
+                        var minText = minBox.Text?.Replace(",", "").Replace("원", "").Trim() ?? "";
+                        var maxText = maxBox.Text?.Replace(",", "").Replace("원", "").Trim() ?? "";
+                        
+                        if (int.TryParse(minText, out int minPrice) && int.TryParse(maxText, out int maxPrice))
+                        {
+                            LogWindow.AddLogStatic($"✅ 가격 파싱 성공: {minPrice} ~ {maxPrice}");
+                            
+                            // 서버에 가격 필터 설정 전송
+                            var settings = new { enabled = true, minPrice = minPrice, maxPrice = maxPrice };
+                            using var client = new HttpClient();
+                            var json = JsonSerializer.Serialize(settings);
+                            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                            var response = await client.PostAsync("http://localhost:8080/api/price-filter/settings", content);
+                            
+                            if (response.IsSuccessStatusCode)
+                            {
+                                LogWindow.AddLogStatic($"✅ 가격 필터 설정 완료: {minPrice:N0}원 ~ {maxPrice:N0}원");
+                            }
+                            else
+                            {
+                                LogWindow.AddLogStatic($"❌ 가격 필터 설정 실패: {response.StatusCode}");
+                            }
+                            return;
+                        }
+                        else
+                        {
+                            LogWindow.AddLogStatic($"❌ 가격 파싱 실패 - Min: '{minText}', Max: '{maxText}'");
+                        }
+                    }
+                    return;
+                }
+                
                 // UI에서 가격 값 가져오기
                 var minPriceText = MinPriceTextBox?.Text?.Replace(",", "").Replace("원", "").Trim();
                 var maxPriceText = MaxPriceTextBox?.Text?.Replace(",", "").Replace("원", "").Trim();
                 
-                if (int.TryParse(minPriceText, out int minPrice) && int.TryParse(maxPriceText, out int maxPrice))
+                LogWindow.AddLogStatic($"🔍 디버그 - 최소가격: '{MinPriceTextBox?.Text}' → '{minPriceText}'");
+                LogWindow.AddLogStatic($"🔍 디버그 - 최대가격: '{MaxPriceTextBox?.Text}' → '{maxPriceText}'");
+                
+                if (int.TryParse(minPriceText, out int minPrice2) && int.TryParse(maxPriceText, out int maxPrice2))
                 {
-                    // 서버에 가격 필터 설정 전송
-                    var settings = new
-                    {
-                        enabled = true,
-                        minPrice = minPrice,
-                        maxPrice = maxPrice
-                    };
-                    
-                    using var client = new HttpClient();
-                    var json = JsonSerializer.Serialize(settings);
-                    var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-                    
-                    var response = await client.PostAsync("http://localhost:8080/api/price-filter/settings", content);
-                    
-                    if (response.IsSuccessStatusCode)
-                    {
-                        LogWindow.AddLogStatic($"✅ 가격 필터 설정 완료: {minPrice:N0}원 ~ {maxPrice:N0}원");
-                    }
-                    else
-                    {
-                        LogWindow.AddLogStatic($"❌ 가격 필터 설정 실패: {response.StatusCode}");
-                    }
+                    LogWindow.AddLogStatic($"✅ 가격 필터 설정 완료: {minPrice2:N0}원 ~ {maxPrice2:N0}원");
                 }
                 else
                 {
-                    LogWindow.AddLogStatic("❌ 가격 입력값이 올바르지 않습니다.");
+                    LogWindow.AddLogStatic($"❌ 가격 파싱 실패 - 최소: '{minPriceText}', 최대: '{maxPriceText}'");
                 }
             }
             catch (Exception ex)
