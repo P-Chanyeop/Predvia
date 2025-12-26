@@ -3090,6 +3090,51 @@ namespace Gumaedaehang
             };
         }
         
+        // 가격 필터 설정 버튼 클릭
+        private async void PriceFilterButton_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // UI에서 가격 값 가져오기
+                var minPriceText = MinPriceTextBox?.Text?.Replace(",", "").Replace("원", "").Trim();
+                var maxPriceText = MaxPriceTextBox?.Text?.Replace(",", "").Replace("원", "").Trim();
+                
+                if (int.TryParse(minPriceText, out int minPrice) && int.TryParse(maxPriceText, out int maxPrice))
+                {
+                    // 서버에 가격 필터 설정 전송
+                    var settings = new
+                    {
+                        enabled = true,
+                        minPrice = minPrice,
+                        maxPrice = maxPrice
+                    };
+                    
+                    using var client = new HttpClient();
+                    var json = JsonSerializer.Serialize(settings);
+                    var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                    
+                    var response = await client.PostAsync("http://localhost:8080/api/price-filter/settings", content);
+                    
+                    if (response.IsSuccessStatusCode)
+                    {
+                        LogWindow.AddLogStatic($"✅ 가격 필터 설정 완료: {minPrice:N0}원 ~ {maxPrice:N0}원");
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic($"❌ 가격 필터 설정 실패: {response.StatusCode}");
+                    }
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("❌ 가격 입력값이 올바르지 않습니다.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 가격 필터 설정 오류: {ex.Message}");
+            }
+        }
+        
         // ⭐ 타오바오 상품 박스 업데이트
         private void UpdateTaobaoProductBoxes(int cardId, List<TaobaoProductData> products)
         {
@@ -3310,50 +3355,3 @@ public class TaobaoProductData
     [JsonPropertyName("title")]
     public string Title { get; set; } = string.Empty;
 }
-
-        // ⭐ 타오바오 상품 박스 업데이트
-        
-        // 가격 필터 설정 버튼 클릭
-        private async void PriceFilterButton_Click(object? sender, RoutedEventArgs e)
-        {
-            try
-            {
-                // UI에서 가격 값 가져오기
-                var minPriceText = MinPriceTextBox?.Text?.Replace(",", "").Replace("원", "").Trim();
-                var maxPriceText = MaxPriceTextBox?.Text?.Replace(",", "").Replace("원", "").Trim();
-                
-                if (int.TryParse(minPriceText, out int minPrice) && int.TryParse(maxPriceText, out int maxPrice))
-                {
-                    // 서버에 가격 필터 설정 전송
-                    var settings = new
-                    {
-                        enabled = true,
-                        minPrice = minPrice,
-                        maxPrice = maxPrice
-                    };
-                    
-                    using var client = new HttpClient();
-                    var json = JsonSerializer.Serialize(settings);
-                    var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-                    
-                    var response = await client.PostAsync("http://localhost:8080/api/price-filter/settings", content);
-                    
-                    if (response.IsSuccessStatusCode)
-                    {
-                        LogWindow.AddLogStatic($"✅ 가격 필터 설정 완료: {minPrice:N0}원 ~ {maxPrice:N0}원");
-                    }
-                    else
-                    {
-                        LogWindow.AddLogStatic($"❌ 가격 필터 설정 실패: {response.StatusCode}");
-                    }
-                }
-                else
-                {
-                    LogWindow.AddLogStatic("❌ 가격 입력값이 올바르지 않습니다.");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogWindow.AddLogStatic($"❌ 가격 필터 설정 오류: {ex.Message}");
-            }
-        }
