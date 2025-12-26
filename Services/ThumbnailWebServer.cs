@@ -34,11 +34,6 @@ namespace Gumaedaehang.Services
         private static int _maxPrice = 50000; // 최대 가격 (원) - 사용자 친화적 기본값  
         private static bool _priceFilterEnabled = false; // 가격 필터링 비활성화 (사용자가 직접 설정)
         
-        // ⭐ 가격 필터링 설정 (정적 변수)
-        private static int _minPrice = 1000; // 최소 가격 (원) - 사용자 친화적 기본값
-        private static int _maxPrice = 50000; // 최대 가격 (원) - 사용자 친화적 기본값  
-        private static bool _priceFilterEnabled = false; // 가격 필터링 비활성화 (사용자가 직접 설정)
-        
         // ⭐ Predvia 전용 Chrome 프로필 경로
         private static string GetPredviaChromeProfile()
         {
