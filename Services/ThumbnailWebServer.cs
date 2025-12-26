@@ -1077,6 +1077,32 @@ namespace Gumaedaehang.Services
                     {
                         _currentStoreIndex++;
                         LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                        
+                        // 🚀 다음 스토어 자동 방문 시작
+                        if (_currentStoreIndex < _selectedStores.Count && !_shouldStop)
+                        {
+                            var nextStore = _selectedStores[_currentStoreIndex];
+                            var nextStoreId = UrlExtensions.ExtractStoreIdFromUrl(nextStore.Url);
+                            LogWindow.AddLogStatic($"🚀 다음 스토어 자동 방문 시작: {nextStoreId} ({_currentStoreIndex + 1}/{_selectedStores.Count})");
+                            
+                            // Chrome 확장프로그램에 다음 스토어 방문 요청
+                            _ = Task.Run(async () =>
+                            {
+                                await Task.Delay(2000); // 2초 대기 후 다음 스토어 방문
+                                try
+                                {
+                                    using var client = new HttpClient();
+                                    var visitRequest = new { storeId = nextStoreId, url = nextStore.Url };
+                                    var json = JsonSerializer.Serialize(visitRequest);
+                                    var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                                    await client.PostAsync("http://localhost:8080/api/smartstore/visit", content);
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogWindow.AddLogStatic($"❌ 다음 스토어 자동 방문 실패: {ex.Message}");
+                                }
+                            });
+                        }
                     }
                 }
 

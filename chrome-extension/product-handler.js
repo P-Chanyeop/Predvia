@@ -328,39 +328,63 @@ async function extractProductReviews(storeId, productId) {
 // 가격 정보 추출
 async function extractProductPrice(storeId, productId) {
   try {
-    // 네이버 스마트스토어 전용 가격 선택자들 (정확한 순서)
+    // 네이버 스마트스토어 정확한 상품 가격 선택자만
     const selectors = [
-      '.bd_15LKy',                    // 네이버 스마트스토어 메인 가격
-      '.price_num',                   // 가격 숫자 클래스
-      '.price_area .price',           // 가격 영역 내 가격
-      '.product_price .price',        // 상품 가격 영역
-      '.price_info .price',           // 가격 정보 영역
-      'span[class*="price"]',         // 가격 관련 클래스가 포함된 span
-      'div[class*="price"]',          // 가격 관련 클래스가 포함된 div
-      'strong[class*="price"]',       // 가격 관련 클래스가 포함된 strong
-      '.price',                       // 일반 price 클래스
-      'span',                         // 마지막 대안: 모든 span
-      'div',                          // 마지막 대안: 모든 div
-      'strong'                        // 마지막 대안: 모든 strong
+      'strong.Xu9MEKUuIo span.e1DMQNBPJ_', // 최우선: 정확한 상품 가격
+      '.Xu9MEKUuIo .e1DMQNBPJ_',        // 상품 가격 컨테이너
+      'span.e1DMQNBPJ_',                // 가격 숫자 span
+      '.bd_15LKy'                       // 대안 가격 선택자
     ];
     
+    // "상품 가격" 텍스트가 있는 정확한 가격 요소 찾기
     let foundPrice = null;
     
-    for (const selector of selectors) {
-      const elements = document.querySelectorAll(selector);
-      
-      for (const element of elements) {
-        const text = element.textContent?.trim();
-        if (text && text.includes('원') && /\d{1,3}(?:,\d{3})*\s*원/.test(text)) {
-          const match = text.match(/(\d{1,3}(?:,\d{3})*)\s*원/);
-          if (match) {
-            foundPrice = match[0];
+    // 1. "상품 가격" span을 포함한 strong 요소 찾기
+    const priceElements = document.querySelectorAll('strong');
+    for (const strong of priceElements) {
+      const blindSpan = strong.querySelector('span.blind');
+      if (blindSpan && blindSpan.textContent?.includes('상품 가격')) {
+        // 가격 숫자가 있는 span 찾기
+        const priceSpan = strong.querySelector('span.e1DMQNBPJ_');
+        const wonSpan = strong.querySelector('span.won');
+        
+        if (priceSpan && wonSpan) {
+          const priceNumber = priceSpan.textContent?.trim();
+          if (priceNumber && /^\d{1,3}(?:,\d{3})*$/.test(priceNumber)) {
+            foundPrice = priceNumber + '원';
+            console.log(`✅ "상품 가격" 요소에서 발견: ${foundPrice}`);
             break;
           }
         }
       }
+    }
+    
+    // 2. 대안: 기존 선택자들
+    if (!foundPrice) {
+      const selectors = [
+        'strong.Xu9MEKUuIo span.e1DMQNBPJ_',
+        '.Xu9MEKUuIo .e1DMQNBPJ_',
+        'span.e1DMQNBPJ_',
+        '.bd_15LKy'
+      ];
       
-      if (foundPrice) break;
+      for (const selector of selectors) {
+        const elements = document.querySelectorAll(selector);
+        
+        for (const element of elements) {
+          const text = element.textContent?.trim();
+          if (text && text.includes('원') && /\d{1,3}(?:,\d{3})*\s*원/.test(text)) {
+            const match = text.match(/(\d{1,3}(?:,\d{3})*)\s*원/);
+            if (match) {
+              foundPrice = match[0];
+              console.log(`✅ 대안 선택자에서 발견: ${foundPrice} (${selector})`);
+              break;
+            }
+          }
+        }
+        
+        if (foundPrice) break;
+      }
     }
     
     if (foundPrice) {
