@@ -3857,7 +3857,7 @@ public class ProductCategoryData
         }
 
         // ⭐ 가격 필터링 설정 조회 API
-        private static async Task<IResult> HandleGetPriceFilterSettings(HttpContext context)
+        private async Task<IResult> HandleGetPriceFilterSettings(HttpContext context)
         {
             try
             {
@@ -3880,7 +3880,7 @@ public class ProductCategoryData
         }
 
         // ⭐ 가격 필터링 설정 변경 API
-        private static async Task<IResult> HandleSetPriceFilterSettings(HttpContext context)
+        private async Task<IResult> HandleSetPriceFilterSettings(HttpContext context)
         {
             try
             {
