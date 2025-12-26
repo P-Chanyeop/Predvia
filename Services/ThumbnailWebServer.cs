@@ -1692,7 +1692,21 @@ namespace Gumaedaehang.Services
                     return;
                 }
                 
-                // 나머지 로직은 제거 (100개 달성이 우선)
+                // 나머지 로직: 모든 스토어 완료 체크
+                bool allStoresCompleted = _storeStates.Values.All(state => state.Status == "done");
+                if (allStoresCompleted)
+                {
+                    LogWindow.AddLogStatic("🎉 모든 스토어 완료 - 크롤링 종료");
+                    
+                    // ⭐ Chrome 앱 창들 닫기
+                    _ = Task.Run(async () => await CloseAllChromeApps());
+                    
+                    // ⭐ 팝업창으로 최종 결과 표시
+                    ShowCrawlingResultPopup(actualCount, "모든 스토어 완료");
+                    
+                    return;
+                }
+                
                 LogWindow.AddLogStatic("📊 100개 미달성 - 크롤링 계속 진행");
                 
             }

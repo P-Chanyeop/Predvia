@@ -328,12 +328,20 @@ async function extractProductReviews(storeId, productId) {
 // 가격 정보 추출
 async function extractProductPrice(storeId, productId) {
   try {
-    // 가격 선택자들 (상품명과 똑같은 방식)
+    // 네이버 스마트스토어 전용 가격 선택자들 (정확한 순서)
     const selectors = [
-      'span',
-      'div', 
-      'strong',
-      '.price'
+      '.bd_15LKy',                    // 네이버 스마트스토어 메인 가격
+      '.price_num',                   // 가격 숫자 클래스
+      '.price_area .price',           // 가격 영역 내 가격
+      '.product_price .price',        // 상품 가격 영역
+      '.price_info .price',           // 가격 정보 영역
+      'span[class*="price"]',         // 가격 관련 클래스가 포함된 span
+      'div[class*="price"]',          // 가격 관련 클래스가 포함된 div
+      'strong[class*="price"]',       // 가격 관련 클래스가 포함된 strong
+      '.price',                       // 일반 price 클래스
+      'span',                         // 마지막 대안: 모든 span
+      'div',                          // 마지막 대안: 모든 div
+      'strong'                        // 마지막 대안: 모든 strong
     ];
     
     let foundPrice = null;
