@@ -58,9 +58,9 @@ namespace Gumaedaehang.Services
         private bool _completionPopupShown = false; // 완료 팝업 중복 방지
         
         // ⭐ 가격 필터링 설정
-        private int _minPrice = 0; // 최소 가격 (원)
-        private int _maxPrice = 100000; // 최대 가격 (원)
-        private bool _priceFilterEnabled = true; // 가격 필터링 활성화
+        private static int _minPrice = 0; // 최소 가격 (원)
+        private static int _maxPrice = 100000; // 최대 가격 (원)
+        private static bool _priceFilterEnabled = true; // 가격 필터링 활성화
         
         // ⭐ 중복 처리 방지를 위한 처리된 스토어 추적
         private readonly HashSet<string> _processedStores = new HashSet<string>();
@@ -3857,7 +3857,7 @@ public class ProductCategoryData
         }
 
         // ⭐ 가격 필터링 설정 조회 API
-        private async Task<IResult> HandleGetPriceFilterSettings(HttpContext context)
+        private static async Task<IResult> HandleGetPriceFilterSettings(HttpContext context)
         {
             try
             {
@@ -3880,7 +3880,7 @@ public class ProductCategoryData
         }
 
         // ⭐ 가격 필터링 설정 변경 API
-        private async Task<IResult> HandleSetPriceFilterSettings(HttpContext context)
+        private static async Task<IResult> HandleSetPriceFilterSettings(HttpContext context)
         {
             try
             {
