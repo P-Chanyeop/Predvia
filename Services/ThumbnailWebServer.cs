@@ -57,6 +57,11 @@ namespace Gumaedaehang.Services
         private readonly object _counterLock = new object();
         private bool _completionPopupShown = false; // 완료 팝업 중복 방지
         
+        // ⭐ 가격 필터링 설정
+        private int _minPrice = 0; // 최소 가격 (원)
+        private int _maxPrice = 100000; // 최대 가격 (원)
+        private bool _priceFilterEnabled = true; // 가격 필터링 활성화
+        
         // ⭐ 중복 처리 방지를 위한 처리된 스토어 추적
         private readonly HashSet<string> _processedStores = new HashSet<string>();
         
@@ -143,6 +148,10 @@ namespace Gumaedaehang.Services
                 _app.MapGet("/api/crawling/allowed", HandleGetCrawlingAllowed);
                 _app.MapPost("/api/crawling/allow", HandleAllowCrawling);
                 _app.MapDelete("/api/crawling/allow", HandleResetCrawling);
+                
+                // ⭐ 가격 필터링 설정 API 추가
+                _app.MapGet("/api/price-filter/settings", HandleGetPriceFilterSettings);
+                _app.MapPost("/api/price-filter/settings", HandleSetPriceFilterSettings);
                 
                 // ⭐ 상품명 처리 API 추가
                 _app.MapPost("/api/smartstore/product-names", HandleProductNames);
@@ -2728,17 +2737,52 @@ namespace Gumaedaehang.Services
                 var priceData = JsonSerializer.Deserialize<ProductPriceData>(body);
                 if (priceData == null)
                 {
-                    return Results.Json(new { success = false, error = "Invalid price data" });
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = "Invalid price data" }));
+                    return Results.Ok();
+                }
+
+                // ⭐ 가격 필터링 체크
+                if (_priceFilterEnabled)
+                {
+                    var priceValue = ExtractPriceValue(priceData.Price);
+                    if (priceValue < _minPrice || priceValue > _maxPrice)
+                    {
+                        LogWindow.AddLogStatic($"🚫 가격 필터링: {priceData.Price} ({priceValue}원) - 범위 밖 ({_minPrice}~{_maxPrice}원)");
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(new { 
+                            success = false, 
+                            filtered = true,
+                            message = "가격 필터링으로 제외됨" 
+                        }));
+                        return Results.Ok();
+                    }
+                    LogWindow.AddLogStatic($"✅ 가격 필터링 통과: {priceData.Price} ({priceValue}원)");
                 }
 
                 await SaveProductPrice(priceData);
                 
-                return Results.Json(new { success = true });
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
+                return Results.Ok();
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 가격 처리 오류: {ex.Message}");
-                return Results.Json(new { success = false, error = ex.Message });
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = ex.Message }));
+                return Results.Ok();
+            }
+        }
+
+        // ⭐ 가격 문자열에서 숫자 추출
+        private int ExtractPriceValue(string priceString)
+        {
+            try
+            {
+                // "7,572원", "1,354원" 등에서 숫자만 추출
+                var numbers = System.Text.RegularExpressions.Regex.Replace(priceString, @"[^\d]", "");
+                return int.TryParse(numbers, out int price) ? price : 0;
+            }
+            catch
+            {
+                return 0;
             }
         }
 
@@ -3807,6 +3851,64 @@ public class ProductCategoryData
         public static void HideLoadingOverlay()
         {
             HideLoadingFromSourcingPage();
+        }
+
+        // ⭐ 가격 필터링 설정 조회 API
+        private async Task<IResult> HandleGetPriceFilterSettings(HttpContext context)
+        {
+            try
+            {
+                var settings = new
+                {
+                    enabled = _priceFilterEnabled,
+                    minPrice = _minPrice,
+                    maxPrice = _maxPrice
+                };
+                
+                await context.Response.WriteAsync(JsonSerializer.Serialize(settings));
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 가격 필터링 설정 조회 오류: {ex.Message}");
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = ex.Message }));
+                return Results.Ok();
+            }
+        }
+
+        // ⭐ 가격 필터링 설정 변경 API
+        private async Task<IResult> HandleSetPriceFilterSettings(HttpContext context)
+        {
+            try
+            {
+                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                var settings = JsonSerializer.Deserialize<PriceFilterSettings>(body);
+                
+                if (settings != null)
+                {
+                    _priceFilterEnabled = settings.Enabled;
+                    _minPrice = settings.MinPrice;
+                    _maxPrice = settings.MaxPrice;
+                    
+                    LogWindow.AddLogStatic($"✅ 가격 필터링 설정 변경: {(_priceFilterEnabled ? "활성화" : "비활성화")} ({_minPrice}~{_maxPrice}원)");
+                }
+                
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 가격 필터링 설정 변경 오류: {ex.Message}");
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = ex.Message }));
+                return Results.Ok();
+            }
+        }
+
+        public class PriceFilterSettings
+        {
+            public bool Enabled { get; set; }
+            public int MinPrice { get; set; }
+            public int MaxPrice { get; set; }
         }
     }
 }

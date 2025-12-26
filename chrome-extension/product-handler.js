@@ -111,17 +111,26 @@ async function collectProductPageData(storeId, productId) {
   try {
     console.log(`🔍 ${storeId}/${productId}: 데이터 수집 시작`);
     
-    // 1. 상품 이미지 추출
+    // 1. 가격 정보 먼저 추출 (필터링용)
+    const priceResult = await extractProductPrice(storeId, productId);
+    
+    // 가격 필터링 실패 시 다른 데이터 수집 중단
+    if (!priceResult || priceResult.filtered) {
+      console.log(`🚫 ${storeId}/${productId}: 가격 필터링으로 제외됨`);
+      setTimeout(() => {
+        window.close();
+      }, 500);
+      return;
+    }
+    
+    // 2. 상품 이미지 추출
     const imageData = await extractProductImage(storeId, productId);
     
-    // 2. 상품명 추출  
+    // 3. 상품명 추출  
     const nameData = await extractProductName(storeId, productId);
     
-    // 3. 리뷰 데이터 추출
+    // 4. 리뷰 데이터 추출
     const reviewData = await extractProductReviews(storeId, productId);
-    
-    // 4. 가격 정보 추출
-    const priceData = await extractProductPrice(storeId, productId);
     
     console.log(`✅ ${storeId}/${productId}: 데이터 수집 완료`);
     
@@ -355,13 +364,20 @@ async function extractProductPrice(storeId, productId) {
         productUrl: window.location.href
       };
       
-      await fetch('http://localhost:8080/api/smartstore/product-price', {
+      const response = await fetch('http://localhost:8080/api/smartstore/product-price', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(priceData)
       });
       
-      return priceData;
+      const result = await response.json();
+      
+      // 필터링 결과 반환
+      if (result.filtered) {
+        return { filtered: true, price: foundPrice };
+      }
+      
+      return result.success ? priceData : null;
     }
     
     return null;
