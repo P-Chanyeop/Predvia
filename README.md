@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.89-orange)
+![Release](https://img.shields.io/badge/Release-v1.90-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,23 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.89 - Chrome 확장프로그램 중단 신호 처리 및 창 닫기 시스템 완전 구현)
+### 🔄 최신 업데이트 (v1.90 - 크롤링 완료 팝업 및 가격 필터 시스템 완전 수정)
+- [x] **🎉 크롤링 완료 팝업 표시 문제 해결**: 10개 스토어 모두 완료되어도 팝업이 나타나지 않던 문제 완전 해결
+  - **완료 감지 로직 강화**: 완료된 스토어 목록을 로그에 상세 표시하여 디버깅 개선
+  - **팝업 플래그 관리**: `_completionPopupShown` 및 `_shouldStop` 플래그 정확한 설정
+  - **Chrome 앱 창 자동 닫기**: 크롤링 완료 시 --app 옵션 Chrome만 선별적으로 종료
+  - **CommandLine 기반 판별**: 창 크기 대신 `--app=` 옵션으로 정확한 앱 창 식별
+- [x] **💰 가격 필터 시스템 완전 수정**: 하드코딩된 기본값 대신 사용자 설정값만 적용되도록 개선
+  - **기본값 비활성화**: 서버 기본값을 0~무제한으로 변경하여 사용자 설정 우선
+  - **사용자 설정 우선**: 프로그램에서 사용자가 설정한 가격 범위만 적용
+  - **필터 활성화 제어**: 사용자가 "설정" 버튼 클릭 시에만 가격 필터 활성화
+  - **System.Management 패키지 추가**: Chrome 프로세스 CommandLine 조회를 위한 패키지 추가
+- [x] **🔧 빌드 오류 및 경고 완전 해결**: 모든 컴파일 오류 및 플랫폼 경고 수정
+  - **존재하지 않는 메서드 호출 제거**: SourcingPage에서 잘못된 메서드 참조 수정
+  - **Windows 플랫폼 속성 추가**: `[SupportedOSPlatform("windows")]`로 CA1416 경고 해결
+  - **ManagementObjectSearcher 경고 해결**: Windows 전용 API 사용에 대한 명시적 플랫폼 지원 표시
+
+### 🔄 이전 업데이트 (v1.89 - Chrome 확장프로그램 중단 신호 처리 및 창 닫기 시스템 완전 구현)
 - [x] **🛑 100개 상품 수집 완료 후 크롤링 지속 문제 해결**: Chrome 확장프로그램이 서버의 중단 신호를 받아도 루프를 중단하지 않는 문제 완전 해결
   - **shouldStop 체크 로직 강화**: `checkShouldStop()` API로 서버 상태 확인 후 `break`로 루프 즉시 중단
   - **서버 중단 신호 처리**: `_shouldStop = true` 설정 시 `/api/smartstore/status`에서 `shouldStop: true` 반환
@@ -259,8 +275,6 @@ dotnet run --project Gumaedaehang.csproj
   - **Git 복원**: `git reset --hard 393f91f`로 v1.88 커밋 상태로 완전 복원
   - **코드 안정성**: 복잡해진 코드는 과감히 이전 버전으로 되돌려서 단계별로 해결
   - **시스템 안정성**: Chrome 창 닫기 문제는 사용자 브라우저 보호와 크롤링 창 정리 사이의 균형 확보
-
-### 🔄 이전 업데이트 (v1.88 - 원상품명 클릭 상품 상세페이지 이동 기능 구현)
 - [x] **🔗 원상품명 클릭 상품 상세페이지 이동**: 크롤링된 카드의 "원상품명" 텍스트 클릭 시 해당 상품의 네이버 스마트스토어 상세페이지로 이동
   - **시각적 링크 표시**: 파란색(`#0066CC`) + 밑줄 + 손가락 커서로 클릭 가능함을 명확히 표시
   - **클릭 이벤트**: `PointerPressed` 이벤트로 원상품명 텍스트 클릭 감지
@@ -1315,11 +1329,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.89 (Chrome 확장프로그램 중단 신호 처리 및 창 닫기 시스템 완전 구현)
-  - 100개 상품 수집 완료 후 크롤링 지속 문제 해결: Chrome 확장프로그램이 서버의 중단 신호를 받아도 루프를 중단하지 않는 문제 완전 해결
-  - Chrome 앱 창 닫기 문제 해결: --app 옵션으로 실행된 Chrome만 선별적으로 닫아야 하는데 모든 Chrome이 닫히거나 아예 닫히지 않는 문제 해결
-  - 네이버 가격비교 창 조기 종료 방지: 크롤링 중에 네이버 창이 닫혀서 크롤링이 중단되는 문제 해결
-  - Git 버전 관리 및 코드 정리: 복잡해진 코드를 v1.88로 되돌려서 깨끔한 상태에서 재시작
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.90 (크롤링 완료 팝업 및 가격 필터 시스템 완전 수정)
+  - 크롤링 완료 팝업 표시 문제 해결: 10개 스토어 모두 완료되어도 팝업이 나타나지 않던 문제 완전 해결
+  - 가격 필터 시스템 완전 수정: 하드코딩된 기본값 대신 사용자 설정값만 적용되도록 개선
+  - Chrome 앱 창 자동 닫기: CommandLine 기반으로 --app 옵션 Chrome만 선별적으로 종료
+  - 빌드 오류 및 경고 완전 해결: 모든 컴파일 오류 및 플랫폼 경고 수정
 
 > **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.85 (가격 추출 정확도 완전 개선)
   - "상품 가격" 요소 기반 정확한 가격 추출로 649,900원, 754,200원 등 실제 상품 가격만 수집
