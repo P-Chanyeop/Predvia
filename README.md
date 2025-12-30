@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.90-orange)
+![Release](https://img.shields.io/badge/Release-v1.91-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,19 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.90 - 크롤링 완료 팝업 및 가격 필터 시스템 완전 수정)
+### 🔄 최신 업데이트 (v1.91 - 타오바오 이미지 검색 자동화 시스템 구현)
+- [x] **🔍 타오바오 이미지 검색 완전 성공**: 소싱된 상품 이미지를 타오바오 API로 자동 검색하여 유사 상품 데이터 수집
+  - **이미지 업로드 성공**: 로컬 상품 이미지를 타오바오 서버에 성공적으로 업로드
+  - **상세한 상품 정보 수집**: 상품명, 가격, 판매량, 리뷰 수, 스토어 정보 등 완전한 데이터 추출
+  - **5개 유사 상품 매칭**: "MIKI WELL 일식 도예 앞치마" 등 관련 상품들의 상세 정보 수집
+  - **풍부한 메타데이터**: 카테고리, 태그, 이미지 URL, 판매자 정보 등 포괄적 데이터
+  - **API 응답 완전 파싱**: JSON 형태의 타오바오 API 응답을 완벽하게 분석 및 처리
+- [x] **🤖 1초 간격 자동 처리 시스템 준비**: 소싱된 모든 상품 이미지를 순차적으로 타오바오 검색 처리
+  - **User-Agent 로테이션**: API 차단 방지를 위한 다양한 브라우저 에이전트 순환 사용
+  - **차단 감지 및 복구**: API 차단 시 자동으로 다른 User-Agent로 전환하여 연속 처리
+  - **배치 처리 최적화**: 대량 상품 이미지 검색을 안정적으로 처리하는 시스템 구조
+
+### 🔄 이전 업데이트 (v1.90 - 크롤링 완료 팝업 및 가격 필터 시스템 완전 수정)
 - [x] **🎉 크롤링 완료 팝업 표시 문제 해결**: 10개 스토어 모두 완료되어도 팝업이 나타나지 않던 문제 완전 해결
   - **완료 감지 로직 강화**: 완료된 스토어 목록을 로그에 상세 표시하여 디버깅 개선
   - **팝업 플래그 관리**: `_completionPopupShown` 및 `_shouldStop` 플래그 정확한 설정
