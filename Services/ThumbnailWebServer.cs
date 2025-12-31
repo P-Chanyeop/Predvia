@@ -612,7 +612,8 @@ namespace Gumaedaehang.Services
                     {
                         LogWindow.AddLogStatic($"모든 스토어 처리 완료 - 요청 무시: {visitData.StoreId}");
                         
-                        // ⭐ 크롤링 완료 시 팝업창 표시
+                        // ⭐ 플래그 리셋 후 크롤링 완료 시 팝업창 표시
+                        _completionPopupShown = false; // 플래그 리셋
                         var finalCount = GetCurrentProductCount();
                         ShowCrawlingResultPopup(finalCount, "모든 스토어 처리 완료");
                         
@@ -1858,7 +1859,8 @@ namespace Gumaedaehang.Services
                 {
                     LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 - 크롤링 종료");
                     
-                    // ⭐ Chrome 앱 창들 닫기
+                    // ⭐ 플래그 리셋 후 Chrome 앱 창들 닫기
+                    _completionPopupShown = false; // 플래그 리셋
                     _ = Task.Run(async () => await CloseAllChromeApps());
                     
                     // ⭐ 팝업창으로 최종 결과 표시
