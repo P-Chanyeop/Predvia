@@ -862,6 +862,14 @@ namespace Gumaedaehang.Services
                                 LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 - 크롤링 중단");
                                 _shouldStop = true;
                                 _isCrawlingActive = false;
+                                
+                                // ⭐ 즉시 팝업 표시 (한 번만)
+                                if (!_completionPopupShown)
+                                {
+                                    var finalCount = GetCurrentProductCount();
+                                    ShowCrawlingResultPopup(finalCount, "10개 스토어 모두 완료");
+                                    _completionPopupShown = true;
+                                }
                             }
                         }
                     }
@@ -1112,10 +1120,20 @@ namespace Gumaedaehang.Services
                             LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 - 크롤링 중단");
                             _shouldStop = true;
                             _isCrawlingActive = false;
+                            
+                            // ⭐ 즉시 팝업 표시 (한 번만)
+                            if (!_completionPopupShown)
+                            {
+                                var finalCount = GetCurrentProductCount();
+                                ShowCrawlingResultPopup(finalCount, "10개 스토어 모두 완료");
+                                _completionPopupShown = true;
+                            }
+                            
+                            var currentCount = GetCurrentProductCount();
                             return Results.Json(new { 
                                 success = true,
-                                currentProducts = GetCurrentProductCount(),
-                                totalProducts = GetCurrentProductCount(),
+                                currentProducts = currentCount,
+                                totalProducts = currentCount,
                                 targetProducts = TARGET_PRODUCT_COUNT,
                                 shouldStop = true,
                                 message = "10개 스토어 모두 완료"
@@ -2036,13 +2054,19 @@ namespace Gumaedaehang.Services
             {
                 var cookiesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "taobao_cookies.json");
                 
+                LogWindow.AddLogStatic($"🔍 쿠키 파일 경로: {cookiesPath}");
+                
                 if (File.Exists(cookiesPath))
                 {
+                    LogWindow.AddLogStatic("✅ 쿠키 파일 존재 확인");
                     var fileContent = await File.ReadAllTextAsync(cookiesPath);
+                    LogWindow.AddLogStatic($"📄 파일 내용 길이: {fileContent.Length}자");
+                    
                     var fileCookies = JsonSerializer.Deserialize<Dictionary<string, string>>(fileContent);
                     
                     if (fileCookies != null && fileCookies.Count > 0)
                     {
+                        LogWindow.AddLogStatic($"🍪 파일에서 {fileCookies.Count}개 쿠키 발견");
                         _taobaoCookies.Clear();
                         
                         foreach (var cookie in fileCookies)
@@ -2141,6 +2165,10 @@ namespace Gumaedaehang.Services
                 
                 LogWindow.AddLogStatic($"🔍 타오바오 이미지 업로드 요청: {requestData.ProductId}");
                 
+                // QPS 제한 우회를 위한 5초 대기
+                LogWindow.AddLogStatic("⏳ QPS 제한 우회를 위해 5초 대기 중...");
+                await Task.Delay(5000);
+                
                 // 이미지 파일 존재 확인
                 if (!File.Exists(requestData.ImagePath))
                 {
@@ -2193,9 +2221,17 @@ namespace Gumaedaehang.Services
             try
             {
                 // 메모리에 쿠키가 없으면 파일에서 로드 시도
+                LogWindow.AddLogStatic($"🔍 현재 상태 - 토큰: {(_taobaoToken ?? "null")}, 쿠키 개수: {_taobaoCookies.Count}");
+                
                 if (string.IsNullOrEmpty(_taobaoToken) || _taobaoCookies.Count == 0)
                 {
+                    LogWindow.AddLogStatic("🔄 메모리에 쿠키 없음 - 파일에서 로드 시도");
                     await LoadTaobaoCookiesFromFile();
+                    LogWindow.AddLogStatic($"🔍 쿠키 로드 결과: {_taobaoCookies.Count}개, 토큰: {(!string.IsNullOrEmpty(_taobaoToken) ? "있음" : "없음")}");
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("✅ 메모리에 쿠키 이미 존재");
                 }
                 
                 // 쿠키와 토큰 확인
@@ -2263,34 +2299,43 @@ namespace Gumaedaehang.Services
                 var responseText = await response.Content.ReadAsStringAsync();
                 
                 LogWindow.AddLogStatic($"📥 API 응답 수신: {response.StatusCode}");
+                LogWindow.AddLogStatic($"📄 응답 내용: {responseText}");
                 
                 if (response.IsSuccessStatusCode)
                 {
-                    // 응답에서 이미지 ID 추출
-                    var jsonResponse = JsonSerializer.Deserialize<JsonElement>(responseText);
-                    if (jsonResponse.TryGetProperty("data", out var dataElement) &&
-                        dataElement.TryGetProperty("imageId", out var imageIdElement))
+                    // JSON 파싱 시도
+                    try
                     {
-                        var imageId = imageIdElement.GetString();
-                        LogWindow.AddLogStatic($"✅ 이미지 ID 획득: {imageId}");
-                        
-                        // 검색 URL 생성
-                        var searchUrl = $"https://s.taobao.com/search?imgfile=&commend=all&ssid=s5-e&search_type=item&sourceId=tb.index&spm=a21bo.jianhua.201856-taobao-item.1&ie=utf8&initiative_id=tbindexz_20170306&imageId={imageId}";
-                        LogWindow.AddLogStatic($"🔗 검색 URL: {searchUrl}");
-                        
-                        // 더미 상품 데이터 생성 (실제로는 검색 결과를 파싱해야 함)
-                        products.Add(new TaobaoProduct
+                        var jsonResponse = JsonSerializer.Deserialize<JsonElement>(responseText);
+                        if (jsonResponse.TryGetProperty("data", out var dataElement) &&
+                            dataElement.TryGetProperty("imageId", out var imageIdElement))
                         {
-                            Title = "타오바오 검색 결과",
-                            Price = "¥ 검색 완료",
-                            ImageUrl = $"data:image/jpeg;base64,{Convert.ToBase64String(imageBytes)}",
-                            ProductUrl = searchUrl,
-                            Sales = "이미지 검색"
-                        });
+                            var imageId = imageIdElement.GetString();
+                            LogWindow.AddLogStatic($"✅ 이미지 ID 획득: {imageId}");
+                            
+                            // 검색 URL 생성
+                            var searchUrl = $"https://s.taobao.com/search?imgfile=&commend=all&ssid=s5-e&search_type=item&sourceId=tb.index&spm=a21bo.jianhua.201856-taobao-item.1&ie=utf8&initiative_id=tbindexz_20170306&imageId={imageId}";
+                            LogWindow.AddLogStatic($"🔗 검색 URL: {searchUrl}");
+                            
+                            // 더미 상품 데이터 생성 (실제로는 검색 결과를 파싱해야 함)
+                            products.Add(new TaobaoProduct
+                            {
+                                Title = "타오바오 검색 결과",
+                                Price = "¥ 검색 완료",
+                                ImageUrl = $"data:image/jpeg;base64,{Convert.ToBase64String(imageBytes)}",
+                                ProductUrl = searchUrl,
+                                Sales = "이미지 검색"
+                            });
+                        }
+                        else
+                        {
+                            LogWindow.AddLogStatic("❌ 응답에서 이미지 ID를 찾을 수 없습니다");
+                        }
                     }
-                    else
+                    catch (JsonException ex)
                     {
-                        LogWindow.AddLogStatic("❌ 응답에서 이미지 ID를 찾을 수 없습니다");
+                        LogWindow.AddLogStatic($"❌ JSON 파싱 오류: {ex.Message}");
+                        LogWindow.AddLogStatic("❌ 타오바오 쿠키가 만료되었거나 잘못되었습니다.");
                     }
                 }
                 else

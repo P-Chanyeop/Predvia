@@ -7,7 +7,8 @@
     "activeTab",
     "storage",
     "tabs",
-    "scripting"
+    "scripting",
+    "cookies"
   ],
   "host_permissions": [
     "*://search.shopping.naver.com/*",
@@ -42,7 +43,7 @@
     },
     {
       "matches": ["*://*.taobao.com/*"],
-      "js": ["content.js"],
+      "js": ["content.js", "taobao-cookies.js", "taobao-auto-cookies.js"],
       "run_at": "document_end"
     }
   ],

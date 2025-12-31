@@ -186,6 +186,16 @@
                                x:Name="AddMoreLink"/>
                 </StackPanel>
                 
+                <!-- 타오바오 테스트 버튼 -->
+                <StackPanel Spacing="15" Margin="0,20,0,0">
+                    <TextBlock Text="타오바오 이미지 검색 테스트" FontSize="20" FontWeight="Bold" 
+                                HorizontalAlignment="Left"/>
+                    <Button Content="10.png로 타오바오 검색 테스트" 
+                            Background="#E67E22" Foreground="White"
+                            Padding="20,10" CornerRadius="8" FontSize="16" FontWeight="Medium"
+                            BorderThickness="0" Height="45" x:Name="TaobaoTestButton" Click="TaobaoTestButton_Click"/>
+                </StackPanel>
+                
                 <!-- 소싱재료 자동찾기 섹션 -->
                 <StackPanel Spacing="25">
                     <TextBlock Text="소싱재료 자동찾기" FontSize="28" FontWeight="Bold" 

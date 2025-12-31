@@ -359,6 +359,27 @@ async function extractProductPrice(storeId, productId) {
       }
     }
     
+    // 1-1. 빨간색 가격 클래스로 찾기 (.Xu9MEKUuIo.s6EKUu28OE - #d40022 색상)
+    if (!foundPrice) {
+      const redPriceElements = document.querySelectorAll('.Xu9MEKUuIo.s6EKUu28OE');
+      for (const element of redPriceElements) {
+        const blindSpan = element.querySelector('span.blind');
+        if (blindSpan && blindSpan.textContent?.includes('상품 가격')) {
+          const priceSpan = element.querySelector('span.e1DMQNBPJ_');
+          const wonSpan = element.querySelector('span.won');
+          
+          if (priceSpan && wonSpan) {
+            const priceNumber = priceSpan.textContent?.trim();
+            if (priceNumber && /^\d{1,3}(?:,\d{3})*$/.test(priceNumber)) {
+              foundPrice = priceNumber + '원';
+              console.log(`✅ 빨간색 가격 클래스에서 발견: ${foundPrice}`);
+              break;
+            }
+          }
+        }
+      }
+    }
+    
     // 2. 대안: 기존 선택자들
     if (!foundPrice) {
       const selectors = [
@@ -413,8 +434,14 @@ async function extractProductPrice(storeId, productId) {
       return (result.success !== false) ? priceData : null;
     }
     
+    const message = `❌ ${storeId}/${productId}: 가격 추출 실패 - 모든 선택자에서 가격 정보를 찾을 수 없음`;
+    console.log(message);
+    sendLogToServer(message);
     return null;
   } catch (error) {
+    const message = `❌ ${storeId}/${productId}: 가격 추출 오류 - ${error.message}`;
+    console.log(message);
+    sendLogToServer(message);
     return null;
   }
 }

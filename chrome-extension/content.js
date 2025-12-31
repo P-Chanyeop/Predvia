@@ -205,20 +205,26 @@ async function testServerConnection() {
 async function scrollAndCollectLinks() {
   console.log('📜 페이지 끝까지 스크롤 - 스마트스토어 링크 수집');
   
-  let retryCount = 0;
+  // localStorage에서 재시도 횟수 확인
+  let retryCount = parseInt(localStorage.getItem('smartstore_retry_count') || '0');
   const maxRetries = 3;
   
-  while (retryCount < maxRetries) {
-    console.log(`🔄 시도 ${retryCount + 1}/${maxRetries}`);
-    
-    // 캐시 무력화를 위한 페이지 새로고침 (첫 시도 제외)
-    if (retryCount > 0) {
-      console.log('🔄 페이지 새로고침 중...');
-      const currentUrl = window.location.href;
-      const separator = currentUrl.includes('?') ? '&' : '?';
-      window.location.href = `${currentUrl}${separator}t=${Date.now()}`;
-      await new Promise(resolve => setTimeout(resolve, 3000)); // 페이지 로딩 대기
-    }
+  console.log(`🔄 현재 재시도 횟수: ${retryCount}/${maxRetries}`);
+  
+  // 최대 재시도 초과 시 바로 종료
+  if (retryCount >= maxRetries) {
+    console.log('❌ 최대 재시도 횟수 초과 - 수집된 링크로 진행');
+    localStorage.removeItem('smartstore_retry_count');
+    const smartStoreLinks = extractSmartStoreLinks();
+    await sendSmartStoreLinksToServer(smartStoreLinks);
+    return;
+  }
+  
+  // 첫 시도가 아니면 잠시 대기 (새로고침 후)
+  if (retryCount > 0) {
+    console.log('🔄 새로고침 후 대기 중...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+  }
     
     let previousHeight = 0;
     let currentHeight = document.body.scrollHeight;
@@ -266,18 +272,27 @@ async function scrollAndCollectLinks() {
     // 10개 이상 수집되면 성공
     if (smartStoreLinks.length >= 10) {
       console.log(`🎉 충분한 링크 수집 성공: ${smartStoreLinks.length}개`);
+      localStorage.removeItem('smartstore_retry_count'); // 성공 시 카운터 리셋
       await sendSmartStoreLinksToServer(smartStoreLinks);
-      break;
     } else {
       console.log(`⚠️ 링크 부족 (${smartStoreLinks.length}개) - 재시도 필요`);
+      
+      // 재시도 횟수 증가 및 저장
       retryCount++;
+      localStorage.setItem('smartstore_retry_count', retryCount.toString());
       
       if (retryCount >= maxRetries) {
         console.log(`❌ 최대 재시도 횟수 초과 - ${smartStoreLinks.length}개로 진행`);
+        localStorage.removeItem('smartstore_retry_count');
         await sendSmartStoreLinksToServer(smartStoreLinks);
+      } else {
+        // 새로고침으로 재시도
+        console.log('🔄 페이지 새로고침으로 재시도...');
+        const currentUrl = window.location.href;
+        const separator = currentUrl.includes('?') ? '&' : '?';
+        window.location.href = `${currentUrl}${separator}t=${Date.now()}`;
       }
     }
-  }
   
   // ⭐ 크롤링 완료 후 플래그 리셋
   try {

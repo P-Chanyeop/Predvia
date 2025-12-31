@@ -10,9 +10,177 @@ let globalProcessingState = {
   openWindows: new Map()  // 열린 앱 창들 추적
 };
 
+// ⭐ 타오바오 쿠키 자동 전송 함수
+async function sendTaobaoCookies() {
+  try {
+    console.log('🍪 타오바오 쿠키 수집 시작...');
+    
+    // Chrome API 사용 가능 여부 확인
+    if (!chrome || !chrome.cookies) {
+      console.log('❌ Chrome cookies API를 사용할 수 없습니다');
+      return false;
+    }
+    
+    const cookies = await chrome.cookies.getAll({
+      domain: '.taobao.com'
+    });
+    
+    if (cookies.length === 0) {
+      console.log('❌ 타오바오 쿠키가 없습니다');
+      return false;
+    }
+    
+    const cookieDict = {};
+    let hasToken = false;
+    
+    cookies.forEach(cookie => {
+      cookieDict[cookie.name] = cookie.value;
+      if (cookie.name === '_m_h5_tk' && cookie.value) {
+        hasToken = true;
+        console.log(`🔑 _m_h5_tk 토큰 발견: ${cookie.value.substring(0, 20)}...`);
+      }
+    });
+    
+    console.log(`📊 수집된 쿠키 개수: ${cookies.length}`);
+    console.log(`🔑 토큰 상태: ${hasToken ? '있음' : '없음'}`);
+    
+    // 서버로 쿠키 전송
+    const response = await fetch('http://localhost:8080/api/taobao/cookies', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      mode: 'cors',
+      body: JSON.stringify({
+        cookies: cookieDict,
+        timestamp: Date.now()
+      })
+    });
+    
+    if (response.ok) {
+      console.log('✅ 타오바오 쿠키 전송 완료');
+      return true;
+    } else {
+      console.log('❌ 쿠키 전송 실패:', response.status);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ 쿠키 전송 오류:', error);
+    return false;
+  }
+}
+
+// ⭐ 서버 연결 확인 함수
+async function checkServerConnection() {
+  try {
+    const response = await fetch('http://localhost:8080/api/test', {
+      method: 'GET',
+      mode: 'cors'
+    });
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
+// ⭐ 서버 대기 후 쿠키 전송
+async function waitForServerAndSendCookies() {
+  console.log('🔍 서버 연결 대기 중...');
+  
+  for (let i = 0; i < 12; i++) { // 최대 60초 대기 (5초 × 12회)
+    const isConnected = await checkServerConnection();
+    if (isConnected) {
+      console.log('✅ 서버 연결 확인 - 쿠키 전송 시작');
+      await sendTaobaoCookies();
+      return;
+    }
+    console.log(`⏳ 서버 대기 중... (${i + 1}/12)`);
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+  
+  console.log('❌ 서버 연결 타임아웃 - 쿠키 전송 생략');
+}
+
+// ⭐ 확장프로그램 시작 시 쿠키 전송
+chrome.runtime.onStartup.addListener(() => {
+  waitForServerAndSendCookies();
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  waitForServerAndSendCookies();
+});
+
 // ⭐ 순차 처리 요청 핸들러
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('🔥 Background 메시지 수신:', request.action, request.storeId);
+    console.log('Background received message:', request);
+    
+    // ⭐ 타오바오 쿠키 수집 요청 처리
+    if (request.action === 'collectTaobaoCookies') {
+        console.log('🍪 Content Script에서 쿠키 수집 요청 받음');
+        
+        // Background Script에서 직접 쿠키 수집
+        chrome.cookies.getAll({domain: '.taobao.com'}, async function(cookies) {
+            if (chrome.runtime.lastError) {
+                console.error('❌ 쿠키 수집 오류:', chrome.runtime.lastError);
+                sendResponse({success: false, error: chrome.runtime.lastError.message});
+                return;
+            }
+            
+            console.log(`📊 수집된 쿠키 개수: ${cookies.length}`);
+            
+            if (cookies.length === 0) {
+                console.log('❌ 타오바오 쿠키가 없습니다');
+                sendResponse({success: false, error: '쿠키 없음'});
+                return;
+            }
+            
+            // 쿠키를 딕셔너리 형태로 변환
+            const cookieDict = {};
+            let hasToken = false;
+            
+            cookies.forEach(cookie => {
+                cookieDict[cookie.name] = cookie.value;
+                if (cookie.name === '_m_h5_tk' && cookie.value) {
+                    hasToken = true;
+                    console.log(`🔑 _m_h5_tk 토큰 발견: ${cookie.value.substring(0, 20)}...`);
+                }
+            });
+            
+            console.log(`🔑 토큰 상태: ${hasToken ? '있음' : '없음'}`);
+            
+            try {
+                // 서버로 쿠키 전송
+                const response = await fetch('http://localhost:8080/api/taobao/cookies', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        cookies: cookieDict,
+                        hasToken: hasToken,
+                        cookieCount: cookies.length,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('✅ 타오바오 쿠키 전송 완료');
+                    sendResponse({success: true, cookieCount: cookies.length, hasToken});
+                } else {
+                    console.log('❌ 쿠키 전송 실패:', response.status);
+                    sendResponse({success: false, error: `HTTP ${response.status}`});
+                }
+            } catch (error) {
+                console.error('❌ 서버 전송 오류:', error);
+                sendResponse({success: false, error: error.message});
+            }
+        });
+        
+        return true; // 비동기 응답
+    }
+    
+    console.log('🔥 Background 메시지 수신:', request.action, request.storeId);
   
   switch (request.action) {
     case 'openNewTab':
@@ -83,6 +251,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }
       sendResponse({ success: true });
+      return true;
+      
+    case 'sendTaobaoCookies':
+      // ⭐ 타오바오 쿠키 전송 요청
+      sendTaobaoCookies().then(success => {
+        sendResponse({ success });
+      });
       return true;
       
     case 'requestProcessing':

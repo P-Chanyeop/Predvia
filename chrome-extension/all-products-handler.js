@@ -775,13 +775,14 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
       const product = productUrls[i];
       
       try {
-        // ⭐ 서버에서 중단 신호 확인 (새로운 접속만 차단, 데이터 처리는 계속)
+        // ⭐ 서버에서 중단 신호 확인 (즉시 중단)
         const shouldStop = await checkShouldStop();
         if (shouldStop) {
           const stopMsg = `🛑 ${storeId}: 목표 달성으로 상품 접속 중단 (${i + 1}/${productUrls.length}번째에서 중단)`;
           await sendLogToServer(stopMsg);
           
-          // ⭐ 새로운 접속만 중단, 이미 열린 탭의 데이터 처리는 계속
+          // ⭐ 즉시 루프 중단
+          break;
         }
         
         const visitMsg = `🔗 ${storeId}: [${i + 1}/${productUrls.length}] ${product.url} 접속`;
@@ -1302,7 +1303,14 @@ async function checkShouldStop() {
     
     if (response.ok) {
       const data = await response.json();
-      return data.shouldStop || false;
+      const shouldStop = data.shouldStop || false;
+      
+      // ⭐ 중단 신호 받았을 때 명확한 로그
+      if (shouldStop) {
+        console.log(`🛑 서버에서 중단 신호 수신! productCount: ${data.productCount}, shouldStop: ${shouldStop}`);
+      }
+      
+      return shouldStop;
     }
   } catch (error) {
     console.log('중단 체크 오류:', error);

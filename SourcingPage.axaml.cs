@@ -120,6 +120,13 @@ namespace Gumaedaehang
             {
                 InitializeComponent();
                 
+                // 타오바오 테스트 버튼 이벤트 연결
+                var taobaoTestButton = this.FindControl<Button>("TaobaoTestButton");
+                if (taobaoTestButton != null)
+                {
+                    taobaoTestButton.Click += TaobaoTestButton_Click;
+                }
+                
                 // 🧹 프로그램 시작 시 자동 초기화 (조용히)
                 ClearPreviousCrawlingDataSilent();
                 
@@ -1636,14 +1643,59 @@ namespace Gumaedaehang
                 try
                 {
                     LogWindow.AddLogStatic($"🔍 타오바오 페어링 시작: 카드 ID {productId}");
-                    LogWindow.AddLogStatic($"📦 실제 상품 정보: StoreId={product.StoreId}, ProductId={product.RealProductId}");
-                    LogWindow.AddLogStatic($"⚠️ 타오바오 이미지 검색을 위해 Chrome이 열립니다 (네이버 크롤링 아님)");
                     
                     // 버튼 비활성화
                     if (product.TaobaoPairingButton != null)
                     {
                         product.TaobaoPairingButton.IsEnabled = false;
-                        product.TaobaoPairingButton.Content = "업로드 중...";
+                        product.TaobaoPairingButton.Content = "쿠키 수집 중...";
+                    }
+                    
+                    LogWindow.AddLogStatic($"⚠️ 타오바오 이미지 검색을 위해 Chrome이 열립니다 (네이버 크롤링 아님)");
+
+                    // 1단계: 쿠키 수집 (테스트 버튼과 동일한 방식)
+                    LogWindow.AddLogStatic("🍪 타오바오 페이지 열어서 쿠키 수집 중...");
+                    
+                    try
+                    {
+                        // Chrome으로 타오바오 페이지 열기 (확장프로그램이 자동으로 쿠키 수집)
+                        var chromeProcessInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "chrome",
+                            Arguments = "--new-tab https://www.taobao.com",
+                            UseShellExecute = true
+                        };
+                        
+                        System.Diagnostics.Process.Start(chromeProcessInfo);
+                        LogWindow.AddLogStatic("✅ 타오바오 페이지 열림 - 확장프로그램이 쿠키 수집 중...");
+                        
+                        // 쿠키 수집 대기
+                        await Task.Delay(5000);
+                        
+                        // 서버에서 쿠키 상태 확인
+                        using var client = new HttpClient();
+                        client.Timeout = TimeSpan.FromSeconds(5);
+                        
+                        var cookieResponse = await client.GetAsync("http://localhost:8080/api/taobao/cookies");
+                        if (cookieResponse.IsSuccessStatusCode)
+                        {
+                            var cookieResponseText = await cookieResponse.Content.ReadAsStringAsync();
+                            LogWindow.AddLogStatic($"✅ 쿠키 상태: {cookieResponseText}");
+                        }
+                        else
+                        {
+                            LogWindow.AddLogStatic("⚠️ 쿠키 상태 확인 실패");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 쿠키 수집 오류: {ex.Message}");
+                    }
+
+                    // 버튼 상태 업데이트
+                    if (product.TaobaoPairingButton != null)
+                    {
+                        product.TaobaoPairingButton.Content = "이미지 업로드 중...";
                     }
 
                     // 상품 이미지 경로 찾기
@@ -1667,7 +1719,7 @@ namespace Gumaedaehang
                     
                     LogWindow.AddLogStatic($"📷 상품 {productId} 이미지 경로: {imagePath}");
                     
-                    // 서버로 이미지 업로드 요청
+                    // 서버로 이미지 업로드 요청 (어제 추가한 방식 사용)
                     using var httpClient = new HttpClient();
                     var requestData = new
                     {
@@ -3395,10 +3447,11 @@ namespace Gumaedaehang
                         });
                     }
                     
-                    // 가격 + 판매량 표시
+                    // 가격 + 판매량 + 리뷰 표시
                     if (infoText != null)
                     {
-                        infoText.Text = $"¥{product.Price} | {product.Sales}";
+                        var reviewText = !string.IsNullOrEmpty(product.Reviews) ? $" | {product.Reviews}" : "";
+                        infoText.Text = $"¥{product.Price} | {product.Sales}{reviewText}";
                     }
                     
                     // URL 저장
@@ -3413,6 +3466,162 @@ namespace Gumaedaehang
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 타오바오 상품 박스 업데이트 오류: {ex.Message}");
+            }
+        }
+        
+    private bool _isTaobaoSearchRunning = false; // 중복 실행 방지 플래그
+    
+    // 타오바오 테스트 버튼 클릭 이벤트
+        private async void TaobaoTestButton_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 중복 실행 방지
+                if (_isTaobaoSearchRunning)
+                {
+                    LogWindow.AddLogStatic("⏳ 타오바오 이미지 검색이 이미 진행 중입니다...");
+                    return;
+                }
+                
+                _isTaobaoSearchRunning = true;
+                
+                LogWindow.AddLogStatic("🧪 타오바오 이미지 검색 테스트 시작");
+                
+                // 버튼 비활성화
+                var button = sender as Button;
+                if (button != null)
+                {
+                    button.IsEnabled = false;
+                    button.Content = "쿠키 수집 중...";
+                }
+                
+                // 1단계: 타오바오 페이지를 열어서 쿠키 수집 트리거 (기존 탭 확인)
+                LogWindow.AddLogStatic("🍪 타오바오 페이지 열어서 쿠키 수집 중...");
+                
+                // 기존 Chrome 프로세스에서 타오바오 탭이 있는지 확인
+                var existingChromeProcesses = System.Diagnostics.Process.GetProcessesByName("chrome");
+                bool shouldOpenNewTab = existingChromeProcesses.Length == 0;
+                
+                try
+                {
+                    // Chrome으로 타오바오 페이지 열기 (확장프로그램이 자동으로 쿠키 수집)
+                    var chromeProcessInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "chrome",
+                        Arguments = "--new-tab https://www.taobao.com",
+                        UseShellExecute = true
+                    };
+                    
+                    System.Diagnostics.Process.Start(chromeProcessInfo);
+                    LogWindow.AddLogStatic("✅ 타오바오 페이지 열림 - 확장프로그램이 쿠키 수집 중...");
+                    
+                    // 쿠키 수집 대기
+                    await Task.Delay(5000);
+                    
+                    // 서버에서 쿠키 상태 확인
+                    using var client = new HttpClient();
+                    client.Timeout = TimeSpan.FromSeconds(5);
+                    
+                    var response = await client.GetAsync("http://localhost:8080/api/taobao/cookies");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseText = await response.Content.ReadAsStringAsync();
+                        LogWindow.AddLogStatic($"✅ 쿠키 상태: {responseText}");
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic("⚠️ 쿠키 상태 확인 실패");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogWindow.AddLogStatic($"⚠️ 쿠키 수집 오류: {ex.Message}");
+                }
+                
+                // 버튼 상태 업데이트
+                if (button != null)
+                {
+                    button.Content = "파이썬 실행 중...";
+                }
+                
+                // 2단계: 파이썬 run.py 실행
+                LogWindow.AddLogStatic("🐍 파이썬 run.py 실행 중...");
+                
+                var pythonPath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "image_search_products-master");
+                var imagePath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "images", "10.png");
+                
+                if (!File.Exists(imagePath))
+                {
+                    LogWindow.AddLogStatic($"❌ 테스트 이미지를 찾을 수 없습니다: {imagePath}");
+                    return;
+                }
+                
+                // 파이썬 프로세스 실행
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "python",
+                    Arguments = "run.py",
+                    WorkingDirectory = pythonPath,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                // UTF-8 인코딩 설정
+                processInfo.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
+                processInfo.StandardOutputEncoding = System.Text.Encoding.UTF8;
+                processInfo.StandardErrorEncoding = System.Text.Encoding.UTF8;
+                
+                // 타오바오 토큰을 환경변수로 전달
+                var taobaoToken = Services.ThumbnailWebServer.GetTaobaoToken();
+                if (!string.IsNullOrEmpty(taobaoToken))
+                {
+                    processInfo.EnvironmentVariables["TAOBAO_TOKEN"] = taobaoToken;
+                    LogWindow.AddLogStatic($"🔑 타오바오 토큰을 Python에 전달: {taobaoToken.Substring(0, Math.Min(10, taobaoToken.Length))}...");
+                }
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process != null)
+                {
+                    // 출력 읽기
+                    var output = await process.StandardOutput.ReadToEndAsync();
+                    var error = await process.StandardError.ReadToEndAsync();
+                    
+                    await process.WaitForExitAsync();
+                    
+                    if (process.ExitCode == 0)
+                    {
+                        LogWindow.AddLogStatic("✅ 파이썬 실행 성공");
+                        LogWindow.AddLogStatic($"출력: {output}");
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic($"❌ 파이썬 실행 실패 (코드: {process.ExitCode})");
+                        LogWindow.AddLogStatic($"오류: {error}");
+                    }
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("❌ 파이썬 프로세스 시작 실패");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 타오바오 테스트 오류: {ex.Message}");
+            }
+            finally
+            {
+                // 플래그 해제
+                _isTaobaoSearchRunning = false;
+                
+                // 버튼 상태 복원
+                var button = sender as Button;
+                if (button != null)
+                {
+                    button.IsEnabled = true;
+                    button.Content = "타오바오 페어링 테스트";
+                }
             }
         }
         
@@ -3465,6 +3674,7 @@ namespace Gumaedaehang
         public bool IsTaobaoPaired { get; set; } = false;
     }
 }
+
 // 확장 메서드 클래스
 public static class ControlExtensions
 {
@@ -3520,6 +3730,9 @@ public class TaobaoProductData
     
     [JsonPropertyName("sales")]
     public string Sales { get; set; } = string.Empty;
+    
+    [JsonPropertyName("reviews")]
+    public string Reviews { get; set; } = string.Empty;
     
     [JsonPropertyName("productUrl")]
     public string ProductUrl { get; set; } = string.Empty;
