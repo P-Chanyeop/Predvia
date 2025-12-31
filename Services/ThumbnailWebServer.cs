@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Management;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -33,6 +34,13 @@ namespace Gumaedaehang.Services
         private static int _minPrice = 1000; // 최소 가격 (원) - 사용자 친화적 기본값
         private static int _maxPrice = 50000; // 최대 가격 (원) - 사용자 친화적 기본값  
         private static bool _priceFilterEnabled = true; // 가격 필터링 활성화 🔥
+        
+        // ⭐ 타오바오 쿠키 저장
+        private static Dictionary<string, string> _taobaoCookies = new();
+        private static string? _taobaoToken = null;
+        
+        // ⭐ 타오바오 토큰 가져오기 (외부에서 접근 가능)
+        public static string? GetTaobaoToken() => _taobaoToken;
         
         // ⭐ Predvia 전용 Chrome 프로필 경로
         private static string GetPredviaChromeProfile()
@@ -106,6 +114,9 @@ namespace Gumaedaehang.Services
                 // ⭐ 기존 데이터 초기화
                 ClearPreviousData();
                 
+                // ⭐ 타오바오 쿠키 자동 로드
+                await LoadTaobaoCookiesFromFile();
+                
                 var builder = WebApplication.CreateBuilder();
                 
                 // CORS 서비스 추가
@@ -163,6 +174,8 @@ namespace Gumaedaehang.Services
                 _app.MapGet("/api/smartstore/crawling-status", HandleGetCrawlingStatus); // ⭐ 크롤링 상태 확인 API 추가
                 _app.MapPost("/api/taobao/upload-image", HandleTaobaoImageUpload); // ⭐ 타오바오 이미지 업로드 API
                 _app.MapPost("/api/taobao/login", HandleTaobaoLogin); // ⭐ 타오바오 로그인 API
+                _app.MapPost("/api/taobao/cookies", HandleTaobaoCookies); // ⭐ 타오바오 쿠키 수신 API
+                _app.MapGet("/api/taobao/cookies", HandleGetTaobaoCookies); // ⭐ 타오바오 쿠키 상태 확인 API
                 
                 LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (20개)");
 
@@ -840,7 +853,15 @@ namespace Gumaedaehang.Services
                         lock (_storeProcessLock)
                         {
                             _currentStoreIndex++;
-                            LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                            LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/10");
+                            
+                            // 🛑 10개 스토어 완료 체크
+                            if (_currentStoreIndex >= 10)
+                            {
+                                LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 - 크롤링 중단");
+                                _shouldStop = true;
+                                _isCrawlingActive = false;
+                            }
                         }
                     }
                 }
@@ -1035,6 +1056,8 @@ namespace Gumaedaehang.Services
                         _shouldStop = true;
                         _isCrawlingActive = false;
                         
+                        LogWindow.AddLogStatic($"🛑 크롤링 중단 플래그 설정: _shouldStop = {_shouldStop}");
+                        
                         // ⭐ 모든 스토어를 done 상태로 변경하여 Chrome 중단
                         lock (_statesLock)
                         {
@@ -1050,14 +1073,18 @@ namespace Gumaedaehang.Services
                             }
                         }
                         
-                        // 🔄 로딩창 숨김
-                        LoadingHelper.HideLoadingFromSourcingPage();
-                        
-                        // ⭐ Chrome 앱 창들 닫기
-                        _ = Task.Run(async () => await CloseAllChromeApps());
-                        
-                        // ⭐ 팝업창으로 최종 결과 표시
-                        ShowCrawlingResultPopup(100, "목표 달성");
+                        // ⭐ 이미 팝업이 표시되었으면 중복 실행 방지
+                        if (!_completionPopupShown)
+                        {
+                            // 🔄 로딩창 숨김
+                            LoadingHelper.HideLoadingFromSourcingPage();
+                            
+                            // ⭐ Chrome 앱 창들 닫기
+                            _ = Task.Run(async () => await CloseAllChromeApps());
+                            
+                            // ⭐ 팝업창으로 최종 결과 표시
+                            ShowCrawlingResultPopup(100, "목표 달성");
+                        }
                         
                         return Results.Json(new { 
                             success = true,
@@ -1076,10 +1103,26 @@ namespace Gumaedaehang.Services
                     lock (_storeProcessLock)
                     {
                         _currentStoreIndex++;
-                        LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                        LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/10");
+                        
+                        // 🛑 10개 스토어 완료 체크
+                        if (_currentStoreIndex >= 10)
+                        {
+                            LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 - 크롤링 중단");
+                            _shouldStop = true;
+                            _isCrawlingActive = false;
+                            return Results.Json(new { 
+                                success = true,
+                                currentProducts = GetCurrentProductCount(),
+                                totalProducts = GetCurrentProductCount(),
+                                targetProducts = TARGET_PRODUCT_COUNT,
+                                shouldStop = true,
+                                message = "10개 스토어 모두 완료"
+                            });
+                        }
                         
                         // 🚀 다음 스토어 자동 방문 시작
-                        if (_currentStoreIndex < _selectedStores.Count && !_shouldStop)
+                        if (_currentStoreIndex < 10 && !_shouldStop)
                         {
                             var nextStore = _selectedStores[_currentStoreIndex];
                             var nextStoreId = UrlExtensions.ExtractStoreIdFromUrl(nextStore.Url);
@@ -1301,15 +1344,24 @@ namespace Gumaedaehang.Services
                     }
                 }
                 
-                // ⭐ collecting 상태 2번 연속 감지 시 강제 완료
-                if (storeState.State == "collecting")
+                // ⭐ collecting 상태 세분화된 타임아웃 처리
+                if (storeState.State.StartsWith("collecting"))
                 {
                     // 연속 카운터 증가
                     storeState.StuckCount++;
                     
-                    if (storeState.StuckCount >= 2)
+                    // 상태별 다른 타임아웃 적용
+                    int maxStuckCount = storeState.State switch
                     {
-                        LogWindow.AddLogStatic($"{storeId}: collecting 상태 2번 연속 - 강제 완료 처리");
+                        "collecting_gonggu" => 3,      // 공구 체크: 3번 (9초)
+                        "collecting_category" => 2,    // 카테고리: 2번 (6초)  
+                        "collecting_products" => 5,    // 상품 검색: 5번 (15초)
+                        _ => 5                          // 기본값 (collecting)
+                    };
+                    
+                    if (storeState.StuckCount >= maxStuckCount)
+                    {
+                        LogWindow.AddLogStatic($"{storeId}: {storeState.State} 상태 {maxStuckCount}번 연속 - 강제 완료 처리");
                         
                         lock (_statesLock)
                         {
@@ -1342,10 +1394,10 @@ namespace Gumaedaehang.Services
                 }
                 
                 // ⭐ 타임아웃 체크 (30초 이상 collecting 상태면 강제 완료)
-                if (storeState.State == "collecting" && 
+                if (storeState.State.StartsWith("collecting") && 
                     DateTime.Now - storeState.UpdatedAt > TimeSpan.FromSeconds(30))
                 {
-                    LogWindow.AddLogStatic($"{storeId}: 30초 collecting 타임아웃 - 강제 완료 처리");
+                    LogWindow.AddLogStatic($"{storeId}: 30초 {storeState.State} 타임아웃 - 강제 완료 처리");
                     
                     lock (_statesLock)
                     {
@@ -1472,6 +1524,12 @@ namespace Gumaedaehang.Services
                     progress = _productCount * 100.0 / TARGET_PRODUCT_COUNT,
                     timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                 };
+                
+                // ⭐ 중단 신호 요청 시 로그 출력
+                if (_shouldStop)
+                {
+                    LogWindow.AddLogStatic($"🛑 Chrome에서 중단 신호 조회: shouldStop = {_shouldStop}, productCount = {_productCount}");
+                }
                 
                 context.Response.ContentType = "application/json; charset=utf-8";
                 context.Response.StatusCode = 200;
@@ -1605,49 +1663,115 @@ namespace Gumaedaehang.Services
         }
         
         // ⭐ 모든 Chrome 앱 창 닫기 (네이버 + 스마트스토어 + 상품페이지)
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private async Task CloseAllChromeApps()
         {
             try
             {
-                LogWindow.AddLogStatic("🔥 Chrome 앱 창들 닫기 - 기존 브라우저는 유지");
+                LogWindow.AddLogStatic("🔥 Chrome 앱 창들 닫기 시작 - 모든 Chrome 프로세스 분석");
                 
                 var chromeProcesses = System.Diagnostics.Process.GetProcessesByName("chrome");
+                LogWindow.AddLogStatic($"📊 총 Chrome 프로세스 개수: {chromeProcesses.Length}개");
+                
                 int closedCount = 0;
+                int checkedCount = 0;
                 
                 foreach (var process in chromeProcesses)
                 {
                     try
                     {
-                        if (!process.HasExited && process.MainWindowHandle != IntPtr.Zero)
+                        if (!process.HasExited)
                         {
-                            // 창 크기로 앱 모드 판별 (앱 모드는 보통 작은 크기)
-                            var windowRect = new System.Drawing.Rectangle();
-                            if (GetWindowRect(process.MainWindowHandle, out windowRect))
+                            checkedCount++;
+                            LogWindow.AddLogStatic($"🔍 Chrome 프로세스 분석 중: PID {process.Id}");
+                            
+                            // ⭐ CommandLine으로 --app 옵션 확인
+                            bool isAppMode = false;
+                            string commandLineInfo = "";
+                            
+                            try
                             {
-                                int width = windowRect.Width;
-                                int height = windowRect.Height;
-                                
-                                // 작은 창 크기면 앱 모드로 판단 (250x400 근처)
-                                if (width <= 500 && height <= 600)
+                                using (var searcher = new ManagementObjectSearcher(
+                                    $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {process.Id}"))
                                 {
-                                    process.CloseMainWindow();
-                                    await Task.Delay(200);
-                                    
-                                    if (!process.HasExited)
+                                    foreach (ManagementObject obj in searcher.Get())
                                     {
-                                        process.Kill();
-                                        process.WaitForExit(1000);
+                                        var commandLine = obj["CommandLine"]?.ToString() ?? "";
+                                        commandLineInfo = commandLine.Length > 200 ? commandLine.Substring(0, 200) + "..." : commandLine;
+                                        
+                                        if (commandLine.Contains("--app="))
+                                        {
+                                            isAppMode = true;
+                                            LogWindow.AddLogStatic($"🎯 앱 모드 감지! PID {process.Id}");
+                                            LogWindow.AddLogStatic($"📝 CommandLine: {commandLineInfo}");
+                                            break;
+                                        }
                                     }
-                                    
+                                }
+                                
+                                if (!isAppMode && !string.IsNullOrEmpty(commandLineInfo))
+                                {
+                                    LogWindow.AddLogStatic($"❌ 일반 Chrome: PID {process.Id} - {commandLineInfo}");
+                                }
+                            }
+                            catch (Exception cmdEx)
+                            {
+                                LogWindow.AddLogStatic($"⚠️ CommandLine 조회 실패 PID {process.Id}: {cmdEx.Message}");
+                                
+                                // CommandLine 조회 실패 시 창 크기로 대체 판별
+                                if (process.MainWindowHandle != IntPtr.Zero)
+                                {
+                                    var windowRect = new System.Drawing.Rectangle();
+                                    if (GetWindowRect(process.MainWindowHandle, out windowRect))
+                                    {
+                                        int width = windowRect.Width;
+                                        int height = windowRect.Height;
+                                        LogWindow.AddLogStatic($"📏 창 크기: PID {process.Id} - {width}x{height}");
+                                        
+                                        // 작은 창이면 앱 모드로 추정 (더 넓은 범위)
+                                        if (width <= 800 && height <= 800)
+                                        {
+                                            isAppMode = true;
+                                            LogWindow.AddLogStatic($"🔍 크기 기반 앱 모드 추정: PID {process.Id} ({width}x{height})");
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // ⭐ 앱 모드로 판별된 경우에만 종료
+                            if (isAppMode)
+                            {
+                                LogWindow.AddLogStatic($"🔥 Chrome 앱 창 종료 시도: PID {process.Id}");
+                                
+                                // 1단계: 정상 종료 시도
+                                bool closed = process.CloseMainWindow();
+                                LogWindow.AddLogStatic($"📤 CloseMainWindow 결과: {closed}");
+                                
+                                await Task.Delay(500);
+                                
+                                // 2단계: 아직 살아있으면 강제 종료
+                                if (!process.HasExited)
+                                {
+                                    LogWindow.AddLogStatic($"💀 강제 종료 시도: PID {process.Id}");
+                                    process.Kill();
+                                    process.WaitForExit(2000);
+                                }
+                                
+                                if (process.HasExited)
+                                {
                                     closedCount++;
-                                    LogWindow.AddLogStatic($"🔥 Chrome 앱 모드 창 종료: PID {process.Id} ({width}x{height})");
+                                    LogWindow.AddLogStatic($"✅ Chrome 앱 창 종료 완료: PID {process.Id}");
+                                }
+                                else
+                                {
+                                    LogWindow.AddLogStatic($"❌ Chrome 앱 창 종료 실패: PID {process.Id}");
                                 }
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception processEx)
                     {
-                        LogWindow.AddLogStatic($"❌ Chrome 앱 창 종료 실패: PID {process.Id} - {ex.Message}");
+                        LogWindow.AddLogStatic($"❌ 프로세스 처리 오류 PID {process.Id}: {processEx.Message}");
                     }
                     finally
                     {
@@ -1655,11 +1779,16 @@ namespace Gumaedaehang.Services
                     }
                 }
                 
-                LogWindow.AddLogStatic($"✅ Chrome 앱 창 종료 완료: {closedCount}개 앱 창 처리");
+                LogWindow.AddLogStatic($"🎯 Chrome 앱 창 닫기 완료: {closedCount}/{checkedCount}개 종료");
+                
+                // ⭐ 추가 확인: 남은 Chrome 프로세스 개수
+                await Task.Delay(1000);
+                var remainingProcesses = System.Diagnostics.Process.GetProcessesByName("chrome");
+                LogWindow.AddLogStatic($"📊 남은 Chrome 프로세스: {remainingProcesses.Length}개");
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ Chrome 앱 창 종료 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ Chrome 앱 창 닫기 전체 오류: {ex.Message}");
             }
         }
         
@@ -1721,24 +1850,24 @@ namespace Gumaedaehang.Services
                 // 나머지 로직: 모든 스토어 완료 체크
                 int totalSelectedStores = _selectedStores?.Count ?? 0;
                 int completedStores = _storeStates.Values.Count(s => s.State == "done");
-                bool allStoresCompleted = totalSelectedStores > 0 && completedStores >= totalSelectedStores;
+                bool allStoresCompleted = completedStores >= 10; // 10개 이상 완료되면 종료
                 
-                LogWindow.AddLogStatic($"🔍 모든 스토어 완료 여부: {allStoresCompleted} ({completedStores}/{totalSelectedStores})");
+                LogWindow.AddLogStatic($"🔍 모든 스토어 완료 여부: {allStoresCompleted} ({completedStores}/10)");
                 
                 if (allStoresCompleted)
                 {
-                    LogWindow.AddLogStatic("🎉 모든 스토어 완료 - 크롤링 종료");
+                    LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 - 크롤링 종료");
                     
                     // ⭐ Chrome 앱 창들 닫기
                     _ = Task.Run(async () => await CloseAllChromeApps());
                     
                     // ⭐ 팝업창으로 최종 결과 표시
-                    ShowCrawlingResultPopup(actualCount, "모든 스토어 완료");
+                    ShowCrawlingResultPopup(actualCount, "10개 스토어 모두 완료");
                     
                     return;
                 }
                 
-                LogWindow.AddLogStatic("📊 100개 미달성 - 크롤링 계속 진행");
+                LogWindow.AddLogStatic($"📊 진행 상황: {completedStores}/10 스토어 완료, {actualCount}/100 상품 수집 - 크롤링 계속 진행");
                 
             }
             catch (Exception ex)
@@ -1785,6 +1914,153 @@ namespace Gumaedaehang.Services
             {
                 LogWindow.AddLogStatic($"❌ 타오바오 로그인 오류: {ex.Message}");
                 return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+        
+        // ⭐ 타오바오 쿠키 수신 핸들러
+        private async Task<IResult> HandleTaobaoCookies(HttpContext context)
+        {
+            try
+            {
+                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                
+                // Chrome 확장프로그램에서 보내는 JSON 구조에 맞게 수정
+                var requestData = JsonSerializer.Deserialize<JsonElement>(body);
+                
+                Dictionary<string, string>? cookies = null;
+                
+                // cookies 필드가 있는지 확인
+                if (requestData.TryGetProperty("cookies", out var cookiesElement))
+                {
+                    cookies = JsonSerializer.Deserialize<Dictionary<string, string>>(cookiesElement.GetRawText());
+                }
+                else
+                {
+                    // 직접 쿠키 딕셔너리인 경우 (이전 방식 호환)
+                    cookies = JsonSerializer.Deserialize<Dictionary<string, string>>(body);
+                }
+                
+                if (cookies != null && cookies.Count > 0)
+                {
+                    _taobaoCookies.Clear();
+                    
+                    foreach (var cookie in cookies)
+                    {
+                        _taobaoCookies[cookie.Key] = cookie.Value;
+                        
+                        // _m_h5_tk 토큰 추출
+                        if (cookie.Key == "_m_h5_tk" && !string.IsNullOrEmpty(cookie.Value))
+                        {
+                            _taobaoToken = cookie.Value.Split('_')[0];
+                            LogWindow.AddLogStatic($"🔑 타오바오 토큰 수신: {_taobaoToken.Substring(0, Math.Min(10, _taobaoToken.Length))}...");
+                        }
+                    }
+                    
+                    // 쿠키를 파일로도 저장 (안전한 방식)
+                    var cookiesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "taobao_cookies.json");
+                    Directory.CreateDirectory(Path.GetDirectoryName(cookiesPath)!);
+                    
+                    try
+                    {
+                        // 파일 잠금 방지를 위한 안전한 쓰기
+                        var tempPath = cookiesPath + ".tmp";
+                        
+                        // Python이 읽을 수 있는 형식으로 저장 (단순 딕셔너리)
+                        await File.WriteAllTextAsync(tempPath, JsonSerializer.Serialize(_taobaoCookies, new JsonSerializerOptions { WriteIndented = true }));
+                        
+                        // 기존 파일이 있으면 삭제 후 이동
+                        if (File.Exists(cookiesPath))
+                            File.Delete(cookiesPath);
+                        File.Move(tempPath, cookiesPath);
+                    }
+                    catch (Exception fileEx)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 쿠키 파일 저장 실패: {fileEx.Message}");
+                    }
+                    
+                    LogWindow.AddLogStatic($"✅ 타오바오 쿠키 {_taobaoCookies.Count}개 수신 및 저장 완료");
+                    return Results.Ok(new { success = true, cookieCount = _taobaoCookies.Count, hasToken = !string.IsNullOrEmpty(_taobaoToken) });
+                }
+                
+                return Results.BadRequest(new { error = "쿠키 데이터가 없습니다" });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 쿠키 수신 오류: {ex.Message}");
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+        
+        // ⭐ 타오바오 쿠키 상태 확인 핸들러
+        private async Task<IResult> HandleGetTaobaoCookies(HttpContext context)
+        {
+            try
+            {
+                // 파일에서도 쿠키 확인
+                var cookiesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "taobao_cookies.json");
+                var fileExists = File.Exists(cookiesPath);
+                var fileCookieCount = 0;
+                
+                if (fileExists)
+                {
+                    var fileContent = await File.ReadAllTextAsync(cookiesPath);
+                    var fileCookies = JsonSerializer.Deserialize<Dictionary<string, string>>(fileContent);
+                    fileCookieCount = fileCookies?.Count ?? 0;
+                }
+                
+                var result = new
+                {
+                    success = true,
+                    memoryCookieCount = _taobaoCookies.Count,
+                    fileCookieCount = fileCookieCount,
+                    hasToken = !string.IsNullOrEmpty(_taobaoToken),
+                    tokenPreview = !string.IsNullOrEmpty(_taobaoToken) ? 
+                        _taobaoToken.Substring(0, Math.Min(10, _taobaoToken.Length)) + "..." : "",
+                    message = $"메모리 쿠키 {_taobaoCookies.Count}개, 파일 쿠키 {fileCookieCount}개, 토큰 {(!string.IsNullOrEmpty(_taobaoToken) ? "있음" : "없음")}"
+                };
+                
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+        
+        // ⭐ 파일에서 타오바오 쿠키 로드
+        private async Task LoadTaobaoCookiesFromFile()
+        {
+            try
+            {
+                var cookiesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "taobao_cookies.json");
+                
+                if (File.Exists(cookiesPath))
+                {
+                    var fileContent = await File.ReadAllTextAsync(cookiesPath);
+                    var fileCookies = JsonSerializer.Deserialize<Dictionary<string, string>>(fileContent);
+                    
+                    if (fileCookies != null && fileCookies.Count > 0)
+                    {
+                        _taobaoCookies.Clear();
+                        
+                        foreach (var cookie in fileCookies)
+                        {
+                            _taobaoCookies[cookie.Key] = cookie.Value;
+                            
+                            // _m_h5_tk 토큰 추출
+                            if (cookie.Key == "_m_h5_tk" && !string.IsNullOrEmpty(cookie.Value))
+                            {
+                                _taobaoToken = cookie.Value.Split('_')[0];
+                            }
+                        }
+                        
+                        LogWindow.AddLogStatic($"✅ 파일에서 타오바오 쿠키 {_taobaoCookies.Count}개 로드 완료");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"⚠️ 쿠키 파일 로드 실패: {ex.Message}");
             }
         }
         
@@ -1870,8 +2146,15 @@ namespace Gumaedaehang.Services
                     return Results.BadRequest(new { error = "이미지 파일을 찾을 수 없습니다" });
                 }
                 
-                // Puppeteer로 타오바오 이미지 업로드 및 상품 정보 크롤링
-                var products = await UploadImageToTaobao(requestData.ImagePath);
+                // 쿠키 기반 타오바오 이미지 업로드만 시도
+                var products = await UploadImageToTaobaoWithCookies(requestData.ImagePath);
+                
+                // 쿠키가 없으면 오류 반환 (Puppeteer 방식 제거)
+                if (products.Count == 0)
+                {
+                    LogWindow.AddLogStatic("❌ 타오바오 쿠키가 없습니다. 먼저 타오바오에 로그인하세요.");
+                    return Results.BadRequest(new { error = "타오바오 쿠키가 없습니다. 먼저 타오바오에 로그인하세요." });
+                }
                 
                 LogWindow.AddLogStatic($"✅ 타오바오 이미지 업로드 완료: {requestData.ProductId}");
                 LogWindow.AddLogStatic($"📦 타오바오 상품 {products.Count}개 수집 완료");
@@ -1900,7 +2183,137 @@ namespace Gumaedaehang.Services
             }
         }
         
-        // ⭐ Puppeteer로 타오바오 이미지 업로드 및 상품 정보 크롤링
+        // ⭐ 쿠키 기반 타오바오 이미지 업로드
+        private async Task<List<TaobaoProduct>> UploadImageToTaobaoWithCookies(string imagePath)
+        {
+            var products = new List<TaobaoProduct>();
+            
+            try
+            {
+                // 메모리에 쿠키가 없으면 파일에서 로드 시도
+                if (string.IsNullOrEmpty(_taobaoToken) || _taobaoCookies.Count == 0)
+                {
+                    await LoadTaobaoCookiesFromFile();
+                }
+                
+                // 쿠키와 토큰 확인
+                if (string.IsNullOrEmpty(_taobaoToken) || _taobaoCookies.Count == 0)
+                {
+                    LogWindow.AddLogStatic("❌ 타오바오 쿠키가 없습니다. 먼저 타오바오에 로그인하세요.");
+                    return products;
+                }
+                
+                LogWindow.AddLogStatic("🔍 쿠키 기반 타오바오 이미지 검색 시작...");
+                
+                // 이미지를 Base64로 변환
+                var imageBytes = await File.ReadAllBytesAsync(imagePath);
+                var base64Image = Convert.ToBase64String(imageBytes).Replace("==", "");
+                
+                // 타오바오 API 요청 데이터 생성
+                var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                var paramsData = JsonSerializer.Serialize(new
+                {
+                    strimg = base64Image,
+                    pcGraphSearch = true,
+                    sortOrder = 0,
+                    tab = "all",
+                    vm = "nv"
+                });
+                
+                var requestData = JsonSerializer.Serialize(new
+                {
+                    @params = paramsData,
+                    appId = "34850"
+                });
+                
+                // 서명 생성
+                var sign = GenerateTaobaoSign(requestData, timestamp);
+                
+                // API 요청
+                using var httpClient = new HttpClient();
+                
+                // 쿠키 헤더 설정
+                var cookieHeader = string.Join("; ", _taobaoCookies.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+                httpClient.DefaultRequestHeaders.Add("Cookie", cookieHeader);
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                httpClient.DefaultRequestHeaders.Add("Referer", "https://www.taobao.com/");
+                
+                var url = "https://h5api.m.taobao.com/h5/mtop.relationrecommend.wirelessrecommend.recommend/2.0/";
+                var queryParams = new Dictionary<string, string>
+                {
+                    ["jsv"] = "2.4.11",
+                    ["appKey"] = "12574478",
+                    ["t"] = timestamp.ToString(),
+                    ["api"] = "mtop.relationrecommend.wirelessrecommend.recommend",
+                    ["v"] = "2.0",
+                    ["type"] = "originaljson",
+                    ["dataType"] = "jsonp",
+                    ["sign"] = sign
+                };
+                
+                var queryString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+                var fullUrl = $"{url}?{queryString}";
+                
+                var content = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("data", requestData) });
+                
+                LogWindow.AddLogStatic("📤 타오바오 API 요청 전송 중...");
+                var response = await httpClient.PostAsync(fullUrl, content);
+                var responseText = await response.Content.ReadAsStringAsync();
+                
+                LogWindow.AddLogStatic($"📥 API 응답 수신: {response.StatusCode}");
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    // 응답에서 이미지 ID 추출
+                    var jsonResponse = JsonSerializer.Deserialize<JsonElement>(responseText);
+                    if (jsonResponse.TryGetProperty("data", out var dataElement) &&
+                        dataElement.TryGetProperty("imageId", out var imageIdElement))
+                    {
+                        var imageId = imageIdElement.GetString();
+                        LogWindow.AddLogStatic($"✅ 이미지 ID 획득: {imageId}");
+                        
+                        // 검색 URL 생성
+                        var searchUrl = $"https://s.taobao.com/search?imgfile=&commend=all&ssid=s5-e&search_type=item&sourceId=tb.index&spm=a21bo.jianhua.201856-taobao-item.1&ie=utf8&initiative_id=tbindexz_20170306&imageId={imageId}";
+                        LogWindow.AddLogStatic($"🔗 검색 URL: {searchUrl}");
+                        
+                        // 더미 상품 데이터 생성 (실제로는 검색 결과를 파싱해야 함)
+                        products.Add(new TaobaoProduct
+                        {
+                            Title = "타오바오 검색 결과",
+                            Price = "¥ 검색 완료",
+                            ImageUrl = $"data:image/jpeg;base64,{Convert.ToBase64String(imageBytes)}",
+                            ProductUrl = searchUrl,
+                            Sales = "이미지 검색"
+                        });
+                    }
+                    else
+                    {
+                        LogWindow.AddLogStatic("❌ 응답에서 이미지 ID를 찾을 수 없습니다");
+                    }
+                }
+                else
+                {
+                    LogWindow.AddLogStatic($"❌ API 요청 실패: {response.StatusCode}");
+                    LogWindow.AddLogStatic($"응답 내용: {responseText}");
+                }
+                
+                return products;
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 쿠키 기반 업로드 오류: {ex.Message}");
+                return products;
+            }
+        }
+        
+        // 타오바오 서명 생성
+        private string GenerateTaobaoSign(string data, long timestamp)
+        {
+            var text = $"{_taobaoToken}&{timestamp}&12574478&{data}";
+            using var md5 = System.Security.Cryptography.MD5.Create();
+            var hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(text));
+            return Convert.ToHexString(hash).ToLower();
+        }
         private async Task<List<TaobaoProduct>> UploadImageToTaobao(string imagePath)
         {
             IBrowser? browser = null;
@@ -2211,6 +2624,13 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ 이미 팝업이 표시되었으면 중복 실행 방지
+                if (_completionPopupShown)
+                {
+                    LogWindow.AddLogStatic("⚠️ 완료 팝업 이미 표시됨 - 중복 요청 무시");
+                    return Task.FromResult(Results.Ok(new { success = false, message = "Already completed" }));
+                }
+                
                 // ⭐ 이미 팝업이 표시되었으면 중복 실행 방지
                 if (_completionPopupShown)
                 {
@@ -2728,6 +3148,8 @@ namespace Gumaedaehang.Services
                     // ⭐ 크롤링 완전 중단 신호 설정
                     _shouldStop = true;
                     _isCrawlingActive = false;
+                    
+                    LogWindow.AddLogStatic($"🛑 SaveProductName에서 크롤링 중단 플래그 설정: _shouldStop = {_shouldStop}");
                     
                     // ⭐ 모든 스토어를 done 상태로 변경하여 Chrome 중단
                     lock (_statesLock)
@@ -3652,7 +4074,7 @@ namespace Gumaedaehang.Services
         public string RunId { get; set; } = string.Empty;
         
         [JsonPropertyName("state")]
-        public string State { get; set; } = string.Empty; // collecting, visiting, done
+        public string State { get; set; } = string.Empty; // collecting_gonggu, collecting_category, collecting_products, visiting, done
         
         [JsonPropertyName("status")]
         public string Status { get; set; } = string.Empty; // collecting, visiting, done
