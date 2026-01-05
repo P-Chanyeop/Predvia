@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
+import io
+
+# ⭐ UTF-8 출력 강제 설정 (Windows cp949 오류 방지)
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 import sqlite3
 import os
 from lib import alibaba, yiwugo
@@ -50,16 +57,14 @@ def get_chrome_cookie():
         print("❌ _m_h5_tk 토큰이 없습니다")
     return token
 
-if __name__ == "__main__":
-    path = "다운로드.jpg"
-
-    # ⭐ 먼저 타오바오 연결 설정
+def load_taobao_upload():
+    """타오바오 업로드 객체 생성 (쿠키 로드)"""
     taobao_upload = None
-    
+
     # 1순위: 환경변수에서 토큰 확인
     env_token = os.environ.get('TAOBAO_TOKEN')
     print(f"🔍 환경변수 TAOBAO_TOKEN: {env_token[:20] + '...' if env_token else 'None'}")
-    
+
     if env_token:
         print(f"🔑 환경변수에서 _m_h5_tk 토큰 발견: {env_token[:20]}...")
         try:
@@ -68,26 +73,26 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"❌ 환경변수 토큰 연결 실패: {e}")
             taobao_upload = None
-    
+
     # 환경변수 토큰이 없거나 실패한 경우 다른 방법 시도
     if taobao_upload is None:
         try:
             print("🔍 저장된 쿠키 파일 확인 중...")
-            
+
             # C# 서버에서 저장한 쿠키 파일 경로
             import json
             cookie_file_path = os.path.expanduser(r"~\AppData\Roaming\Predvia\taobao_cookies.json")
             print(f"📁 쿠키 파일 경로: {cookie_file_path}")
             print(f"📁 파일 존재 여부: {os.path.exists(cookie_file_path)}")
-            
+
             if os.path.exists(cookie_file_path):
                 print("✅ 저장된 쿠키 파일 발견")
                 with open(cookie_file_path, 'r', encoding='utf-8') as f:
                     saved_cookies = json.load(f)
-                
+
                 print(f"📊 쿠키 파일 내용: {len(saved_cookies)}개 쿠키")
                 print(f"🔍 쿠키 키 목록: {list(saved_cookies.keys())}")
-                
+
                 # _m_h5_tk 토큰 확인
                 if '_m_h5_tk' in saved_cookies:
                     token = saved_cookies['_m_h5_tk']
@@ -114,6 +119,27 @@ if __name__ == "__main__":
                 print("❌ 모든 쿠키 획득 방법 실패")
                 raise Exception("All cookie methods failed")
 
+    return taobao_upload
+
+if __name__ == "__main__":
+    import sys
+
+    # 명령행 인수에서 이미지 경로 받기
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+        print(f"사용할 이미지: {path}")
+    else:
+        path = "다운로드.jpg"
+        print("기본 이미지 사용: 다운로드.jpg")
+
+    # --retry 플래그 확인
+    is_retry = '--retry' in sys.argv
+    if is_retry:
+        print("🔄 [재시도 모드] 쿠키 파일을 다시 로드합니다...")
+
+    # ⭐ 먼저 타오바오 연결 설정
+    taobao_upload = load_taobao_upload()
+
     # 1688 example
     # get cookie and token
     # upload image and get image id
@@ -130,20 +156,45 @@ if __name__ == "__main__":
     print(req.url)
         
     res = taobao_upload.upload(filename=path)
-    if res.json().get("data"):
-        print("taobao_upload success")
-        print("Full response:", res.json())  # 전체 응답 확인
-        image_id = res.json().get("data", {}).get("imageId", "")
-        print(f"Image ID: {image_id}")
-        
+    response_json = res.json()
+
+    # ⭐ 응답 분석
+    print(f"📊 타오바오 API 응답 코드: {res.status_code}")
+    sys.stdout.flush()
+
+    # ret 필드 확인 (오류 체크)
+    if "ret" in response_json:
+        ret_value = response_json["ret"]
+        print(f"📋 API ret 값: {ret_value}")
+        sys.stdout.flush()
+
+    # ⭐ 항상 "Full response:" 형식으로 출력 (C# 파싱용)
+    import json
+    json_str = json.dumps(response_json, ensure_ascii=False, separators=(',', ':'))
+    print(f"Full response: {json_str}")
+    sys.stdout.flush()
+
+    # data 필드 확인
+    data = response_json.get("data")
+    if data and isinstance(data, dict) and len(data) > 0:
+        print("✅ taobao_upload success")
+        sys.stdout.flush()
+
+        image_id = data.get("imageId", "")
+        print(f"🆔 Image ID: {image_id}")
+        sys.stdout.flush()
+
         if image_id:
             # 검색 결과 확인
             search_result = taobao_upload.search(image_id)
-            print(f"Search URL: {search_result.url}")
+            print(f"🔗 Search URL: {search_result.url}")
+            sys.stdout.flush()
         else:
-            print("No image ID found in response")
+            print("⚠️ No image ID found in response")
+            sys.stdout.flush()
     else:
-        print("Upload response:", res.json())
+        print(f"❌ 타오바오 업로드 실패!")
+        sys.stdout.flush()
         raise Exception("taobao upload fail")
     # alibaba example
     upload = alibaba.Upload()

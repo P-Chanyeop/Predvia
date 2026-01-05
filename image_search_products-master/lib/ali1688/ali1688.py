@@ -148,7 +148,67 @@ class WorldTaobao(Ali1688Upload):
         else:
             super(WorldTaobao, self).__init__(api=api, hostname=hostname, manual_cookie=manual_cookie)
             self.upload_url = f"https://{self.hostname}/h5/mtop.relationrecommend.wirelessrecommend.recommend/2.0/"
-    
+
+            # ⭐ 쿠키 파일에서 모든 쿠키 로드하여 세션에 설정
+            self._load_all_cookies_from_file()
+
+    def headers(self):
+        """타오바오 요청용 헤더 - Chrome User-Agent 사용"""
+        import os
+
+        # 기본 Chrome User-Agent
+        user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+
+        # CHANGE_USER_AGENT 환경변수가 설정되어 있으면 다른 User-Agent 사용
+        if os.environ.get('CHANGE_USER_AGENT') == 'true':
+            user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            print(f"🔄 User-Agent 변경됨: {user_agent}")
+
+        headers = {
+            "User-Agent": user_agent,
+            "Referer": "https://www.taobao.com/",
+            "Accept": "application/json",
+            "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+        }
+        return headers
+
+    def _load_all_cookies_from_file(self):
+        """쿠키 파일에서 모든 타오바오 쿠키 읽어서 세션에 설정"""
+        import json
+        import os
+
+        cookie_file_path = os.path.expanduser(r"~\AppData\Roaming\Predvia\taobao_cookies.json")
+
+        if not os.path.exists(cookie_file_path):
+            print("⚠️ 쿠키 파일을 찾을 수 없음 - 기본 쿠키만 사용")
+            return
+
+        try:
+            print("🔍 쿠키 파일에서 토큰 찾는 중...")
+            print(f"📁 쿠키 파일 경로: {cookie_file_path}")
+
+            with open(cookie_file_path, 'r', encoding='utf-8') as f:
+                saved_cookies = json.load(f)
+
+            print(f"✅ 쿠키 파일 발견!")
+
+            # _m_h5_tk 토큰 확인 (이미 설정되어 있음)
+            if '_m_h5_tk' in saved_cookies:
+                token = saved_cookies['_m_h5_tk']
+                print(f"🔑 쿠키 파일에서 토큰 발견: {token[:20]}...")
+
+            # 모든 타오바오 쿠키를 세션에 설정
+            print("🍪 모든 타오바오 쿠키를 세션에 설정 중...")
+            for cookie_name, cookie_value in saved_cookies.items():
+                if cookie_value:  # 값이 있는 쿠키만 설정
+                    self.cookies.set(cookie_name, cookie_value, domain='.taobao.com')
+                    print(f"🔧 쿠키 설정: {cookie_name}")
+
+            print(f"✅ 총 {len(saved_cookies)}개 쿠키 설정 완료")
+
+        except Exception as e:
+            print(f"⚠️ 쿠키 파일 로드 오류: {e}")
+
     def _create_session(self):
         """타오바오 세션 생성"""
         import sqlite3
@@ -172,8 +232,17 @@ class WorldTaobao(Ali1688Upload):
         except:
             pass
         
+        # User-Agent 설정 (환경변수로 변경 가능)
+        import os
+        user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+
+        # CHANGE_USER_AGENT 환경변수가 설정되어 있으면 다른 User-Agent 사용
+        if os.environ.get('CHANGE_USER_AGENT') == 'true':
+            user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            print(f"🔄 User-Agent 변경됨: {user_agent}")
+
         session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'User-Agent': user_agent,
             'Referer': 'https://www.taobao.com/',
         })
         
@@ -183,7 +252,10 @@ class WorldTaobao(Ali1688Upload):
         # get file bytes
         with open(filename, "rb") as f:
             b64_bytes = base64.b64encode(f.read())
-        strimg = str(b64_bytes).replace("b'", "").replace("'", "").replace("==", "")
+
+        # ⭐ Base64 문자열 변환 (패딩은 끝에만 있으므로 rstrip 사용)
+        strimg = b64_bytes.decode('ascii').rstrip('=')
+
         params = json.dumps(
             {
                 "strimg": strimg,
