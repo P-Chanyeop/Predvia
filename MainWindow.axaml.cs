@@ -48,7 +48,15 @@ namespace Gumaedaehang
         {
             InitializeComponent();
             Debug.WriteLine("MainWindow initialized");
-            
+
+            // 주 모니터 전체화면 설정
+            var screen = Screens.Primary;
+            if (screen != null)
+            {
+                Position = screen.WorkingArea.TopLeft;
+                WindowState = WindowState.Maximized;
+            }
+
             // 서비스 초기화
             _adviceService = new AdviceService();
             _thumbnailWebServer = new ThumbnailWebServer();

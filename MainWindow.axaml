@@ -4,8 +4,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Gumaedaehang"
         mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
-        Width="1920" Height="1080"
         x:Class="Gumaedaehang.MainWindow"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
         Title="PREDVIA"
         Icon="Assets/predvia_logo.png"
         Background="{DynamicResource BackgroundBrush}">
