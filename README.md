@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v1.97-orange)
+![Release](https://img.shields.io/badge/Release-v1.98-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,22 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v1.97 - 타오바오 이미지 매칭 문제 분석 완료)
+### 🔄 최신 업데이트 (v1.98 - 가격비교 브라우저 자동 종료 시스템 구현)
+- [x] **🔥 가격비교 브라우저 자동 종료 문제 완전 해결**: 링크 수집 완료 후 브라우저가 자동으로 닫히지 않던 문제 해결
+  - **ChromeExtensionService.cs 30초 자동 종료 타이머**: 링크 수집에 충분한 시간 부여 후 안전한 종료 처리
+    - 정상 종료 시도 → 1초 대기 → 강제 종료 순서로 안전하게 처리
+    - 30초 타이머로 최대 대기 시간 제한하여 무한 대기 방지
+  - **content.js 링크 수집 완료 후 5초 뒤 창 닫기**: JavaScript 레벨에서 빠른 종료 처리
+    - sendSmartStoreLinksToServer() 완료 후 5초 대기하여 서버 전송 완료 보장
+    - window.close()로 JavaScript에서 우선 종료 시도
+  - **이중 안전장치 시스템**: JavaScript 종료 실패 시 C# 타이머가 백업으로 강제 종료
+- [x] **🔧 작동 방식 최적화**: 효율적이고 안전한 브라우저 종료 프로세스 구현
+  - **1단계**: 네이버 가격비교 브라우저 실행 및 링크 수집 (최대 3회 재시도 포함)
+  - **2단계**: 수집된 링크를 서버로 전송 완료
+  - **3단계**: 5초 후 JavaScript window.close() 실행 (빠른 종료)
+  - **4단계**: 만약 안 닫히면 30초 후 C# 타이머가 강제 종료 (안전장치)
+
+### 🔄 이전 업데이트 (v1.97 - 타오바오 이미지 매칭 문제 분석 완료)
 - [x] **🔍 타오바오 이미지 매칭 문제 근본 원인 파악**: 배터리 이미지가 앞치마 상품을 반환하는 문제 완전 분석
   - **실제 이미지 파일 확인**: 다운로드.jpg가 실제로는 앞치마 이미지였음을 확인
   - **API 엔드포인트 차이 발견**: C# (imagesearch.upload) vs Python (relationrecommend) API 불일치 문제 식별
@@ -1431,11 +1446,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.97 (타오바오 이미지 매칭 문제 분석 완료)
-  - 타오바오 이미지 매칭 문제 근본 원인 파악: 배터리 이미지가 앞치마 상품을 반환하는 문제 완전 분석
-  - 실제 이미지 파일 확인: 다운로드.jpg가 실제로는 앞치마 이미지였음을 확인
-  - API 엔드포인트 차이 발견: C# (imagesearch.upload) vs Python (relationrecommend) API 불일치 문제 식별
-  - 듀얼 모니터 창 위치 최적화: 주 모니터 중앙 배치로 사용자 경험 개선
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.98 (가격비교 브라우저 자동 종료 시스템 구현)
+  - 가격비교 브라우저 자동 종료 문제 완전 해결: 링크 수집 완료 후 브라우저가 자동으로 닫히지 않던 문제 해결
+  - ChromeExtensionService.cs 30초 자동 종료 타이머: 링크 수집에 충분한 시간 부여 후 안전한 종료 처리
+  - content.js 링크 수집 완료 후 5초 뒤 창 닫기: JavaScript 레벨에서 빠른 종료 처리
+  - 이중 안전장치 시스템: JavaScript 종료 실패 시 C# 타이머가 백업으로 강제 종료
 
 > **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.85 (가격 추출 정확도 완전 개선)
   - "상품 가격" 요소 기반 정확한 가격 추출로 649,900원, 754,200원 등 실제 상품 가격만 수집

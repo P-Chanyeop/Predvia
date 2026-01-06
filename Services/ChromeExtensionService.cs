@@ -86,7 +86,7 @@ namespace Gumaedaehang.Services
             {
                 // Chrome을 확장프로그램과 함께 실행하면서 네이버 가격비교 페이지로 이동 (앱 모드 일반 크기, JavaScript로 우하단 이동)
                 var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{searchUrl}\" --window-size=800,600 --window-position=100,100 --no-first-run --no-default-browser-check --disable-web-security --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"";
-                
+
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = GetChromePath(),
@@ -94,15 +94,58 @@ namespace Gumaedaehang.Services
                     UseShellExecute = false,
                     CreateNoWindow = false
                 };
-                
+
                 var process = Process.Start(processInfo);
-                
+
                 if (process != null)
                 {
                     Debug.WriteLine($"네이버 가격비교 페이지 열기: {searchUrl}");
+
+                    // ⭐ 15초 후 자동 종료 (링크 수집 시간 충분히 확보)
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(15000); // 15초 대기
+                        try
+                        {
+                            if (!process.HasExited)
+                            {
+                                Debug.WriteLine("15초 경과 - 네이버 가격비교 Chrome 강제 종료 시작");
+
+                                // ⭐ 모든 하위 Chrome 프로세스 강제 종료
+                                try
+                                {
+                                    process.Kill(entireProcessTree: true);
+                                    process.WaitForExit(3000);
+                                    Debug.WriteLine("✅ 네이버 가격비교 Chrome 프로세스 트리 전체 종료 완료");
+                                }
+                                catch
+                                {
+                                    // Kill이 실패하면 개별적으로 시도
+                                    process.CloseMainWindow();
+                                    await Task.Delay(1000);
+
+                                    if (!process.HasExited)
+                                    {
+                                        process.Kill();
+                                        process.WaitForExit(2000);
+                                    }
+                                    Debug.WriteLine("✅ 네이버 가격비교 Chrome 프로세스 종료 완료");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"❌ 가격비교 브라우저 종료 중 오류: {ex.Message}");
+                        }
+                        finally
+                        {
+                            process?.Dispose();
+                        }
+                    });
+
                     return Task.FromResult(true);
                 }
-                
+
                 return Task.FromResult(false);
             }
             catch (Exception ex)
