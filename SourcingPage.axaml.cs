@@ -1818,7 +1818,7 @@ namespace Gumaedaehang
                             if (process.ExitCode == 0)
                             {
                                 LogWindow.AddLogStatic("✅ 파이썬 실행 성공");
-                                LogWindow.AddLogStatic($"📤 [디버그] Python 출력 (첫 500자): {output.Substring(0, Math.Min(500, output.Length))}...");
+                                LogWindow.AddLogStatic($"📤 [디버그] Python 출력 (첫 1000자): {output.Substring(0, Math.Min(1000, output.Length))}...");
 
                                 // ⭐ _m_h5_tk 쿠키 오류 확인
                                 if (output.Contains("_m_h5_tk not found"))

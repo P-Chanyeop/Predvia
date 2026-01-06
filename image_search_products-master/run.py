@@ -123,14 +123,44 @@ def load_taobao_upload():
 
 if __name__ == "__main__":
     import sys
+    
+    print("=== PYTHON 디버깅 시작 ===")
+    sys.stdout.flush()
 
     # 명령행 인수에서 이미지 경로 받기
     if len(sys.argv) > 1:
         path = sys.argv[1]
-        print(f"사용할 이미지: {path}")
+        print(f"📷 [디버그] 명령행에서 받은 이미지 경로: {path}")
+        sys.stdout.flush()
     else:
         path = "다운로드.jpg"
-        print("기본 이미지 사용: 다운로드.jpg")
+        print("📷 [디버그] 기본 이미지 사용: 다운로드.jpg")
+        sys.stdout.flush()
+
+    # 🔍 실제 파일 존재 여부 및 크기 확인
+    import os
+    if os.path.exists(path):
+        file_size = os.path.getsize(path)
+        print(f"✅ [디버그] 이미지 파일 존재 확인 - 크기: {file_size} bytes")
+        print(f"📁 [디버그] 절대 경로: {os.path.abspath(path)}")
+        sys.stdout.flush()
+    else:
+        print(f"❌ [디버그] 이미지 파일이 존재하지 않음: {path}")
+        print("🔄 [디버그] 기본 이미지로 대체...")
+        sys.stdout.flush()
+        path = "다운로드.jpg"
+        if os.path.exists(path):
+            file_size = os.path.getsize(path)
+            print(f"✅ [디버그] 기본 이미지 사용 - 크기: {file_size} bytes")
+            sys.stdout.flush()
+        else:
+            print("❌ [디버그] 기본 이미지도 없음!")
+            sys.stdout.flush()
+            sys.exit(1)
+
+    print(f"🎯 [디버그] 최종 사용할 이미지: {path}")
+    print("=== 이미지 디버깅 완료, 타오바오 연결 시작 ===")
+    sys.stdout.flush()
 
     # --retry 플래그 확인
     is_retry = '--retry' in sys.argv
