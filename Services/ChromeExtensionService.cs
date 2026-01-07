@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace Gumaedaehang.Services
@@ -8,6 +9,87 @@ namespace Gumaedaehang.Services
     public class ChromeExtensionService
     {
         private readonly string _extensionPath;
+
+        // ⭐ Windows API - 창 활성화
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        private static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        // ⭐ EnumWindows로 모든 창 찾기 (Chrome --app 모드용)
+        [DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        private const int SW_RESTORE = 9;
+        private const int SW_SHOW = 5;
+        private const int SW_SHOWNOACTIVATE = 4;
+        private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        private static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_SHOWWINDOW = 0x0040;
+
+        // ⭐ 프로세스 ID로 Chrome 창 핸들 찾기 (제목으로 네이버 쇼핑 확인)
+        private static IntPtr FindChromeWindowByProcessId(int processId)
+        {
+            IntPtr foundHandle = IntPtr.Zero;
+
+            EnumWindows((hWnd, lParam) =>
+            {
+                GetWindowThreadProcessId(hWnd, out uint windowProcessId);
+
+                if (windowProcessId == processId)
+                {
+                    // 보이는 창인지 확인
+                    if (!IsWindowVisible(hWnd))
+                        return true;
+
+                    // Chrome 창 클래스 이름 확인
+                    var className = new System.Text.StringBuilder(256);
+                    GetClassName(hWnd, className, className.Capacity);
+
+                    if (className.ToString().Contains("Chrome_WidgetWin"))
+                    {
+                        // 창 제목 확인 (네이버 쇼핑 페이지인지)
+                        var windowTitle = new System.Text.StringBuilder(256);
+                        GetWindowText(hWnd, windowTitle, windowTitle.Capacity);
+                        string title = windowTitle.ToString();
+
+                        // 네이버 가격비교 페이지인지 확인 ([키워드] : 네이버 가격비교)
+                        if (title.Contains("네이버 가격비교") || title.Contains("가격비교"))
+                        {
+                            foundHandle = hWnd;
+                            return false; // 찾았으니 중단
+                        }
+                    }
+                }
+
+                return true; // 계속 검색
+            }, IntPtr.Zero);
+
+            return foundHandle;
+        }
         
         public ChromeExtensionService()
         {
@@ -84,8 +166,10 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                // Chrome을 확장프로그램과 함께 실행하면서 네이버 가격비교 페이지로 이동 (앱 모드 일반 크기, JavaScript로 우하단 이동)
-                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{searchUrl}\" --window-size=800,600 --window-position=100,100 --no-first-run --no-default-browser-check --disable-web-security --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"";
+                // Chrome을 확장프로그램과 함께 실행하면서 네이버 가격비교 페이지로 이동
+                // ⭐ --app 모드로 우하단 작은 창 실행, EnumWindows로 핸들 찾아서 포커싱
+                // ⭐ 기본 프로필 사용 (네이버 로그인 유지)
+                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{searchUrl}\" --window-size=300,300 --window-position=1600,750 --no-first-run --no-default-browser-check --disable-web-security --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"";
 
                 var processInfo = new ProcessStartInfo
                 {
@@ -99,17 +183,95 @@ namespace Gumaedaehang.Services
 
                 if (process != null)
                 {
-                    Debug.WriteLine($"네이버 가격비교 페이지 열기: {searchUrl}");
+                    Debug.WriteLine($"네이버 가격비교 페이지 열기 (포커싱 모드): {searchUrl}");
 
-                    // ⭐ 15초 후 자동 종료 (링크 수집 시간 충분히 확보)
+                    // ⭐ 계속 포커싱 유지 (사용자가 밀어도 다시 활성화)
                     _ = Task.Run(async () =>
                     {
-                        await Task.Delay(15000); // 15초 대기
+                        LogWindow.AddLogStatic($"🚀 포커싱 작업 시작");
+
+                        // ⭐ 최대 18초 동안 계속 시도
+                        int attemptCount = 0;
+                        int successCount = 0;
+                        DateTime startTime = DateTime.Now;
+                        TimeSpan timeout = TimeSpan.FromSeconds(18);
+                        IntPtr targetHandle = IntPtr.Zero;
+
+                        while ((DateTime.Now - startTime) < timeout)
+                        {
+                            attemptCount++;
+
+                            try
+                            {
+                                // ⭐ 모든 Chrome 프로세스에서 가격비교 창 찾기
+                                if (targetHandle == IntPtr.Zero)
+                                {
+                                    // 아직 창을 못 찾았으면 모든 Chrome 프로세스 검색
+                                    var chromeProcesses = Process.GetProcessesByName("chrome");
+                                    LogWindow.AddLogStatic($"🔍 Chrome 프로세스 {chromeProcesses.Length}개 검색 중...");
+
+                                    foreach (var chromeProc in chromeProcesses)
+                                    {
+                                        IntPtr handle = FindChromeWindowByProcessId(chromeProc.Id);
+                                        if (handle != IntPtr.Zero)
+                                        {
+                                            // 창 제목 로그로 확인
+                                            var windowTitle = new System.Text.StringBuilder(256);
+                                            GetWindowText(handle, windowTitle, windowTitle.Capacity);
+                                            targetHandle = handle;
+                                            LogWindow.AddLogStatic($"🔍 Chrome 창 발견! Handle: {handle}, PID: {chromeProc.Id}, Title: {windowTitle}");
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (targetHandle != IntPtr.Zero)
+                                {
+                                    // ⭐ 여러 방법으로 포커싱 시도
+                                    bool result2 = ShowWindow(targetHandle, SW_SHOW);
+                                    bool result3 = BringWindowToTop(targetHandle);
+                                    bool result4 = SetForegroundWindow(targetHandle);
+
+                                    // ⭐ 최상위로 올리기
+                                    SetWindowPos(targetHandle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+                                    await Task.Delay(50);
+                                    SetWindowPos(targetHandle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+
+                                    successCount++;
+                                    if (successCount == 1 || successCount % 5 == 0)
+                                    {
+                                        LogWindow.AddLogStatic($"✅ 가격비교 창 활성화 {successCount}회 - Show:{result2}, Bring:{result3}, Focus:{result4}");
+                                    }
+                                }
+                                else
+                                {
+                                    // 창을 못 찾은 경우
+                                    if (attemptCount <= 3 || attemptCount % 5 == 0)
+                                    {
+                                        LogWindow.AddLogStatic($"⚠️ Chrome 창 찾는 중... (시도 {attemptCount}회)");
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                LogWindow.AddLogStatic($"❌ 창 활성화 실패 {attemptCount}회: {ex.Message}");
+                            }
+
+                            await Task.Delay(1500); // 1.5초마다 반복
+                        }
+
+                        LogWindow.AddLogStatic($"🔚 포커싱 완료 - 총 {attemptCount}회 시도, {successCount}회 성공");
+                    });
+
+                    // ⭐ 120초 후 자동 종료 (스토어 크롤링 시간 충분히 확보)
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(120000); // 120초(2분) 대기
                         try
                         {
                             if (!process.HasExited)
                             {
-                                Debug.WriteLine("15초 경과 - 네이버 가격비교 Chrome 강제 종료 시작");
+                                Debug.WriteLine("120초 경과 - 네이버 가격비교 Chrome 강제 종료 시작");
 
                                 // ⭐ 모든 하위 Chrome 프로세스 강제 종료
                                 try

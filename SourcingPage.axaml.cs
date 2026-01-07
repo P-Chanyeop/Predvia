@@ -2964,19 +2964,26 @@ namespace Gumaedaehang
                 
                 // ⭐ 크롤링 허용 플래그 설정
                 await SetCrawlingAllowed();
-                
+                LogWindow.AddLogStatic($"✅ 크롤링 플래그 설정 완료 - {type}");
+
+                // ⭐ 네이버 가격비교 페이지 열기 (백그라운드 렌더링)
+                var encodedKeyword = Uri.EscapeDataString(searchText);
+                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=overseas";
+
+                LogWindow.AddLogStatic($"🌐 크롤링 시작: {searchUrl}");
+
                 _extensionService ??= new ChromeExtensionService();
-                var success = await _extensionService.SearchWithExtension(searchText);
-                
+                var success = await _extensionService.OpenNaverPriceComparison(searchUrl);
+
                 if (success)
                 {
-                    button.Content = "연결 완료";
-                    Debug.WriteLine($"{type} 확장프로그램 검색 완료 - 키워드: {searchText}");
+                    button.Content = "크롤링 중";
+                    LogWindow.AddLogStatic($"✅ {type} 크롤링 시작 완료");
                 }
                 else
                 {
                     button.Content = "연결 실패";
-                    Debug.WriteLine($"{type} 확장프로그램 실행 실패");
+                    LogWindow.AddLogStatic($"❌ {type} 크롤링 시작 실패");
                 }
                 await Task.Delay(1500);
             }
@@ -2992,6 +2999,76 @@ namespace Gumaedaehang
                     button.IsEnabled = true;
                     button.Content = "페어링";
                 }
+            }
+        }
+
+        // ⭐ 크롤링 버튼 클릭 핸들러 (OpenNaverPriceComparison 사용)
+        private async Task HandleCrawlingButtonClick(TextBox? textBox, Button? button, string type)
+        {
+            Debug.WriteLine($"🔥 HandleCrawlingButtonClick 호출됨 - {type}");
+            if (textBox == null || button == null)
+            {
+                Debug.WriteLine($"❌ TextBox 또는 Button이 null");
+                return;
+            }
+
+            var mainWindow = (MainWindow?)this.VisualRoot;
+
+            try
+            {
+                // 🔄 로딩창 표시
+                mainWindow?.ShowLoading();
+
+                button.IsEnabled = false;
+                button.Content = "크롤링 중...";
+
+                var searchText = textBox.Text?.Trim();
+                if (string.IsNullOrEmpty(searchText))
+                {
+                    button.Content = "입력 필요";
+                    await Task.Delay(2000);
+                    return;
+                }
+
+                // ⭐ 크롤링 허용 플래그 설정
+                await SetCrawlingAllowed();
+                LogWindow.AddLogStatic($"✅ 크롤링 플래그 설정 완료 - {type}");
+
+                // ⭐ 네이버 가격비교 페이지 열기 (크롤링 모드)
+                var encodedKeyword = Uri.EscapeDataString(searchText);
+                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=overseas";
+
+                LogWindow.AddLogStatic($"🌐 크롤링 시작: {searchUrl}");
+
+                _extensionService ??= new ChromeExtensionService();
+                var success = await _extensionService.OpenNaverPriceComparison(searchUrl);
+
+                if (success)
+                {
+                    button.Content = "크롤링 시작됨";
+                    LogWindow.AddLogStatic($"✅ {type} 크롤링 시작 완료");
+                }
+                else
+                {
+                    button.Content = "연결 실패";
+                    LogWindow.AddLogStatic($"❌ {type} 크롤링 시작 실패");
+                }
+                await Task.Delay(1500);
+            }
+            catch (Exception ex)
+            {
+                button.Content = "연결 실패";
+                LogWindow.AddLogStatic($"❌ 크롤링 버튼 오류: {ex.Message}");
+                await Task.Delay(2000);
+            }
+            finally
+            {
+                if (button != null)
+                {
+                    button.IsEnabled = true;
+                    button.Content = "페어링";
+                }
+                mainWindow?.HideLoading();
             }
         }
 

@@ -138,18 +138,29 @@ async function initializeExtension() {
     console.log('🔥 스마트스토어 페이지 - 플래그 확인 건너뛰고 크롤링 진행');
   } else {
     // ⭐ 네이버 가격비교 페이지에서만 플래그 확인
+    console.log('🔍 네이버 가격비교 페이지 감지 - 플래그 확인 시작');
+    console.log('⏰ 플래그 확인 시간:', new Date().toLocaleTimeString());
+
+    // ⭐ 플래그 설정 시간을 주기 위해 1초 대기
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     try {
+      console.log('📡 플래그 확인 요청 전송: http://localhost:8080/api/crawling/allowed');
       const response = await fetch('http://localhost:8080/api/crawling/allowed');
+      console.log('📡 플래그 확인 응답 상태:', response.status, response.ok);
+
       if (response.ok) {
         const data = await response.json();
         console.log(`🔍 서버 플래그 확인 결과: allowed = ${data.allowed}`);
+        console.log('🔍 서버 응답 전체:', JSON.stringify(data));
+
         if (!data.allowed) {
           console.log('🔒 크롤링이 허용되지 않았습니다. 상품명만 추출합니다.');
           // ⭐ "추가" 버튼 모드: 상품명만 추출
           await extractAndSendProductNames();
           return;
         }
-        console.log('🔥 크롤링이 허용되었습니다. 크롤링을 시작합니다.');
+        console.log('🔥🔥🔥 크롤링이 허용되었습니다! 스마트스토어 링크 수집을 시작합니다!');
       } else {
         console.log('❌ 크롤링 허용 상태 확인 실패');
         return;
@@ -225,42 +236,42 @@ async function scrollAndCollectLinks() {
     console.log('🔄 새로고침 후 대기 중...');
     await new Promise(resolve => setTimeout(resolve, 3000));
   }
-    
+
     let previousHeight = 0;
     let currentHeight = document.body.scrollHeight;
     let sameHeightCount = 0;
     let scrollAttempts = 0;
     const maxScrollAttempts = 15; // 더 많은 스크롤 시도
-    
+
     // 작은 단위로 여러번 스크롤
     while (scrollAttempts < maxScrollAttempts && sameHeightCount < 6) {
       previousHeight = currentHeight;
-      
+
       // 작은 단위로 스크롤 (300px씩)
       for (let i = 0; i < 5; i++) {
         window.scrollBy(0, 300);
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-      
+
       console.log(`📍 스크롤 ${scrollAttempts + 1}회 - 높이: ${currentHeight}px`);
-      
+
       // 최소 대기 시간
       await new Promise(resolve => setTimeout(resolve, 200));
-      
+
       currentHeight = document.body.scrollHeight;
-      
+
       if (currentHeight === previousHeight) {
         sameHeightCount++;
         console.log(`⏸️ 동일 높이 ${sameHeightCount}번째`);
       } else {
         sameHeightCount = 0;
       }
-      
+
       scrollAttempts++;
     }
-    
+
     console.log(`📜 스크롤 완료 - 총 ${scrollAttempts}회 스크롤`);
-    
+
     // 최종 대기 후 링크 수집
     await new Promise(resolve => setTimeout(resolve, 1000));
     
