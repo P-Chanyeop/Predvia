@@ -313,12 +313,8 @@ async function scrollAndCollectLinks() {
     console.log('❌ 플래그 리셋 오류:', error.message);
   }
 
-  // ⭐ 링크 수집 완료 후 즉시 창 닫기
-  console.log('🔥 링크 수집 완료 - 5초 후 네이버 가격비교 창 닫기');
-  setTimeout(() => {
-    console.log('🔥 네이버 가격비교 창 닫기 실행');
-    window.close();
-  }, 5000);
+  // ⭐ 링크 수집 완료 - 가격비교 창은 크롤링 완료까지 유지
+  console.log('✅ 링크 수집 완료 - 가격비교 창은 크롤링 완료까지 유지');
 }
 
 // 유효한 스마트스토어 링크인지 확인

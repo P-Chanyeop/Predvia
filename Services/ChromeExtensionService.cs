@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Management;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
@@ -9,6 +10,7 @@ namespace Gumaedaehang.Services
     public class ChromeExtensionService
     {
         private readonly string _extensionPath;
+        private Process? _naverPriceComparisonProcess; // 가격비교 창 전용 프로세스
 
         // ⭐ Windows API - 창 활성화
         [DllImport("user32.dll")]
@@ -121,34 +123,8 @@ namespace Gumaedaehang.Services
                 {
                     Debug.WriteLine($"확장프로그램으로 네이버 쇼핑 검색 실행: {keyword}");
                     
-                    // 10초 후 강제 종료
-                    _ = Task.Run(async () =>
-                    {
-                        await Task.Delay(10000);
-                        try
-                        {
-                            if (!process.HasExited)
-                            {
-                                process.CloseMainWindow(); // 먼저 정상 종료 시도
-                                await Task.Delay(1000);
-                                
-                                if (!process.HasExited)
-                                {
-                                    process.Kill(); // 강제 종료
-                                    process.WaitForExit(2000);
-                                }
-                                Debug.WriteLine("10초 후 Chrome 프로세스 종료 완료");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"프로세스 종료 중 오류: {ex.Message}");
-                        }
-                        finally
-                        {
-                            process?.Dispose();
-                        }
-                    });
+                    // 가격비교 창 전용 프로세스 저장 (크롤링 완료까지 유지)
+                    _naverPriceComparisonProcess = process;
                     
                     return Task.FromResult(true);
                 }
@@ -183,6 +159,8 @@ namespace Gumaedaehang.Services
 
                 if (process != null)
                 {
+                    // ⭐ 가격비교 창 전용 프로세스 저장 (크롤링 완료 시까지 유지)
+                    _naverPriceComparisonProcess = process;
                     Debug.WriteLine($"네이버 가격비교 페이지 열기 (포커싱 모드): {searchUrl}");
 
                     // ⭐ 계속 포커싱 유지 (사용자가 밀어도 다시 활성화)
@@ -347,6 +325,170 @@ namespace Gumaedaehang.Services
             {
                 Debug.WriteLine($"URL 열기 실패: {ex.Message}");
                 return Task.FromResult(false);
+            }
+        }
+        
+        // 가격비교 창만 선별적으로 닫기
+        public void CloseNaverPriceComparisonOnly()
+        {
+            try
+            {
+                if (_naverPriceComparisonProcess != null && !_naverPriceComparisonProcess.HasExited)
+                {
+                    Debug.WriteLine("🔥 네이버 가격비교 창만 선별적으로 닫기 시작");
+                    _naverPriceComparisonProcess.CloseMainWindow();
+
+                    Task.Delay(1000).ContinueWith(_ =>
+                    {
+                        if (!_naverPriceComparisonProcess.HasExited)
+                        {
+                            _naverPriceComparisonProcess.Kill();
+                        }
+                        _naverPriceComparisonProcess?.Dispose();
+                        _naverPriceComparisonProcess = null;
+                        Debug.WriteLine("✅ 네이버 가격비교 창 닫기 완료");
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 가격비교 창 닫기 오류: {ex.Message}");
+            }
+        }
+
+        // ⭐ 모든 Chrome 앱 모드 프로세스 종료 (static 메서드)
+        public static async Task CloseAllChromeAppProcesses()
+        {
+            try
+            {
+                LogWindow.AddLogStatic("🔥 모든 Chrome 앱 프로세스 종료 시작");
+
+                var chromeProcesses = Process.GetProcessesByName("chrome");
+                var appProcesses = new System.Collections.Generic.List<int>(); // --app 모드 프로세스 ID 목록
+                var checkedCount = 0;
+
+                // 1단계: --app 모드 프로세스 찾기
+                foreach (var process in chromeProcesses)
+                {
+                    try
+                    {
+                        if (process.HasExited) continue;
+                        checkedCount++;
+
+                        bool shouldClose = false;
+                        string reason = "";
+
+                        // 방법 1: CommandLine으로 --app 옵션 확인
+                        try
+                        {
+                            using (var searcher = new ManagementObjectSearcher(
+                                $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {process.Id}"))
+                            {
+                                foreach (ManagementObject obj in searcher.Get())
+                                {
+                                    var commandLine = obj["CommandLine"]?.ToString() ?? "";
+
+                                    if (commandLine.Length > 0)
+                                    {
+                                        LogWindow.AddLogStatic($"🔍 PID {process.Id}: {(commandLine.Length > 100 ? commandLine.Substring(0, 100) + "..." : commandLine)}");
+
+                                        // --app 모드인 Chrome 프로세스 확인
+                                        if (commandLine.Contains("--app="))
+                                        {
+                                            // --load-extension도 포함되어 있으면 확실히 크롤링/가격비교 창
+                                            if (commandLine.Contains("--load-extension") ||
+                                                commandLine.Contains("shopping.naver.com") ||
+                                                commandLine.Contains("smartstore.naver.com"))
+                                            {
+                                                shouldClose = true;
+                                                reason = "CommandLine 확인";
+                                            }
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        catch (Exception cmdEx)
+                        {
+                            LogWindow.AddLogStatic($"⚠️ CommandLine 체크 실패 PID {process.Id}: {cmdEx.Message}");
+                        }
+
+                        // 방법 2: 창 제목으로 "네이버 가격비교" 확인 (CommandLine이 실패하거나 매칭 안될 때)
+                        if (!shouldClose)
+                        {
+                            try
+                            {
+                                var handle = FindChromeWindowByProcessId(process.Id);
+                                if (handle != IntPtr.Zero)
+                                {
+                                    var windowTitle = new System.Text.StringBuilder(256);
+                                    GetWindowText(handle, windowTitle, windowTitle.Capacity);
+                                    string title = windowTitle.ToString();
+
+                                    LogWindow.AddLogStatic($"🔍 PID {process.Id} 창 제목: {title}");
+
+                                    // 네이버 가격비교, 스마트스토어 관련 제목 확인
+                                    if (title.Contains("네이버 가격비교") ||
+                                        title.Contains("가격비교") ||
+                                        title.Contains("스마트스토어") ||
+                                        title.Contains("smartstore"))
+                                    {
+                                        shouldClose = true;
+                                        reason = "창 제목 확인";
+                                        LogWindow.AddLogStatic($"✅ 가격비교/스마트스토어 창 발견: '{title}'");
+                                    }
+                                }
+                            }
+                            catch (Exception winEx)
+                            {
+                                LogWindow.AddLogStatic($"⚠️ 창 제목 체크 실패 PID {process.Id}: {winEx.Message}");
+                            }
+                        }
+
+                        if (shouldClose)
+                        {
+                            appProcesses.Add(process.Id);
+                            LogWindow.AddLogStatic($"✅ 종료 대상 발견 ({reason}): PID {process.Id}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 프로세스 체크 실패 PID {process.Id}: {ex.Message}");
+                    }
+                }
+
+                LogWindow.AddLogStatic($"📊 총 {checkedCount}개 Chrome 프로세스 확인, {appProcesses.Count}개 종료 대상 발견");
+
+                // 2단계: 종료 대상 프로세스 종료
+                int closedCount = 0;
+                foreach (var pid in appProcesses)
+                {
+                    try
+                    {
+                        var process = Process.GetProcessById(pid);
+                        if (!process.HasExited)
+                        {
+                            LogWindow.AddLogStatic($"🎯 앱 모드 Chrome 종료 중: PID {pid}");
+                            process.Kill(entireProcessTree: true);
+                            process.WaitForExit(2000);
+                            closedCount++;
+                            LogWindow.AddLogStatic($"✅ PID {pid} 종료 완료");
+                        }
+                        process.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 프로세스 종료 실패 PID {pid}: {ex.Message}");
+                    }
+                }
+
+                LogWindow.AddLogStatic($"✅ Chrome 앱 프로세스 종료 완료: {closedCount}개 종료");
+                await Task.Delay(1000); // 프로세스 정리 대기
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ Chrome 앱 프로세스 종료 오류: {ex.Message}");
             }
         }
         

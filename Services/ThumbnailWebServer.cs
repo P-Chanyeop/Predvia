@@ -194,7 +194,7 @@ namespace Gumaedaehang.Services
                 
                 _selectedStores.Clear();
                 _processedStores.Clear(); // 처리된 스토어 목록도 초기화
-                _isCrawlingActive = false; // 크롤링 비활성화 상태로 시작
+                // ⭐ _isCrawlingActive는 HandleAllowCrawling()에서 설정되므로 여기서는 건드리지 않음
                 _currentStoreIndex = 0; // 순차 처리 인덱스 초기화
                 LogWindow.AddLogStatic("✅ 서버 변수 초기화 완료");
 
@@ -1749,7 +1749,11 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                LogWindow.AddLogStatic("🔥 Chrome 앱 창들 닫기 시작 - 모든 Chrome 프로세스 분석");
+                LogWindow.AddLogStatic("🔥 Chrome 앱 창들 닫기 시작 - 가격비교 창 포함");
+                
+                // ⭐ 먼저 가격비교 창 닫기
+                var chromeExtensionService = new ChromeExtensionService();
+                chromeExtensionService.CloseNaverPriceComparisonOnly();
                 
                 var chromeProcesses = System.Diagnostics.Process.GetProcessesByName("chrome");
                 LogWindow.AddLogStatic($"📊 총 Chrome 프로세스 개수: {chromeProcesses.Length}개");
@@ -3097,18 +3101,17 @@ namespace Gumaedaehang.Services
                 
                 LoadingHelper.HideLoadingFromSourcingPage();
                 
-                // ⭐ Chrome 확장프로그램에 모든 앱 창 닫기 신호 (기존 브라우저 유지)
+                // ⭐ Chrome 앱 프로세스 종료 (크롤링 브라우저 + 가격비교 브라우저)
                 _ = Task.Run(async () =>
                 {
                     await Task.Delay(1000); // 1초 후 앱 창들만 닫기
                     try
                     {
-                        // 네이버 창에 창 닫기 신호 전송 (JavaScript로 처리)
-                        LogWindow.AddLogStatic("🔥 Chrome 앱 창들 닫기 - 기존 브라우저는 유지");
+                        await ChromeExtensionService.CloseAllChromeAppProcesses();
                     }
                     catch (Exception ex)
                     {
-                        LogWindow.AddLogStatic($"❌ 앱 창 닫기 실패: {ex.Message}");
+                        LogWindow.AddLogStatic($"❌ 앱 프로세스 종료 실패: {ex.Message}");
                     }
                 });
                 
@@ -3987,6 +3990,11 @@ namespace Gumaedaehang.Services
             lock (_crawlingLock)
             {
                 _crawlingAllowed = true;
+                _isCrawlingActive = true; // ⭐ 새로운 크롤링 세션 시작 시 활성화
+                _shouldStop = false; // ⭐ 중단 플래그도 리셋
+                _currentStoreIndex = 0; // ⭐ 스토어 인덱스 초기화
+                _completionPopupShown = false; // ⭐ 팝업 플래그 초기화
+                LogWindow.AddLogStatic("✅ 새로운 크롤링 세션 시작 - 모든 플래그 초기화 완료");
                 return Results.Json(new { success = true });
             }
         }
