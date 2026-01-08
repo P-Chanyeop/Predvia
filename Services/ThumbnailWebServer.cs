@@ -23,10 +23,13 @@ namespace Gumaedaehang.Services
 {
     public class ThumbnailWebServer
     {
+        // ⭐ 싱글톤 인스턴스
+        public static ThumbnailWebServer? Instance { get; private set; }
+
         private WebApplication? _app;
         private readonly ThumbnailService _thumbnailService;
         private bool _isRunning = false;
-        
+
         // 정적 IsRunning 속성
         public static bool IsRunning { get; private set; } = false;
         
@@ -90,6 +93,40 @@ namespace Gumaedaehang.Services
         public ThumbnailWebServer()
         {
             _thumbnailService = new ThumbnailService();
+            Instance = this; // 싱글톤 인스턴스 설정
+        }
+
+        // ⭐ CAPTCHA 감지 핸들러
+        private bool _captchaDetected = false;
+
+        private IResult HandleCaptchaDetected(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var body = reader.ReadToEnd();
+
+                LogWindow.AddLogStatic($"🔍 영수증 CAPTCHA 감지됨!");
+                LogWindow.AddLogStatic($"📄 CAPTCHA 정보: {body}");
+
+                // 플래그 설정
+                _captchaDetected = true;
+
+                return Results.Ok(new { success = true, message = "CAPTCHA detected" });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ CAPTCHA 처리 오류: {ex.Message}");
+                return Results.Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // CAPTCHA 플래그 확인 및 리셋
+        public bool CheckAndResetCaptcha()
+        {
+            var result = _captchaDetected;
+            _captchaDetected = false;
+            return result;
         }
 
         public async Task StartAsync()
@@ -146,6 +183,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/product-name", HandleProductName); // ⭐ 상품명 처리 API 추가
                 _app.MapPost("/api/smartstore/product-price", HandleProductPrice); // ⭐ 가격 처리 API 추가
                 _app.MapPost("/api/smartstore/reviews", HandleProductReviews); // ⭐ 리뷰 처리 API 추가
+                _app.MapPost("/api/captcha/detected", HandleCaptchaDetected); // ⭐ CAPTCHA 감지 API 추가
                 _app.MapPost("/api/smartstore/categories", HandleCategories); // ⭐ 카테고리 처리 API 추가
                 _app.MapPost("/api/smartstore/product-categories", HandleProductCategories); // ⭐ 개별 상품 카테고리 처리 API 추가
                 
@@ -1398,7 +1436,7 @@ namespace Gumaedaehang.Services
                     if (storeState.StuckCount >= maxStuckCount)
                     {
                         LogWindow.AddLogStatic($"{storeId}: {storeState.State} 상태 {maxStuckCount}번 연속 - 강제 완료 처리");
-                        
+
                         lock (_statesLock)
                         {
                             var key = $"{storeId}:{runId}";
@@ -1409,29 +1447,11 @@ namespace Gumaedaehang.Services
                                 _storeStates[key].StuckCount = 0;
                                 _storeStates[key].UpdatedAt = DateTime.Now;
                                 storeState = _storeStates[key];
-                                
-                                // 🔥 순차 처리 - 다음 스토어로 이동
-                                lock (_storeProcessLock)
-                                {
-                                    _currentStoreIndex++;
-                                    LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
 
-                                    // 🛑 10개 스토어 완료 체크
-                                    if (_currentStoreIndex >= 10)
-                                    {
-                                        LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 (타임아웃 후) - 크롤링 중단");
-                                        _shouldStop = true;
-                                        _isCrawlingActive = false;
+                                // ⭐ 인덱스 증가는 제거 - Chrome 확장에서 다음 스토어 요청 시 자동으로 증가됨
+                                // 이렇게 하면 확장과 서버의 인덱스가 동기화되어 "순차 처리 위반" 오류가 발생하지 않음
+                                LogWindow.AddLogStatic($"⏭️ {storeId} 강제 완료 - Chrome 확장이 다음 스토어로 이동할 때까지 대기");
 
-                                        if (!_completionPopupShown)
-                                        {
-                                            var finalCount = GetCurrentProductCount();
-                                            ShowCrawlingResultPopup(finalCount, "10개 스토어 모두 완료");
-                                            _completionPopupShown = true;
-                                        }
-                                    }
-                                }
-                                
                                 // 🔥 크롤링 완료 시 소싱 페이지 새로고침
                                 RefreshSourcingPage();
                             }
@@ -1445,11 +1465,11 @@ namespace Gumaedaehang.Services
                 }
                 
                 // ⭐ 타임아웃 체크 (30초 이상 collecting 상태면 강제 완료)
-                if (storeState.State.StartsWith("collecting") && 
+                if (storeState.State.StartsWith("collecting") &&
                     DateTime.Now - storeState.UpdatedAt > TimeSpan.FromSeconds(30))
                 {
                     LogWindow.AddLogStatic($"{storeId}: 30초 {storeState.State} 타임아웃 - 강제 완료 처리");
-                    
+
                     lock (_statesLock)
                     {
                         var key = $"{storeId}:{runId}";
@@ -1459,28 +1479,9 @@ namespace Gumaedaehang.Services
                             _storeStates[key].Lock = false;
                             _storeStates[key].UpdatedAt = DateTime.Now;
                             storeState = _storeStates[key];
-                            
-                            // 🔥 순차 처리 - 다음 스토어로 이동
-                            lock (_storeProcessLock)
-                            {
-                                _currentStoreIndex++;
-                                LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
 
-                                // 🛑 10개 스토어 완료 체크
-                                if (_currentStoreIndex >= 10)
-                                {
-                                    LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 (30초 타임아웃 후) - 크롤링 중단");
-                                    _shouldStop = true;
-                                    _isCrawlingActive = false;
-
-                                    if (!_completionPopupShown)
-                                    {
-                                        var finalCount = GetCurrentProductCount();
-                                        ShowCrawlingResultPopup(finalCount, "10개 스토어 모두 완료");
-                                        _completionPopupShown = true;
-                                    }
-                                }
-                            }
+                            // ⭐ 인덱스 증가는 제거 - Chrome 확장에서 다음 스토어 요청 시 자동으로 증가됨
+                            LogWindow.AddLogStatic($"⏭️ {storeId} 30초 타임아웃 완료 - Chrome 확장이 다음 스토어로 이동할 때까지 대기");
 
                             // 🔥 크롤링 완료 시 소싱 페이지 새로고침
                             RefreshSourcingPage();
@@ -1504,28 +1505,9 @@ namespace Gumaedaehang.Services
                             _storeStates[key].UpdatedAt = DateTime.Now;
                             storeState = _storeStates[key];
 
-                            // 🔥 순차 처리 - 다음 스토어로 이동
-                            lock (_storeProcessLock)
-                            {
-                                _currentStoreIndex++;
-                                LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{_selectedStores.Count}");
+                            // ⭐ 인덱스 증가는 제거 - Chrome 확장에서 다음 스토어 요청 시 자동으로 증가됨
+                            LogWindow.AddLogStatic($"⏭️ {storeId} 2분 타임아웃 완료 - Chrome 확장이 다음 스토어로 이동할 때까지 대기");
 
-                                // 🛑 10개 스토어 완료 체크
-                                if (_currentStoreIndex >= 10)
-                                {
-                                    LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 (2분 타임아웃 후) - 크롤링 중단");
-                                    _shouldStop = true;
-                                    _isCrawlingActive = false;
-
-                                    if (!_completionPopupShown)
-                                    {
-                                        var finalCount = GetCurrentProductCount();
-                                        ShowCrawlingResultPopup(finalCount, "10개 스토어 모두 완료");
-                                        _completionPopupShown = true;
-                                    }
-                                }
-                            }
-                            
                             // 🔥 크롤링 완료 시 소싱 페이지 새로고침
                             RefreshSourcingPage();
                         }
@@ -3107,7 +3089,11 @@ namespace Gumaedaehang.Services
                     await Task.Delay(1000); // 1초 후 앱 창들만 닫기
                     try
                     {
-                        await ChromeExtensionService.CloseAllChromeAppProcesses();
+                        // 1. 크롤링 스마트스토어 창들 종료
+                        await ChromeExtensionService.CloseSmartStoreCrawlingWindows();
+
+                        // 2. 네이버 가격비교 창 종료 (창 제목으로 찾기)
+                        await ChromeExtensionService.CloseNaverPriceComparisonWindowByTitle();
                     }
                     catch (Exception ex)
                     {

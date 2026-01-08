@@ -1820,10 +1820,10 @@ namespace Gumaedaehang
                                 LogWindow.AddLogStatic("✅ 파이썬 실행 성공");
                                 LogWindow.AddLogStatic($"📤 [디버그] Python 출력 (첫 1000자): {output.Substring(0, Math.Min(1000, output.Length))}...");
 
-                                // ⭐ _m_h5_tk 쿠키 오류 확인
-                                if (output.Contains("_m_h5_tk not found"))
+                                // ⭐ _m_h5_tk 쿠키 오류 또는 TOKEN_EXPIRED 확인
+                                if (output.Contains("_m_h5_tk not found") || output.Contains("TOKEN_EXOIRED") || output.Contains("TOKEN_EXPIRED") || output.Contains("令牌过期"))
                                 {
-                                    LogWindow.AddLogStatic("⚠️ _m_h5_tk 쿠키를 찾을 수 없음 - 쿠키 재수집 시작...");
+                                    LogWindow.AddLogStatic("⚠️ 타오바오 토큰 만료 또는 쿠키 오류 감지 - 쿠키 재수집 시작...");
 
                                     // 기존 Chrome에 새 탭으로 타오바오 열기 (확장프로그램 사용)
                                     try
@@ -1840,6 +1840,33 @@ namespace Gumaedaehang
 
                                         // 쿠키 재수집 대기
                                         await Task.Delay(8000); // 8초 대기
+
+                                        // ⭐ 서버에서 새로운 타오바오 토큰 가져오기
+                                        LogWindow.AddLogStatic("🔄 새로운 타오바오 토큰 가져오는 중...");
+                                        try
+                                        {
+                                            using var httpClient = new HttpClient();
+                                            var tokenResponse = await httpClient.GetAsync("http://localhost:8080/api/taobao/cookies");
+                                            if (tokenResponse.IsSuccessStatusCode)
+                                            {
+                                                var tokenJson = await tokenResponse.Content.ReadAsStringAsync();
+                                                var tokenData = JsonSerializer.Deserialize<JsonElement>(tokenJson);
+
+                                                if (tokenData.TryGetProperty("token", out var newTokenElement))
+                                                {
+                                                    var newToken = newTokenElement.GetString();
+                                                    if (!string.IsNullOrEmpty(newToken))
+                                                    {
+                                                        taobaoToken = newToken;
+                                                        LogWindow.AddLogStatic($"✅ 새로운 토큰 획득: {newToken.Substring(0, Math.Min(20, newToken.Length))}...");
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        catch (Exception tokenEx)
+                                        {
+                                            LogWindow.AddLogStatic($"⚠️ 새 토큰 가져오기 실패 (기존 토큰 사용): {tokenEx.Message}");
+                                        }
 
                                         // Python 재실행 (User-Agent 변경)
                                         LogWindow.AddLogStatic("🐍 쿠키 재수집 완료 - User-Agent 변경하여 Python 재실행...");
@@ -1862,9 +1889,11 @@ namespace Gumaedaehang
                                         retryPythonInfo.EnvironmentVariables["CHANGE_USER_AGENT"] = "true";
                                         LogWindow.AddLogStatic("🔄 User-Agent 변경 플래그 설정됨");
 
+                                        // ⭐ 새로운 토큰으로 환경변수 설정
                                         if (!string.IsNullOrEmpty(taobaoToken))
                                         {
                                             retryPythonInfo.EnvironmentVariables["TAOBAO_TOKEN"] = taobaoToken;
+                                            LogWindow.AddLogStatic($"🔑 새 토큰으로 환경변수 설정: {taobaoToken.Substring(0, Math.Min(20, taobaoToken.Length))}...");
                                         }
 
                                         using var retryProcess = System.Diagnostics.Process.Start(retryPythonInfo);
@@ -2012,6 +2041,10 @@ namespace Gumaedaehang
                                             if (jsonResponse.TryGetProperty("data", out var dataElement))
                                             {
                                                 LogWindow.AddLogStatic($"✅ [디버그] 'data' 속성 발견!");
+
+                                                // ⭐ data 내부 구조 전체 출력
+                                                LogWindow.AddLogStatic($"🔍 [디버그] data 내용: {dataElement.GetRawText()}");
+
                                                 LogWindow.AddLogStatic($"🔍 [디버그] 'itemsArray' 속성 확인 중...");
 
                                                 if (dataElement.TryGetProperty("itemsArray", out var itemsArrayElement))
@@ -2054,6 +2087,28 @@ namespace Gumaedaehang
                                                 else
                                                 {
                                                     LogWindow.AddLogStatic($"❌ [디버그] 'itemsArray' 속성을 찾을 수 없음!");
+
+                                                    // ⭐ 'result' 속성 확인 (일부 응답에서 result 사용)
+                                                    if (dataElement.TryGetProperty("result", out var resultElement))
+                                                    {
+                                                        LogWindow.AddLogStatic($"🔍 [디버그] 'result' 속성 발견!");
+
+                                                        if (resultElement.ValueKind == JsonValueKind.Array)
+                                                        {
+                                                            var resultArray = resultElement.EnumerateArray().ToList();
+                                                            LogWindow.AddLogStatic($"📊 [디버그] result 배열 길이: {resultArray.Count}");
+
+                                                            if (resultArray.Count == 0)
+                                                            {
+                                                                LogWindow.AddLogStatic($"⚠️ 타오바오에서 해당 이미지로 검색 결과를 찾지 못했습니다.");
+                                                                LogWindow.AddLogStatic($"💡 다른 이미지를 사용하거나 직접 타오바오에서 검색해보세요.");
+                                                            }
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        LogWindow.AddLogStatic($"⚠️ [디버그] 'result' 속성도 찾을 수 없음 - data 구조가 예상과 다름");
+                                                    }
                                                 }
                                             }
                                             else
@@ -2977,6 +3032,65 @@ namespace Gumaedaehang
 
                 if (success)
                 {
+                    button.Content = "페이지 로딩 중";
+                    LogWindow.AddLogStatic($"✅ {type} 브라우저 열기 완료 - 페이지 로딩 대기 중...");
+
+                    // ⭐ 페이지 로딩 대기 (3초)
+                    await Task.Delay(3000);
+
+                    // ⭐ 영수증 CAPTCHA 감지
+                    var hasCaptcha = await CheckForReceiptCaptcha();
+                    if (hasCaptcha)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 영수증 인증 CAPTCHA 감지됨");
+
+                        // 메시지 박스 표시
+                        var messageBox = new Window
+                        {
+                            Title = "로그인 필요",
+                            Width = 400,
+                            Height = 200,
+                            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                            CanResize = false
+                        };
+
+                        var okButton = new Button
+                        {
+                            Content = "확인",
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                            Padding = new Thickness(40, 10)
+                        };
+
+                        okButton.Click += (s, e) => messageBox.Close();
+
+                        messageBox.Content = new StackPanel
+                        {
+                            Margin = new Thickness(20),
+                            Spacing = 20,
+                            Children =
+                            {
+                                new TextBlock
+                                {
+                                    Text = "네이버에 로그인이 필요합니다.\n먼저 로그인을 완료해주세요.",
+                                    FontSize = 16,
+                                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                                },
+                                okButton
+                            }
+                        };
+
+                        await messageBox.ShowDialog((Window)this.VisualRoot!);
+
+                        // 브라우저 종료
+                        await ChromeExtensionService.CloseNaverPriceComparisonWindowByTitle();
+                        LogWindow.AddLogStatic($"🔒 영수증 CAPTCHA로 인해 브라우저 종료됨");
+
+                        button.Content = "로그인 필요";
+                        await Task.Delay(2000);
+                        return;
+                    }
+
                     button.Content = "크롤링 중";
                     LogWindow.AddLogStatic($"✅ {type} 크롤링 시작 완료");
                 }
@@ -2999,6 +3113,22 @@ namespace Gumaedaehang
                     button.IsEnabled = true;
                     button.Content = "페어링";
                 }
+            }
+        }
+
+        // ⭐ 영수증 CAPTCHA 감지 메서드 (서버 플래그 확인)
+        private async Task<bool> CheckForReceiptCaptcha()
+        {
+            try
+            {
+                // Chrome 확장이 div.captcha_img_cover를 감지하고 서버에 알렸는지 확인
+                await Task.Delay(100); // 비동기 호환성
+                return ThumbnailWebServer.Instance?.CheckAndResetCaptcha() ?? false;
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ CAPTCHA 확인 오류: {ex.Message}");
+                return false;
             }
         }
 

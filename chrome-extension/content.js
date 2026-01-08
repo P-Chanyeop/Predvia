@@ -3,6 +3,46 @@ console.log('🆕 Predvia 스마트스토어 링크 수집 확장프로그램 �
 console.log('🌐 현재 URL:', window.location.href);
 console.log('⏰ 현재 시간:', new Date().toLocaleString());
 
+// ⭐ 영수증 CAPTCHA 감지 및 서버 알림
+async function checkForCaptcha() {
+  try {
+    // div.captcha_img_cover 요소 확인
+    const captchaElement = document.querySelector('div.captcha_img_cover');
+    if (captchaElement) {
+      console.log('🔍 영수증 CAPTCHA 감지됨!');
+
+      // 서버에 CAPTCHA 감지 알림
+      const response = await fetch('http://localhost:8080/api/captcha/detected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: window.location.href,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (response.ok) {
+        console.log('✅ 서버에 CAPTCHA 감지 알림 전송 완료');
+      }
+
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.log('⚠️ CAPTCHA 체크 오류:', error.message);
+    return false;
+  }
+}
+
+// 페이지 로드 후 CAPTCHA 체크
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(checkForCaptcha, 1000);
+  });
+} else {
+  setTimeout(checkForCaptcha, 1000);
+}
+
 // ⭐ 페이지 로드 후 창 크기 및 위치 강제 조절 (우하단 최소 크기)
 function forceWindowResize() {
   try {
