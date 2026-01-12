@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v2.01-orange)
+![Release](https://img.shields.io/badge/Release-v2.02-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,24 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v2.01 - 크롤링 멈춤 문제 해결 및 CAPTCHA 감지 시스템 구현)
+### 🔄 최신 업데이트 (v2.02 - 포커싱 실패 시 자동 처리 시스템 완전 구현)
+- [x] **✅ HandleStopCrawling API 파라미터 수정**: JSON 파싱 오류 완전 해결
+  - **선택적 파라미터**: storeId, message를 선택적 파라미터로 변경하여 유연성 확보
+  - **안전한 JSON 파싱**: TryGetProperty를 사용하여 키 누락 시에도 안전하게 처리
+  - **오류 해결**: "The given key was not present in the dictionary" 오류 완전 해결
+  - **API 안정성**: 다양한 호출 방식에 대응하는 견고한 API 구조
+- [x] **✅ 포커싱 실패 시 자동 처리 추가**: 완전한 자동화 시스템 구현
+  - **로딩창 자동 숨기기**: LoadingHelper.HideLoadingOverlay()로 즉시 로딩창 제거
+  - **크롤링 브라우저 자동 종료**: ChromeExtensionService.CloseSmartStoreCrawlingWindows()로 모든 크롤링 창 정리
+  - **포커싱 실패 시 카드 생성 방지**: 불필요한 동작 제거로 시스템 효율성 향상
+  - **완전한 정리**: 포커싱 실패 시 모든 리소스 자동 정리 및 초기 상태 복원
+- [x] **✅ 메시지 박스 표시 시스템**: 사용자 친화적 오류 안내
+  - **포커싱 0회 성공 시**: "로그인 후 다시 시도하세요" 간단명료한 메시지 박스 표시
+  - **메시지 박스 확인 버튼**: 클릭 시 크롤링 중단 API 호출로 완전한 종료 처리
+  - **Grid 레이아웃**: 완벽한 가운데 정렬로 사용자 경험 최적화
+  - **자동 브라우저 정리**: 확인 버튼 클릭 시 모든 관련 브라우저 자동 종료
+
+### 🔄 이전 업데이트 (v2.01 - 크롤링 멈춤 문제 해결 및 CAPTCHA 감지 시스템 구현)
 - [x] **🔧 크롤링 멈춤 문제 완전 해결**: 순차 처리 위반으로 인한 크롤링 중단 문제 해결
   - **문제 원인**: 스토어가 collecting 상태에서 5번 연속 감지되면 서버에서 `_currentStoreIndex++` 실행하여 인덱스 증가
   - **순차 처리 위반**: Chrome 확장프로그램은 원래 순서대로 요청하지만 서버는 증가된 인덱스 기대로 불일치 발생
@@ -1483,11 +1500,11 @@ dotnet run --project Gumaedaehang.csproj
 
 **Made with ❤️ by Softcat Team**
 
-> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v2.01 (크롤링 멈춤 문제 해결 및 CAPTCHA 감지 시스템 구현)
-  - 크롤링 멈춤 문제 완전 해결: 순차 처리 위반으로 인한 크롤링 중단 문제 해결
-  - 순차 처리 위반 해결: Chrome 확장프로그램과 서버 간 인덱스 불일치 문제 해결
-  - 영수증 CAPTCHA 감지 및 처리 시스템: 타오바오 로그인 CAPTCHA 자동 감지 및 사용자 안내
-  - 자동 브라우저 종료: CAPTCHA 감지 시 사용자 친화적 안내 및 자동 브라우저 정리
+> **"구매대행의 새로운 표준을 제시합니다"** - Predvia v2.02 (포커싱 실패 시 자동 처리 시스템 완전 구현)
+  - HandleStopCrawling API 파라미터 수정: JSON 파싱 오류 완전 해결
+  - 선택적 파라미터: storeId, message를 선택적 파라미터로 변경하여 유연성 확보
+  - 포커싱 실패 시 자동 처리 추가: 완전한 자동화 시스템 구현
+  - 메시지 박스 표시 시스템: 사용자 친화적 오류 안내 및 자동 브라우저 정리
 
 > **"구매대행의 새로운 표준을 제시합니다"** - Predvia v1.85 (가격 추출 정확도 완전 개선)
   - "상품 가격" 요소 기반 정확한 가격 추출로 649,900원, 754,200원 등 실제 상품 가격만 수집

@@ -4,6 +4,11 @@ using System.IO;
 using System.Management;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Avalonia.Controls;
+using Avalonia.Layout;
+using Avalonia.Media;
+using System.Net.Http;
+using System.Text;
 
 namespace Gumaedaehang.Services
 {
@@ -239,6 +244,119 @@ namespace Gumaedaehang.Services
                         }
 
                         LogWindow.AddLogStatic($"🔚 포커싱 완료 - 총 {attemptCount}회 시도, {successCount}회 성공");
+                        
+                        // ⭐ 포커싱 실패 시 로그인 안내 및 브라우저 종료
+                        if (successCount == 0)
+                        {
+                            LogWindow.AddLogStatic("❌ 포커싱 실패 - CAPTCHA 또는 로그인 문제 가능성");
+                            
+                            // 브라우저 종료
+                            try
+                            {
+                                if (!process.HasExited)
+                                {
+                                    process.CloseMainWindow();
+                                    await Task.Delay(1000);
+                                    if (!process.HasExited)
+                                    {
+                                        process.Kill();
+                                    }
+                                    LogWindow.AddLogStatic("🔥 포커싱 실패로 가격비교 브라우저 종료");
+                                }
+                                
+                                // 가격비교 프로세스 정리
+                                if (_naverPriceComparisonProcess != null && !_naverPriceComparisonProcess.HasExited)
+                                {
+                                    _naverPriceComparisonProcess.CloseMainWindow();
+                                    await Task.Delay(1000);
+                                    if (!_naverPriceComparisonProcess.HasExited)
+                                    {
+                                        _naverPriceComparisonProcess.Kill();
+                                    }
+                                    _naverPriceComparisonProcess?.Dispose();
+                                    _naverPriceComparisonProcess = null;
+                                    LogWindow.AddLogStatic("🔥 가격비교 프로세스 정리 완료");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                LogWindow.AddLogStatic($"❌ 브라우저 종료 오류: {ex.Message}");
+                            }
+                            
+                            // UI 스레드에서 메시지 박스 표시
+                            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                            {
+                                try
+                                {
+                                    var messageBox = new Window
+                                    {
+                                        Title = "로그인 필요",
+                                        Width = 350,
+                                        Height = 150,
+                                        WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterScreen,
+                                        CanResize = false
+                                    };
+                                    
+                                    var grid = new Avalonia.Controls.Grid
+                                    {
+                                        Margin = new Avalonia.Thickness(20),
+                                        RowDefinitions = new Avalonia.Controls.RowDefinitions("Auto,20,Auto"),
+                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                                    };
+                                    
+                                    var messageText = new Avalonia.Controls.TextBlock
+                                    {
+                                        Text = "로그인 후 다시 시도하세요.",
+                                        FontSize = 14,
+                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                                    };
+                                    Avalonia.Controls.Grid.SetRow(messageText, 0);
+                                    
+                                    var okButton = new Avalonia.Controls.Button
+                                    {
+                                        Content = "확인",
+                                        Width = 100,
+                                        Height = 35,
+                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                                        Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E67E22")),
+                                        Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White)
+                                    };
+                                    Avalonia.Controls.Grid.SetRow(okButton, 2);
+                                    
+                                    okButton.Click += async (s, e) => 
+                                    {
+                                        messageBox.Close();
+                                        
+                                        // 크롤링 중단 처리
+                                        try
+                                        {
+                                            // 서버에 크롤링 중단 신호 전송
+                                            var httpClient = new System.Net.Http.HttpClient();
+                                            var content = new System.Net.Http.StringContent("{\"reason\":\"포커싱 실패\"}", System.Text.Encoding.UTF8, "application/json");
+                                            await httpClient.PostAsync("http://localhost:8080/api/smartstore/stop", content);
+                                            LogWindow.AddLogStatic("🛑 포커싱 실패로 크롤링 중단 요청 완료");
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            LogWindow.AddLogStatic($"❌ 크롤링 중단 요청 오류: {ex.Message}");
+                                        }
+                                    };
+                                    
+                                    grid.Children.Add(messageText);
+                                    grid.Children.Add(okButton);
+                                    messageBox.Content = grid;
+                                    
+                                    messageBox.Show();
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogWindow.AddLogStatic($"❌ 메시지 박스 표시 오류: {ex.Message}");
+                                }
+                            });
+                        }
                     });
 
                     // ⭐ 120초 후 자동 종료 (스토어 크롤링 시간 충분히 확보)

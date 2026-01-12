@@ -1619,31 +1619,33 @@ namespace Gumaedaehang.Services
             {
                 using var reader = new StreamReader(context.Request.Body);
                 var json = await reader.ReadToEndAsync();
-                
+
                 var stopData = JsonSerializer.Deserialize<JsonElement>(json);
-                var reason = stopData.GetProperty("reason").GetString();
-                var storeId = stopData.GetProperty("storeId").GetString();
-                var message = stopData.GetProperty("message").GetString();
-                
+
+                // ⭐ 선택적 파라미터 처리
+                string? reason = stopData.TryGetProperty("reason", out var reasonProp) ? reasonProp.GetString() : "알 수 없음";
+                string? storeId = stopData.TryGetProperty("storeId", out var storeIdProp) ? storeIdProp.GetString() : null;
+                string? message = stopData.TryGetProperty("message", out var messageProp) ? messageProp.GetString() : null;
+
                 LogWindow.AddLogStatic($"🚫 크롤링 중단 요청 수신: {reason}");
-                LogWindow.AddLogStatic($"🚫 스토어: {storeId}");
-                LogWindow.AddLogStatic($"🚫 사유: {message}");
-                
+                if (storeId != null) LogWindow.AddLogStatic($"🚫 스토어: {storeId}");
+                if (message != null) LogWindow.AddLogStatic($"🚫 사유: {message}");
+
                 // ⭐ 즉시 크롤링 중단
                 lock (_counterLock)
                 {
                     // ⭐ 크롤링 중단
                     _shouldStop = true;
                     _isCrawlingActive = false; // ⭐ 추가: 모든 데이터 처리 중단
-                    
+
                     // ⭐ 크롬 탭 자동 닫기 제거 (테스트용)
                     // _ = Task.Run(() => CloseAllChromeTabs());
-                    
+
                     // ⭐ 실제 파일 개수로 정확한 계산
                     var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                     var imagesPath = Path.Combine(appDataPath, "Predvia", "Images");
                     var actualCount = 0;
-                    
+
                     try
                     {
                         if (Directory.Exists(imagesPath))
@@ -1652,37 +1654,56 @@ namespace Gumaedaehang.Services
                         }
                     }
                     catch { }
-                    
-                    LogWindow.AddLogStatic($"🛑 네이버 차단 감지로 인한 크롤링 강제 중단");
+
+                    LogWindow.AddLogStatic($"🛑 크롤링 중단: {reason}");
                     LogWindow.AddLogStatic($"📊 최종 수집 완료: {actualCount}/100개 ({(actualCount * 100.0 / 100):F1}%)");
-                    
-                    // ⭐ 팝업창으로 최종 결과 표시
-                    ShowCrawlingResultPopup(actualCount, "차단 감지로 인한 중단");
-                    
+
+                    // ⭐ 팝업창으로 최종 결과 표시 (포커싱 실패는 제외)
+                    if (reason != "포커싱 실패")
+                    {
+                        ShowCrawlingResultPopup(actualCount, reason ?? "중단");
+                    }
+
                     // ⭐ 80개 미만이면 Chrome 재시작
                     if (_productCount < 80)
                     {
                         LogWindow.AddLogStatic($"🔄 80개 미만 수집 - 크롤링 완료");
                     }
                 }
-                
-                // 🔥 차단으로 중단되어도 카드 생성
-                RefreshSourcingPage();
-                
+
+                // ⭐ 로딩창 숨기기
+                LoadingHelper.HideLoadingOverlay();
+                LogWindow.AddLogStatic($"✅ 로딩창 숨김 완료 (크롤링 중단)");
+
+                // ⭐ 브라우저 종료
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(500);
+                    await ChromeExtensionService.CloseSmartStoreCrawlingWindows();
+                    LogWindow.AddLogStatic($"🔥 크롤링 브라우저 종료 완료");
+                });
+
+                // 🔥 차단으로 중단되어도 카드 생성 (포커싱 실패는 제외)
+                if (reason != "포커싱 실패")
+                {
+                    RefreshSourcingPage();
+                }
+
                 context.Response.ContentType = "application/json; charset=utf-8";
                 context.Response.StatusCode = 200;
-                await context.Response.WriteAsync("{\"success\":true,\"message\":\"Crawling stopped due to blocking\"}");
-                
+                await context.Response.WriteAsync("{\"success\":true,\"message\":\"Crawling stopped\"}");
+
                 return Results.Ok();
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 크롤링 중단 API 오류: {ex.Message}");
-                
+                LogWindow.AddLogStatic($"❌ 오류 상세: {ex.StackTrace}");
+
                 context.Response.ContentType = "application/json; charset=utf-8";
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsync("{\"success\":false,\"error\":\"Stop API error\"}");
-                
+
                 return Results.Ok();
             }
         }
