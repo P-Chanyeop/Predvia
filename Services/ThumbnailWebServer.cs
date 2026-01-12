@@ -1675,12 +1675,18 @@ namespace Gumaedaehang.Services
                 LoadingHelper.HideLoadingOverlay();
                 LogWindow.AddLogStatic($"✅ 로딩창 숨김 완료 (크롤링 중단)");
 
-                // ⭐ 브라우저 종료
+                // ⭐ 브라우저 종료 (스마트스토어 창 + 네이버 가격비교 창)
                 _ = Task.Run(async () =>
                 {
                     await Task.Delay(500);
+
+                    // 스마트스토어 크롤링 창들 종료
                     await ChromeExtensionService.CloseSmartStoreCrawlingWindows();
-                    LogWindow.AddLogStatic($"🔥 크롤링 브라우저 종료 완료");
+                    LogWindow.AddLogStatic($"✅ 크롤링 스마트스토어 창 종료 완료");
+
+                    // 네이버 가격비교 창 종료
+                    await ChromeExtensionService.CloseNaverPriceComparisonWindowByTitle();
+                    LogWindow.AddLogStatic($"✅ 네이버 가격비교 창 종료 완료");
                 });
 
                 // 🔥 차단으로 중단되어도 카드 생성 (포커싱 실패는 제외)
@@ -3037,17 +3043,31 @@ namespace Gumaedaehang.Services
                 }
                 
                 LogWindow.AddLogStatic("🎉 Chrome에서 모든 스토어 완료 신호 수신");
-                
+
                 // Chrome의 판단을 신뢰하고 무조건 완료 처리
                 var currentCount = GetCurrentProductCount();
                 LogWindow.AddLogStatic($"🎉 모든 스토어 방문 완료! 최종 수집: {currentCount}/100개");
-                
+
                 // 로딩창 숨김
                 LoadingHelper.HideLoadingFromSourcingPage();
-                
+
+                // ⭐ 크롤링 브라우저들 종료 (스마트스토어 창 + 네이버 가격비교 창)
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(500);
+
+                    // 스마트스토어 크롤링 창들 종료
+                    await ChromeExtensionService.CloseSmartStoreCrawlingWindows();
+                    LogWindow.AddLogStatic($"✅ 크롤링 스마트스토어 창 종료 완료");
+
+                    // 네이버 가격비교 창 종료
+                    await ChromeExtensionService.CloseNaverPriceComparisonWindowByTitle();
+                    LogWindow.AddLogStatic($"✅ 네이버 가격비교 창 종료 완료");
+                });
+
                 // 팝업창 표시
                 ShowCrawlingResultPopup(currentCount, "모든 스토어 방문 완료");
-                
+
                 return Task.FromResult(Results.Ok(new { success = true, message = "All stores completed popup shown" }));
             }
             catch (Exception ex)
