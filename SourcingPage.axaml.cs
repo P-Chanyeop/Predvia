@@ -1920,9 +1920,11 @@ namespace Gumaedaehang
                                     {
                                         LogWindow.AddLogStatic($"✅ [디버그] Full response 라인 발견!");
 
+                                        string jsonStr = ""; // ⭐ catch 블록에서도 접근 가능하도록 선언
+
                                         try
                                         {
-                                            var jsonStr = line.Substring(line.IndexOf('{'));
+                                            jsonStr = line.Substring(line.IndexOf('{'));
 
                                             // Python 딕셔너리 형식을 JSON으로 변환 (작은따옴표 → 큰따옴표)
                                             jsonStr = jsonStr.Replace("'", "\"")
@@ -1931,6 +1933,9 @@ namespace Gumaedaehang
                                                            .Replace("None", "null");
 
                                             LogWindow.AddLogStatic($"🔍 [디버그] JSON 문자열 길이: {jsonStr.Length}자");
+
+                                            // ⭐ 잘못된 이스케이프 시퀀스 정리 (JSON 파싱 오류 방지)
+                                            jsonStr = CleanInvalidJsonEscapes(jsonStr);
 
                                             var jsonResponse = JsonSerializer.Deserialize<JsonElement>(jsonStr);
                                             LogWindow.AddLogStatic($"✅ [디버그] JSON 역직렬화 성공!");
@@ -2115,6 +2120,32 @@ namespace Gumaedaehang
                                             {
                                                 LogWindow.AddLogStatic($"❌ [디버그] 'data' 속성을 찾을 수 없음!");
                                             }
+                                        }
+                                        catch (JsonException parseEx)
+                                        {
+                                            LogWindow.AddLogStatic($"❌ Full response 파싱 오류: {parseEx.Message}");
+
+                                            // ⭐ 파싱 실패한 위치 주변 JSON 출력 (디버깅용)
+                                            try
+                                            {
+                                                // BytePositionInLine에서 오류 발생 위치 추출
+                                                var errorMsg = parseEx.Message;
+                                                if (errorMsg.Contains("BytePositionInLine"))
+                                                {
+                                                    var posMatch = System.Text.RegularExpressions.Regex.Match(errorMsg, @"BytePositionInLine:\s*(\d+)");
+                                                    if (posMatch.Success && int.TryParse(posMatch.Groups[1].Value, out int errorPos))
+                                                    {
+                                                        int start = Math.Max(0, errorPos - 100);
+                                                        int length = Math.Min(200, jsonStr.Length - start);
+                                                        string snippet = jsonStr.Substring(start, length);
+                                                        LogWindow.AddLogStatic($"🔍 [디버그] 오류 위치 주변 (위치 {errorPos}): ...{snippet}...");
+                                                    }
+                                                }
+                                            }
+                                            catch { }
+
+                                            LogWindow.AddLogStatic($"⚠️ [디버그] JSON 파싱 실패 - 타오바오 검색 결과를 사용할 수 없습니다.");
+                                            LogWindow.AddLogStatic($"💡 [디버그] 이 상품은 타오바오 API 응답에 잘못된 문자가 포함되어 있어 건너뜁니다.");
                                         }
                                         catch (Exception parseEx)
                                         {
@@ -4231,8 +4262,96 @@ namespace Gumaedaehang
             catch { }
             return "";
         }
+
+        // ⭐ JSON 파싱 오류 방지: 잘못된 이스케이프 시퀀스 정리
+        private static string CleanInvalidJsonEscapes(string jsonStr)
+        {
+            try
+            {
+                var sb = new System.Text.StringBuilder(jsonStr.Length);
+                bool inString = false;
+                bool escaped = false;
+
+                for (int i = 0; i < jsonStr.Length; i++)
+                {
+                    char c = jsonStr[i];
+
+                    // 문자열 내부인지 추적 (큰따옴표로만 판단)
+                    if (c == '"' && !escaped)
+                    {
+                        inString = !inString;
+                        sb.Append(c);
+                        continue;
+                    }
+
+                    // 백슬래시 처리
+                    if (c == '\\' && !escaped && inString)
+                    {
+                        if (i + 1 < jsonStr.Length)
+                        {
+                            char next = jsonStr[i + 1];
+
+                            // 유효한 이스케이프 시퀀스: ", \, /, b, f, n, r, t, u
+                            if (next == '"' || next == '\\' || next == '/' ||
+                                next == 'b' || next == 'f' || next == 'n' ||
+                                next == 'r' || next == 't')
+                            {
+                                sb.Append(c); // 백슬래시 유지
+                                escaped = true;
+                            }
+                            else if (next == 'u')
+                            {
+                                // \uXXXX 형식 확인 (유니코드)
+                                if (i + 5 < jsonStr.Length &&
+                                    IsHexDigit(jsonStr[i + 2]) &&
+                                    IsHexDigit(jsonStr[i + 3]) &&
+                                    IsHexDigit(jsonStr[i + 4]) &&
+                                    IsHexDigit(jsonStr[i + 5]))
+                                {
+                                    sb.Append(c); // 유효한 \uXXXX
+                                    escaped = true;
+                                }
+                                else
+                                {
+                                    // 잘못된 \u 시퀀스 - 백슬래시를 이스케이프 처리
+                                    sb.Append("\\\\");
+                                }
+                            }
+                            else
+                            {
+                                // 잘못된 이스케이프 시퀀스 (예: \x) - 백슬래시를 이스케이프 처리
+                                sb.Append("\\\\");
+                            }
+                        }
+                        else
+                        {
+                            // 문자열 끝의 백슬래시 - 이스케이프 처리
+                            sb.Append("\\\\");
+                        }
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                        escaped = false;
+                    }
+                }
+
+                return sb.ToString();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"⚠️ JSON 정리 실패: {ex.Message}");
+                return jsonStr; // 실패 시 원본 반환
+            }
+        }
+
+        // 16진수 문자 확인
+        private static bool IsHexDigit(char c)
+        {
+            return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+        }
     }
-    
+
     // 상품별 UI 요소들을 관리하는 클래스
     public class ProductUIElements
     {
