@@ -2015,6 +2015,9 @@ namespace Gumaedaehang
                                                                             ImageUrl = this.ExtractImageUrl(item)
                                                                         };
 
+                                                                        // ⭐ 파싱된 데이터 로그 (디버깅용)
+                                                                        LogWindow.AddLogStatic($"📦 재시도 상품 {taobaoProducts.Count + 1}: 가격=¥{taobaoProduct.Price}, 리뷰={taobaoProduct.Reviews}개");
+
                                                                         taobaoProducts.Add(taobaoProduct);
                                                                     }
 
@@ -2071,6 +2074,9 @@ namespace Gumaedaehang
                                                             Sales = this.ExtractShopName(item),
                                                             ImageUrl = this.ExtractImageUrl(item)
                                                         };
+
+                                                        // ⭐ 파싱된 데이터 로그 (디버깅용)
+                                                        LogWindow.AddLogStatic($"📦 상품 {taobaoProducts.Count + 1}: 가격=¥{taobaoProduct.Price}, 리뷰={taobaoProduct.Reviews}개, 이미지={(!string.IsNullOrEmpty(taobaoProduct.ImageUrl) ? "O" : "X")}");
 
                                                         taobaoProducts.Add(taobaoProduct);
                                                     }
@@ -3962,40 +3968,58 @@ namespace Gumaedaehang
                     
                     if (image != null && !string.IsNullOrEmpty(product.ImageUrl))
                     {
-                        // 원격 이미지 로드
+                        // ⭐ 로컬 다운로드 방식으로 고화질 이미지 로드
                         _ = Task.Run(async () =>
                         {
                             try
                             {
-                                using var httpClient = new HttpClient();
-                                var imageBytes = await httpClient.GetByteArrayAsync(product.ImageUrl);
-                                
-                                await Dispatcher.UIThread.InvokeAsync(() =>
+                                // 로컬에 다운로드
+                                var localFilePath = await DownloadTaobaoImageToLocal(product.ImageUrl, cardId, i);
+
+                                if (!string.IsNullOrEmpty(localFilePath) && File.Exists(localFilePath))
                                 {
-                                    using var stream = new MemoryStream(imageBytes);
-                                    var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
-                                    image.Source = bitmap;
-                                    image.IsVisible = true;
-                                    
-                                    // 플레이스홀더 숨기기
-                                    if (placeholder != null)
+                                    // UI 스레드에서 이미지 표시
+                                    await Dispatcher.UIThread.InvokeAsync(() =>
                                     {
-                                        placeholder.IsVisible = false;
-                                    }
-                                });
+                                        var bitmap = new Avalonia.Media.Imaging.Bitmap(localFilePath);
+                                        image.Source = bitmap;
+                                        image.IsVisible = true;
+
+                                        // 플레이스홀더 숨기기
+                                        if (placeholder != null)
+                                        {
+                                            placeholder.IsVisible = false;
+                                        }
+
+                                        LogWindow.AddLogStatic($"✅ 타오바오 이미지 표시 완료: {System.IO.Path.GetFileName(localFilePath)}");
+                                    });
+                                }
                             }
                             catch (Exception imgEx)
                             {
-                                LogWindow.AddLogStatic($"⚠️ 타오바오 이미지 로드 실패: {imgEx.Message}");
+                                LogWindow.AddLogStatic($"⚠️ 타오바오 이미지 로드 실패 ({product.ImageUrl}): {imgEx.Message}");
                             }
                         });
                     }
                     
-                    // 가격 + 판매량 + 리뷰 표시
+                    // ⭐ 가격 + 리뷰 표시 (깔끔한 형식)
                     if (infoText != null)
                     {
-                        var reviewText = !string.IsNullOrEmpty(product.Reviews) ? $" | {product.Reviews}" : "";
-                        infoText.Text = $"¥{product.Price} | {product.Sales}{reviewText}";
+                        var parts = new List<string>();
+
+                        // 가격 (필수)
+                        if (!string.IsNullOrEmpty(product.Price))
+                        {
+                            parts.Add($"¥{product.Price}");
+                        }
+
+                        // 리뷰 개수
+                        if (!string.IsNullOrEmpty(product.Reviews) && product.Reviews != "0")
+                        {
+                            parts.Add($"{product.Reviews}개");
+                        }
+
+                        infoText.Text = parts.Count > 0 ? string.Join(" | ", parts) : "정보 없음";
                     }
                     
                     // URL 저장
@@ -4012,7 +4036,54 @@ namespace Gumaedaehang
                 LogWindow.AddLogStatic($"❌ 타오바오 상품 박스 업데이트 오류: {ex.Message}");
             }
         }
-        
+
+        // ⭐ 타오바오 이미지를 로컬에 다운로드
+        private async Task<string?> DownloadTaobaoImageToLocal(string imageUrl, int cardId, int index)
+        {
+            try
+            {
+                // 로컬 저장 경로 (Predvia/TaobaoImages 폴더)
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var taobaoImagesPath = System.IO.Path.Combine(appDataPath, "Predvia", "TaobaoImages");
+
+                if (!Directory.Exists(taobaoImagesPath))
+                {
+                    Directory.CreateDirectory(taobaoImagesPath);
+                }
+
+                // 파일명 생성 (cardId_index.jpg)
+                var fileName = $"taobao_{cardId}_{index}.jpg";
+                var localFilePath = System.IO.Path.Combine(taobaoImagesPath, fileName);
+
+                // 이미 다운로드된 파일이 있으면 재사용
+                if (File.Exists(localFilePath))
+                {
+                    LogWindow.AddLogStatic($"✅ 타오바오 이미지 캐시 사용: {fileName}");
+                    return localFilePath;
+                }
+
+                // HTTP로 이미지 다운로드
+                using var httpClient = new HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(15);
+                httpClient.DefaultRequestHeaders.Add("User-Agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                httpClient.DefaultRequestHeaders.Add("Referer", "https://www.taobao.com/");
+
+                var imageBytes = await httpClient.GetByteArrayAsync(imageUrl);
+
+                // 로컬에 저장
+                await File.WriteAllBytesAsync(localFilePath, imageBytes);
+
+                LogWindow.AddLogStatic($"✅ 타오바오 이미지 다운로드 완료: {fileName} ({imageBytes.Length} bytes)");
+                return localFilePath;
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"⚠️ 타오바오 이미지 다운로드 실패 ({imageUrl}): {ex.Message}");
+                return null;
+            }
+        }
+
     private bool _isTaobaoSearchRunning = false; // 중복 실행 방지 플래그
     
     // 타오바오 테스트 버튼 클릭 이벤트
@@ -4197,21 +4268,84 @@ namespace Gumaedaehang
         {
             try
             {
+                // ⭐ 1순위: priceInfo 객체에서 추출
                 if (item.TryGetProperty("priceInfo", out var priceInfoElement))
                 {
-                    var currency = priceInfoElement.TryGetProperty("monetaryUnit", out var currencyElement) ? 
-                                  currencyElement.GetString() ?? "" : "";
-                    
-                    string priceValue = null;
+                    double? priceValue = null;
+
+                    // pcFinalPrice → wapFinalPrice → reservePrice 순서로 시도
                     if (priceInfoElement.TryGetProperty("pcFinalPrice", out var pcPriceElement))
-                        priceValue = pcPriceElement.GetString();
+                    {
+                        if (pcPriceElement.ValueKind == JsonValueKind.Number)
+                            priceValue = pcPriceElement.GetDouble();
+                        else if (pcPriceElement.ValueKind == JsonValueKind.String)
+                        {
+                            var str = pcPriceElement.GetString();
+                            if (double.TryParse(str, out var parsed))
+                                priceValue = parsed;
+                        }
+                    }
                     else if (priceInfoElement.TryGetProperty("wapFinalPrice", out var wapPriceElement))
-                        priceValue = wapPriceElement.GetString();
+                    {
+                        if (wapPriceElement.ValueKind == JsonValueKind.Number)
+                            priceValue = wapPriceElement.GetDouble();
+                        else if (wapPriceElement.ValueKind == JsonValueKind.String)
+                        {
+                            var str = wapPriceElement.GetString();
+                            if (double.TryParse(str, out var parsed))
+                                priceValue = parsed;
+                        }
+                    }
                     else if (priceInfoElement.TryGetProperty("reservePrice", out var reservePriceElement))
-                        priceValue = reservePriceElement.GetString();
-                    
-                    if (!string.IsNullOrEmpty(priceValue))
-                        return $"{currency}{priceValue}";
+                    {
+                        if (reservePriceElement.ValueKind == JsonValueKind.Number)
+                            priceValue = reservePriceElement.GetDouble();
+                        else if (reservePriceElement.ValueKind == JsonValueKind.String)
+                        {
+                            var str = reservePriceElement.GetString();
+                            if (double.TryParse(str, out var parsed))
+                                priceValue = parsed;
+                        }
+                    }
+
+                    if (priceValue.HasValue)
+                    {
+                        return priceValue.Value.ToString("0.##");
+                    }
+                }
+
+                // ⭐ 2순위: price 필드에서 직접 추출
+                if (item.TryGetProperty("price", out var priceElement))
+                {
+                    if (priceElement.ValueKind == JsonValueKind.Number)
+                        return priceElement.GetDouble().ToString("0.##");
+                    else if (priceElement.ValueKind == JsonValueKind.String)
+                    {
+                        var priceStr = priceElement.GetString();
+                        if (!string.IsNullOrEmpty(priceStr))
+                        {
+                            priceStr = System.Text.RegularExpressions.Regex.Replace(priceStr, @"[^\d\.]", "");
+                            if (!string.IsNullOrEmpty(priceStr))
+                                return priceStr;
+                        }
+                    }
+                }
+
+                // ⭐ 3순위: zkFinalPrice 시도
+                if (item.TryGetProperty("zkFinalPrice", out var zkPriceElement))
+                {
+                    if (zkPriceElement.ValueKind == JsonValueKind.Number)
+                        return zkPriceElement.GetDouble().ToString("0.##");
+                    else if (zkPriceElement.ValueKind == JsonValueKind.String)
+                    {
+                        var zkPrice = zkPriceElement.GetString();
+                        if (!string.IsNullOrEmpty(zkPrice))
+                        {
+                            zkPrice = System.Text.RegularExpressions.Regex.Replace(zkPrice, @"[^\d\.]", "");
+                            if (!string.IsNullOrEmpty(zkPrice))
+                                return zkPrice;
+                        }
+                    }
                 }
             }
             catch { }
@@ -4254,9 +4388,22 @@ namespace Gumaedaehang
                     picsElement.TryGetProperty("mainPic", out var imgElement))
                 {
                     var imgUrl = imgElement.GetString() ?? "";
-                    if (!string.IsNullOrEmpty(imgUrl) && !imgUrl.StartsWith("http"))
-                        imgUrl = "https:" + imgUrl;
-                    return imgUrl;
+                    if (!string.IsNullOrEmpty(imgUrl))
+                    {
+                        // HTTPS 프로토콜 추가
+                        if (!imgUrl.StartsWith("http"))
+                            imgUrl = "https:" + imgUrl;
+
+                        // ⭐ 고화질 이미지로 변경 (_sum.jpg, _q90.jpg 등 저화질 파라미터 제거)
+                        imgUrl = System.Text.RegularExpressions.Regex.Replace(imgUrl, @"_\d+x\d+\.jpg", ".jpg"); // _300x300.jpg 제거
+                        imgUrl = System.Text.RegularExpressions.Regex.Replace(imgUrl, @"_sum\.jpg", ".jpg");      // _sum.jpg 제거
+                        imgUrl = System.Text.RegularExpressions.Regex.Replace(imgUrl, @"_q\d+\.jpg", ".jpg");     // _q90.jpg 제거
+
+                        // ⭐ .jpg.jpg 중복 확장자 제거
+                        imgUrl = System.Text.RegularExpressions.Regex.Replace(imgUrl, @"\.jpg\.jpg$", ".jpg");
+
+                        return imgUrl;
+                    }
                 }
             }
             catch { }

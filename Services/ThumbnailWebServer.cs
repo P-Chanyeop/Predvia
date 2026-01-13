@@ -843,27 +843,37 @@ namespace Gumaedaehang.Services
                         
                         if (!gongguData.StoreId.Equals(currentStoreId, StringComparison.OrdinalIgnoreCase))
                         {
-                            LogWindow.AddLogStatic($"❌ 순차 처리 위반 - 현재: {currentStoreId}, 요청: {gongguData.StoreId} 차단");
-                            
-                            // ⭐ 이전 스토어 요청이면 즉시 완료 처리
-                            var prevStoreIndex = _currentStoreIndex - 1;
-                            if (prevStoreIndex >= 0 && prevStoreIndex < _selectedStores.Count)
+                            LogWindow.AddLogStatic($"❌ 순차 처리 위반 - 현재: {currentStoreId}, 요청: {gongguData.StoreId} - 인덱스 강제 업데이트");
+
+                            // ⭐ 현재 스토어 인덱스 강제 업데이트 (방문 API와 동일)
+                            for (int i = 0; i < _selectedStores.Count; i++)
                             {
-                                var prevStoreId = UrlExtensions.ExtractStoreIdFromUrl(_selectedStores[prevStoreIndex].Url);
-                                if (gongguData.StoreId.Equals(prevStoreId, StringComparison.OrdinalIgnoreCase))
+                                if (_selectedStores[i].StoreId.Equals(gongguData.StoreId, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    LogWindow.AddLogStatic($"🔄 이전 스토어 {gongguData.StoreId} 공구 체크 - 즉시 완료 처리");
-                                    return Results.Json(new { 
-                                        success = true, 
-                                        message = "이전 스토어 완료 처리됨" 
-                                    });
+                                    _currentStoreIndex = i;
+                                    LogWindow.AddLogStatic($"🔄 [공구체크] 스토어 인덱스 강제 업데이트: {_currentStoreIndex}/{_selectedStores.Count}");
+                                    break;
                                 }
                             }
-                            
-                            return Results.Json(new { 
-                                success = false, 
-                                message = "순차 처리 대기 중" 
-                            });
+
+                            // ⭐ 이전 스토어들 모두 완료 처리
+                            for (int i = 0; i < _currentStoreIndex; i++)
+                            {
+                                var prevStoreId = UrlExtensions.ExtractStoreIdFromUrl(_selectedStores[i].Url);
+                                lock (_statesLock)
+                                {
+                                    var keys = _storeStates.Keys.Where(k => k.StartsWith(prevStoreId + ":")).ToList();
+                                    foreach (var key in keys)
+                                    {
+                                        if (_storeStates[key].State != "done")
+                                        {
+                                            _storeStates[key].State = "done";
+                                            _storeStates[key].Lock = false;
+                                            LogWindow.AddLogStatic($"🔄 [공구체크] {prevStoreId} 강제 완료 처리");
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     
@@ -1015,27 +1025,37 @@ namespace Gumaedaehang.Services
                         
                         if (!pageData.StoreId.Equals(currentStoreId, StringComparison.OrdinalIgnoreCase))
                         {
-                            LogWindow.AddLogStatic($"❌ 순차 처리 위반 - 현재: {currentStoreId}, 요청: {pageData.StoreId} 차단");
-                            
-                            // ⭐ 이전 스토어 요청이면 즉시 완료 처리
-                            var prevStoreIndex = _currentStoreIndex - 1;
-                            if (prevStoreIndex >= 0 && prevStoreIndex < _selectedStores.Count)
+                            LogWindow.AddLogStatic($"❌ 순차 처리 위반 - 현재: {currentStoreId}, 요청: {pageData.StoreId} - 인덱스 강제 업데이트");
+
+                            // ⭐ 현재 스토어 인덱스 강제 업데이트 (방문 API와 동일)
+                            for (int i = 0; i < _selectedStores.Count; i++)
                             {
-                                var prevStoreId = UrlExtensions.ExtractStoreIdFromUrl(_selectedStores[prevStoreIndex].Url);
-                                if (pageData.StoreId.Equals(prevStoreId, StringComparison.OrdinalIgnoreCase))
+                                if (_selectedStores[i].StoreId.Equals(pageData.StoreId, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    LogWindow.AddLogStatic($"🔄 이전 스토어 {pageData.StoreId} 전체상품 페이지 - 즉시 완료 처리");
-                                    return Results.Json(new { 
-                                        success = true, 
-                                        message = "이전 스토어 완료 처리됨" 
-                                    });
+                                    _currentStoreIndex = i;
+                                    LogWindow.AddLogStatic($"🔄 [전체상품] 스토어 인덱스 강제 업데이트: {_currentStoreIndex}/{_selectedStores.Count}");
+                                    break;
                                 }
                             }
-                            
-                            return Results.Json(new { 
-                                success = false, 
-                                message = "순차 처리 대기 중" 
-                            });
+
+                            // ⭐ 이전 스토어들 모두 완료 처리
+                            for (int i = 0; i < _currentStoreIndex; i++)
+                            {
+                                var prevStoreId = UrlExtensions.ExtractStoreIdFromUrl(_selectedStores[i].Url);
+                                lock (_statesLock)
+                                {
+                                    var keys = _storeStates.Keys.Where(k => k.StartsWith(prevStoreId + ":")).ToList();
+                                    foreach (var key in keys)
+                                    {
+                                        if (_storeStates[key].State != "done")
+                                        {
+                                            _storeStates[key].State = "done";
+                                            _storeStates[key].Lock = false;
+                                            LogWindow.AddLogStatic($"🔄 [전체상품] {prevStoreId} 강제 완료 처리");
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     
@@ -1675,10 +1695,11 @@ namespace Gumaedaehang.Services
                 LoadingHelper.HideLoadingOverlay();
                 LogWindow.AddLogStatic($"✅ 로딩창 숨김 완료 (크롤링 중단)");
 
-                // ⭐ 브라우저 종료 (스마트스토어 창 + 네이버 가격비교 창)
-                _ = Task.Run(async () =>
+                // ⭐ 브라우저 종료 (스마트스토어 창 + 네이버 가격비교 창) - 직접 실행
+                try
                 {
                     await Task.Delay(500);
+                    LogWindow.AddLogStatic($"🔥 브라우저 종료 시작 (크롤링 중단)");
 
                     // 스마트스토어 크롤링 창들 종료
                     await ChromeExtensionService.CloseSmartStoreCrawlingWindows();
@@ -1687,7 +1708,11 @@ namespace Gumaedaehang.Services
                     // 네이버 가격비교 창 종료
                     await ChromeExtensionService.CloseNaverPriceComparisonWindowByTitle();
                     LogWindow.AddLogStatic($"✅ 네이버 가격비교 창 종료 완료");
-                });
+                }
+                catch (Exception browserEx)
+                {
+                    LogWindow.AddLogStatic($"❌ 브라우저 종료 오류: {browserEx.Message}");
+                }
 
                 // 🔥 차단으로 중단되어도 카드 생성 (포커싱 실패는 제외)
                 if (reason != "포커싱 실패")
@@ -3024,7 +3049,7 @@ namespace Gumaedaehang.Services
         }
         
         // ⭐ 모든 스토어 완료 처리
-        private Task<IResult> HandleAllStoresCompleted(HttpContext context)
+        private async Task<IResult> HandleAllStoresCompleted(HttpContext context)
         {
             try
             {
@@ -3032,14 +3057,7 @@ namespace Gumaedaehang.Services
                 if (_completionPopupShown)
                 {
                     LogWindow.AddLogStatic("⚠️ 완료 팝업 이미 표시됨 - 중복 요청 무시");
-                    return Task.FromResult(Results.Ok(new { success = false, message = "Already completed" }));
-                }
-                
-                // ⭐ 이미 팝업이 표시되었으면 중복 실행 방지
-                if (_completionPopupShown)
-                {
-                    LogWindow.AddLogStatic("⚠️ 완료 팝업 이미 표시됨 - 중복 요청 무시");
-                    return Task.FromResult(Results.Ok(new { success = false, message = "Already completed" }));
+                    return Results.Ok(new { success = false, message = "Already completed" });
                 }
                 
                 LogWindow.AddLogStatic("🎉 Chrome에서 모든 스토어 완료 신호 수신");
@@ -3051,10 +3069,11 @@ namespace Gumaedaehang.Services
                 // 로딩창 숨김
                 LoadingHelper.HideLoadingFromSourcingPage();
 
-                // ⭐ 크롤링 브라우저들 종료 (스마트스토어 창 + 네이버 가격비교 창)
-                _ = Task.Run(async () =>
+                // ⭐ 크롤링 브라우저들 종료 (스마트스토어 창 + 네이버 가격비교 창) - 직접 실행
+                try
                 {
                     await Task.Delay(500);
+                    LogWindow.AddLogStatic($"🔥 브라우저 종료 시작 (모든 스토어 완료)");
 
                     // 스마트스토어 크롤링 창들 종료
                     await ChromeExtensionService.CloseSmartStoreCrawlingWindows();
@@ -3063,17 +3082,21 @@ namespace Gumaedaehang.Services
                     // 네이버 가격비교 창 종료
                     await ChromeExtensionService.CloseNaverPriceComparisonWindowByTitle();
                     LogWindow.AddLogStatic($"✅ 네이버 가격비교 창 종료 완료");
-                });
+                }
+                catch (Exception browserEx)
+                {
+                    LogWindow.AddLogStatic($"❌ 브라우저 종료 오류: {browserEx.Message}");
+                }
 
                 // 팝업창 표시
                 ShowCrawlingResultPopup(currentCount, "모든 스토어 방문 완료");
 
-                return Task.FromResult(Results.Ok(new { success = true, message = "All stores completed popup shown" }));
+                return Results.Ok(new { success = true, message = "All stores completed popup shown" });
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 모든 스토어 완료 처리 오류: {ex.Message}");
-                return Task.FromResult(Results.BadRequest(new { error = ex.Message }));
+                return Results.BadRequest(new { error = ex.Message });
             }
         }
         

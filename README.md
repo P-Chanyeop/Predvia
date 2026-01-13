@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v2.04-orange)
+![Release](https://img.shields.io/badge/Release-v2.05-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,17 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v2.04 - JSON 파싱 오류 해결 및 프록시 시스템 구현)
+### 🔄 최신 업데이트 (v2.05 - 타오바오 이미지 로드 시스템 완전 개선)
+- [x] **🖼️ 타오바오 이미지 로컬 다운로드 시스템 구현**: 메모리 기반에서 로컬 파일 기반으로 완전 전환
+  - **중복 확장자 문제 해결**: .jpg.jpg 중복 확장자를 정규식으로 자동 수정 (xxx.jpg.jpg → xxx.jpg)
+  - **로컬 저장 시스템**: %AppData%/Predvia/TaobaoImages/ 폴더에 체계적 저장
+  - **파일명 표준화**: taobao_{카드ID}_{인덱스}.jpg 형식으로 통일 (예: taobao_1_0.jpg)
+  - **이미지 캐싱 시스템**: 이미 다운로드된 이미지 재사용으로 빠른 로딩
+  - **고화질 다운로드**: HTTP 타임아웃 15초, User-Agent/Referer 헤더로 안정적 다운로드
+  - **상세한 로그 시스템**: 캐시 사용, 다운로드 완료, 파일 크기 등 모든 과정 추적
+  - **안정성 강화**: 다운로드 실패 시에도 프로그램 계속 진행, 메모리 효율성 개선
+
+### 🔄 이전 업데이트 (v2.04 - JSON 파싱 오류 해결 및 프록시 시스템 구현)
 - [x] **🔧 JSON 파싱 오류 해결 시스템**: 타오바오 API 응답의 잘못된 이스케이프 시퀀스 자동 처리
   - **CleanInvalidJsonEscapes 메서드**: 잘못된 백슬래시 이스케이프를 자동으로 수정 (예: \x → \\x)
   - **유효한 이스케이프 보존**: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX 등 정상 시퀀스는 그대로 유지
