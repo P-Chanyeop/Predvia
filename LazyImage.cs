@@ -38,22 +38,18 @@ namespace Gumaedaehang
                 {
                     var bitmap = new Bitmap(_imagePath);
                     Source = bitmap;
+                    _isLoaded = true;
                 }
                 else
                 {
-                    // 기본 이미지 로드
-                    Source = new Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
+                    // 파일이 없으면 기본 이미지 (회색 배경)
+                    LogWindow.AddLogStatic($"⚠️ 이미지 파일 없음: {_imagePath}");
+                    _isLoaded = true;
                 }
-                _isLoaded = true;
             }
-            catch
+            catch (Exception ex)
             {
-                // 오류 시 기본 이미지
-                try
-                {
-                    Source = new Bitmap(AssetLoader.Open(new Uri("avares://Gumaedaehang/images/product1.png")));
-                }
-                catch { }
+                LogWindow.AddLogStatic($"❌ 이미지 로드 실패: {ex.Message}");
                 _isLoaded = true;
             }
         }
