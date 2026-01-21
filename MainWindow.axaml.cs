@@ -399,6 +399,7 @@ namespace Gumaedaehang
             // 모든 콘텐츠 숨기기
             if (_homeContent != null) _homeContent.IsVisible = contentToShow == _homeContent;
             if (_sourcingContent != null) _sourcingContent.IsVisible = contentToShow == _sourcingContent;
+            if (_productDataContent != null) _productDataContent.IsVisible = contentToShow == _productDataContent;
             if (_marketCheckContent != null) _marketCheckContent.IsVisible = contentToShow == _marketCheckContent;
             if (_marketRegistrationContent != null) _marketRegistrationContent.IsVisible = contentToShow == _marketRegistrationContent;
             if (_mainProductContent != null) _mainProductContent.IsVisible = contentToShow == _mainProductContent;
