@@ -958,49 +958,26 @@ namespace Gumaedaehang.Services
                         {
                             // 먼저 인덱스 증가
                             _currentStoreIndex++;
-                            LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/10");
+                            var totalStores = _selectedStores?.Count ?? 10;
+                            LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{totalStores}");
 
-                            // 🛑 10개 스토어 완료 체크 (증가 후)
-                            if (_currentStoreIndex >= 10)
+                            // 🛑 모든 스토어 완료 체크 (실제 스토어 개수와 비교)
+                            if (_currentStoreIndex >= totalStores)
                             {
-                                LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 - 크롤링 중단");
+                                LogWindow.AddLogStatic($"🎉 {totalStores}개 스토어 모두 완료 - 크롤링 중단");
                                 _shouldStop = true;
                                 _isCrawlingActive = false;
 
-                                // ⭐ 크롤링 완료 시 자동 저장
-                                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                                {
-                                    try
-                                    {
-                                        if (_mainWindowReference != null)
-                                        {
-                                            var sourcingContentField = _mainWindowReference.GetType().GetField("_sourcingContent",
-                                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                                            if (sourcingContentField?.GetValue(_mainWindowReference) is ContentControl sourcingContent)
-                                            {
-                                                if (sourcingContent.Content is SourcingPage sourcingPage)
-                                                {
-                                                    LogWindow.AddLogStatic("💾 [크롤링 완료] 자동 저장 시작...");
-                                                    sourcingPage.SaveProductCardsToJsonPublic();
-                                                    LogWindow.AddLogStatic("✅ [크롤링 완료] 자동 저장 완료!");
-                                                }
-                                            }
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        LogWindow.AddLogStatic($"❌ 자동 저장 실패: {ex.Message}");
-                                    }
-                                });
-
-                                // ⭐ 즉시 팝업 표시 (한 번만)
+                                // ⭐ 크롤링 완료 처리
                                 if (!_completionPopupShown)
                                 {
-                                    var finalCount = GetCurrentProductCount();
-                                    ShowCrawlingResultPopup(finalCount, "10개 스토어 모두 완료");
                                     _completionPopupShown = true;
+                                    LoadingHelper.HideLoadingFromSourcingPage();
+                                    _ = Task.Run(async () => await CloseAllChromeApps());
+                                    var finalCount = GetCurrentProductCount();
+                                    ShowCrawlingResultPopup(finalCount, $"{totalStores}개 스토어 모두 완료");
                                 }
+                                return Results.Json(new { success = true, completed = true });
                             }
                         }
                     }
