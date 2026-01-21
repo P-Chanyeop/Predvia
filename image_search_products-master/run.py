@@ -10,8 +10,43 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='repla
 
 import sqlite3
 import os
+import random
 from lib import alibaba, yiwugo
 from lib.ali1688 import ali1688
+
+# ⭐ 프록시 관련 함수
+def load_proxy_list():
+    """프록시 목록 파일에서 로드"""
+    proxy_file = "프록시유동_모모아이피.txt"
+
+    if not os.path.exists(proxy_file):
+        print(f"⚠️ 프록시 파일 없음: {proxy_file}")
+        return []
+
+    try:
+        with open(proxy_file, 'r', encoding='utf-8') as f:
+            proxies = [line.strip() for line in f if line.strip()]
+        print(f"✅ 프록시 {len(proxies)}개 로드 완료 (파일: {proxy_file})")
+        return proxies
+    except Exception as e:
+        print(f"❌ 프록시 로드 실패: {e}")
+        return []
+
+def get_random_proxy(proxy_list):
+    """랜덤으로 프록시 선택"""
+    if not proxy_list:
+        print("⚠️ 프록시 없음 - 직접 연결")
+        return None
+
+    proxy = random.choice(proxy_list)
+    print(f"🔄 프록시 사용: {proxy}")
+    return {
+        'http': f'http://{proxy}',
+        'https': f'http://{proxy}'
+    }
+
+# 전역 프록시 목록
+_proxy_list = load_proxy_list()
 
 def get_chrome_cookies_all():
     """크롬에서 모든 타오바오 쿠키 가져오기"""
@@ -58,8 +93,11 @@ def get_chrome_cookie():
     return token
 
 def load_taobao_upload():
-    """타오바오 업로드 객체 생성 (쿠키 로드)"""
+    """타오바오 업로드 객체 생성 (쿠키 로드 + 프록시 설정)"""
     taobao_upload = None
+
+    # ⭐ 프록시 선택
+    proxy_dict = get_random_proxy(_proxy_list)
 
     # 1순위: 환경변수에서 토큰 확인
     env_token = os.environ.get('TAOBAO_TOKEN')
@@ -68,7 +106,7 @@ def load_taobao_upload():
     if env_token:
         print(f"🔑 환경변수에서 _m_h5_tk 토큰 발견: {env_token[:20]}...")
         try:
-            taobao_upload = ali1688.WorldTaobao(manual_cookie=env_token)
+            taobao_upload = ali1688.WorldTaobao(manual_cookie=env_token, proxies=proxy_dict)
             print("✅ 환경변수 토큰으로 타오바오 연결 성공")
         except Exception as e:
             print(f"❌ 환경변수 토큰 연결 실패: {e}")
@@ -97,7 +135,7 @@ def load_taobao_upload():
                 if '_m_h5_tk' in saved_cookies:
                     token = saved_cookies['_m_h5_tk']
                     print(f"🔑 _m_h5_tk 토큰 발견: {token[:20]}...")
-                    taobao_upload = ali1688.WorldTaobao(manual_cookie=token)
+                    taobao_upload = ali1688.WorldTaobao(manual_cookie=token, proxies=proxy_dict)
                     print("✅ 저장된 쿠키로 타오바오 연결 성공")
                 else:
                     print("❌ _m_h5_tk 토큰이 저장된 쿠키에 없습니다")
@@ -106,14 +144,14 @@ def load_taobao_upload():
             else:
                 print("❌ 저장된 쿠키 파일이 없습니다")
                 print("세션 모드로 타오바오 연결 시도...")
-                taobao_upload = ali1688.WorldTaobao(use_session=True)
+                taobao_upload = ali1688.WorldTaobao(use_session=True, proxies=proxy_dict)
                 print("✅ 세션 모드 성공")
         except Exception as e:
             print(f"저장된 쿠키/세션 모드 실패: {e}")
             print("Chrome 쿠키 직접 읽기 모드로 전환...")
             manual_cookie = get_chrome_cookie()
             if manual_cookie:
-                taobao_upload = ali1688.WorldTaobao(manual_cookie=manual_cookie)
+                taobao_upload = ali1688.WorldTaobao(manual_cookie=manual_cookie, proxies=proxy_dict)
                 print("✅ Chrome 쿠키 직접 읽기 성공")
             else:
                 print("❌ 모든 쿠키 획득 방법 실패")

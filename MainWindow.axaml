@@ -178,31 +178,39 @@
             </Grid.RowDefinitions>
             
             <!-- 탭 메뉴 -->
-            <StackPanel Grid.Row="0" 
-                        Orientation="Horizontal" 
-                        HorizontalAlignment="Center" 
+            <StackPanel Grid.Row="0"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Spacing="150">
-                <Button x:Name="SourcingTab" 
-                        Content="소싱" 
-                        FontSize="20" 
-                        FontWeight="Bold" 
+                        Spacing="100">
+                <Button x:Name="SourcingTab"
+                        Content="소싱"
+                        FontSize="20"
+                        FontWeight="Bold"
                         Foreground="#F47B20"
                         Background="Transparent"
                         BorderThickness="0"
                         Padding="10,5"
                         Cursor="Hand"/>
-                <Button x:Name="MarketCheckTab" 
-                        Content="마켓점검" 
-                        FontSize="20" 
+                <Button x:Name="ProductDataTab"
+                        Content="상품데이터"
+                        FontSize="20"
                         Foreground="{DynamicResource ForegroundBrush}"
                         Background="Transparent"
                         BorderThickness="0"
                         Padding="10,5"
                         Cursor="Hand"/>
-                <Button x:Name="MainProductTab" 
-                        Content="메인상품찾기(beta)" 
-                        FontSize="20" 
+                <Button x:Name="MarketCheckTab"
+                        Content="마켓점검"
+                        FontSize="20"
+                        Foreground="{DynamicResource ForegroundBrush}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,5"
+                        Cursor="Hand"/>
+                <Button x:Name="MainProductTab"
+                        Content="메인상품찾기(beta)"
+                        FontSize="20"
                         Foreground="{DynamicResource ForegroundBrush}"
                         Background="Transparent"
                         BorderThickness="0"
@@ -287,7 +295,12 @@
                 <ContentControl x:Name="SourcingContent" IsVisible="False">
                     <local:SourcingPage x:Name="SourcingPageContent"/>
                 </ContentControl>
-                
+
+                <!-- 상품데이터 화면 -->
+                <ContentControl x:Name="ProductDataContent" IsVisible="False">
+                    <local:ProductDataPage x:Name="ProductDataPageContent"/>
+                </ContentControl>
+
                 <!-- 마켓점검 화면 -->
                 <ContentControl x:Name="MarketCheckContent" IsVisible="False">
                     <local:MarketCheckPage/>

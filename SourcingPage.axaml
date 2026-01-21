@@ -279,12 +279,17 @@
                     
                     <!-- 전체선택 및 삭제 영역 -->
                     <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
-                        <CheckBox x:Name="SelectAllCheckBox" Content="전체선택" FontSize="14" 
+                        <CheckBox x:Name="SelectAllCheckBox" Content="전체선택" FontSize="14"
                                   IsEnabled="True" />
-                        <Button x:Name="DeleteSelectedButton" Content="삭제" FontSize="14" 
-                                Background="#E67E22" Foreground="White" 
+                        <Button x:Name="DeleteSelectedButton" Content="삭제" FontSize="14"
+                                Background="#E67E22" Foreground="White"
                                 Padding="15,8" CornerRadius="6"
                                 VerticalAlignment="Center"/>
+                        <Button x:Name="SaveDataButton" Content="💾 저장" FontSize="14"
+                                Background="#27AE60" Foreground="White"
+                                Padding="20,8" CornerRadius="6"
+                                VerticalAlignment="Center"
+                                FontWeight="Bold"/>
                     </StackPanel>
                     
                     <!-- 실제 상품 데이터가 여기에 동적으로 추가됩니다 -->

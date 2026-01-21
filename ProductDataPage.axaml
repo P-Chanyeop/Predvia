@@ -1,0 +1,140 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="930"
+             x:Class="Gumaedaehang.ProductDataPage">
+
+    <UserControl.Styles>
+        <!-- 라이트 모드 스타일 (기본) -->
+        <Style Selector="UserControl">
+            <Setter Property="Background" Value="White"/>
+        </Style>
+
+        <!-- 다크 모드 스타일 -->
+        <Style Selector="UserControl.dark-theme">
+            <Setter Property="Background" Value="#1E1E1E"/>
+        </Style>
+
+        <!-- TextBox 기본 스타일 (라이트모드) -->
+        <Style Selector="UserControl TextBox">
+            <Setter Property="Background" Value="#FFDAC4"/>
+            <Setter Property="Foreground" Value="#000000"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+        </Style>
+
+        <!-- TextBox 다크모드 스타일 (더 높은 우선순위) -->
+        <Style Selector="UserControl.dark-theme TextBox">
+            <Setter Property="Background" Value="#4A4A4A"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#666666"/>
+        </Style>
+
+        <!-- 키워드 태그 비활성 상태 텍스트 스타일 (더 강력하게) -->
+        <Style Selector="TextBlock.keyword-inactive">
+            <Setter Property="Foreground" Value="#666666"/>
+        </Style>
+
+        <Style Selector="UserControl.dark-theme TextBlock.keyword-inactive">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <!-- 키워드 태그 비활성 상태 배경 스타일 -->
+        <Style Selector="Border.keyword-inactive">
+            <Setter Property="Background" Value="#D0D0D0"/>
+        </Style>
+
+        <Style Selector="UserControl.dark-theme Border.keyword-inactive">
+            <Setter Property="Background" Value="#555555"/>
+        </Style>
+
+        <!-- 모든 TextBlock에 대한 다크모드 스타일 (강제 적용) -->
+        <Style Selector="UserControl.dark-theme TextBlock">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <!-- 카테고리 텍스트 다크모드 스타일 -->
+        <Style Selector="UserControl.dark-theme TextBlock.category-text">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <!-- 상품명 텍스트 다크모드 스타일 -->
+        <Style Selector="UserControl.dark-theme TextBlock.product-name">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <!-- 원상품명 텍스트 다크모드 스타일 -->
+        <Style Selector="UserControl.dark-theme TextBlock.original-name">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <!-- 키워드 텍스트 다크모드 스타일 -->
+        <Style Selector="UserControl.dark-theme TextBlock.keyword-text">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <!-- 커스텀 스크롤바 스타일 -->
+        <Style Selector="ScrollBar">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="ScrollBar:vertical">
+            <Setter Property="Width" Value="12"/>
+        </Style>
+
+        <Style Selector="ScrollBar /template/ Thumb">
+            <Setter Property="Background" Value="#F5945C"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Margin" Value="1"/>
+        </Style>
+
+        <Style Selector="ScrollBar /template/ Thumb:pointerover">
+            <Setter Property="Background" Value="#F5945C"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <Style Selector="ScrollBar /template/ Thumb:pressed">
+            <Setter Property="Background" Value="#F5945C"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <Style Selector="ScrollBar /template/ Button">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+
+        <Style Selector="ScrollBar /template/ RepeatButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- 상품 데이터 화면 (데이터 있을 때만 표시) -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="20" Margin="30,20,30,30">
+
+            <!-- 전체선택 및 삭제, 저장 영역 -->
+            <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                <CheckBox x:Name="SelectAllCheckBox" Content="전체선택" FontSize="14"
+                          IsEnabled="True" />
+                <Button x:Name="DeleteSelectedButton" Content="삭제" FontSize="14"
+                        Background="#E67E22" Foreground="White"
+                        Padding="15,8" CornerRadius="6"
+                        VerticalAlignment="Center"/>
+                <Button x:Name="SaveDataButton" Content="💾 저장" FontSize="14"
+                        Background="#27AE60" Foreground="White"
+                        Padding="20,8" CornerRadius="6"
+                        VerticalAlignment="Center"
+                        FontWeight="Bold"/>
+            </StackPanel>
+
+            <!-- 실제 상품 데이터가 여기에 동적으로 추가됩니다 -->
+            <StackPanel x:Name="RealDataContainer" Spacing="20">
+                <!-- 실제 데이터 컨테이너 - C# 코드에서 동적으로 상품 카드들이 추가됩니다 -->
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -32,6 +32,13 @@ namespace Gumaedaehang.Services
 
         // 정적 IsRunning 속성
         public static bool IsRunning { get; private set; } = false;
+
+        // ⭐ MainWindow 참조 (자동 저장용)
+        private static MainWindow? _mainWindowReference = null;
+        public static void SetMainWindowReference(MainWindow mainWindow)
+        {
+            _mainWindowReference = mainWindow;
+        }
         
         // ⭐ 가격 필터링 설정 (정적 변수)
         private static int _minPrice = 1000; // 최소 가격 (원) - 사용자 친화적 기본값
@@ -106,11 +113,58 @@ namespace Gumaedaehang.Services
                 using var reader = new StreamReader(context.Request.Body);
                 var body = reader.ReadToEnd();
 
-                LogWindow.AddLogStatic($"🔍 영수증 CAPTCHA 감지됨!");
-                LogWindow.AddLogStatic($"📄 CAPTCHA 정보: {body}");
+                LogWindow.AddLogStatic($"🚫 네이버 가격비교 캡챠 감지!");
 
                 // 플래그 설정
                 _captchaDetected = true;
+
+                // ⭐ UI 스레드에서 메시지 박스 표시
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        LogWindow.AddLogStatic("⚠️ 캡챠 감지 - 사용자 안내 메시지 표시");
+                        
+                        // 간단한 메시지 박스 표시
+                        var messageBox = new Window
+                        {
+                            Title = "캡챠 감지",
+                            Width = 400,
+                            Height = 150,
+                            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                            CanResize = false
+                        };
+
+                        var panel = new StackPanel
+                        {
+                            Margin = new Avalonia.Thickness(20),
+                            Spacing = 15
+                        };
+
+                        panel.Children.Add(new TextBlock
+                        {
+                            Text = "네이버 캡챠가 감지되었습니다.\n\n기존 브라우저에서 가격비교 탭 접속 후\n캡챠를 1회 해결한 뒤 다시 시도해주세요.",
+                            TextAlignment = Avalonia.Media.TextAlignment.Center,
+                            FontSize = 14
+                        });
+
+                        var okButton = new Button
+                        {
+                            Content = "확인",
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                            Padding = new Avalonia.Thickness(30, 8)
+                        };
+                        okButton.Click += (s, e) => messageBox.Close();
+                        panel.Children.Add(okButton);
+
+                        messageBox.Content = panel;
+                        messageBox.Show();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 메시지 박스 표시 실패: {ex.Message}");
+                    }
+                });
 
                 return Results.Ok(new { success = true, message = "CAPTCHA detected" });
             }
@@ -912,6 +966,33 @@ namespace Gumaedaehang.Services
                                 _shouldStop = true;
                                 _isCrawlingActive = false;
 
+                                // ⭐ 크롤링 완료 시 자동 저장
+                                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                                {
+                                    try
+                                    {
+                                        if (_mainWindowReference != null)
+                                        {
+                                            var sourcingContentField = _mainWindowReference.GetType().GetField("_sourcingContent",
+                                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                                            if (sourcingContentField?.GetValue(_mainWindowReference) is ContentControl sourcingContent)
+                                            {
+                                                if (sourcingContent.Content is SourcingPage sourcingPage)
+                                                {
+                                                    LogWindow.AddLogStatic("💾 [크롤링 완료] 자동 저장 시작...");
+                                                    sourcingPage.SaveProductCardsToJsonPublic();
+                                                    LogWindow.AddLogStatic("✅ [크롤링 완료] 자동 저장 완료!");
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        LogWindow.AddLogStatic($"❌ 자동 저장 실패: {ex.Message}");
+                                    }
+                                });
+
                                 // ⭐ 즉시 팝업 표시 (한 번만)
                                 if (!_completionPopupShown)
                                 {
@@ -1119,12 +1200,27 @@ namespace Gumaedaehang.Services
                     if (_productCount >= 100)
                     {
                         LogWindow.AddLogStatic("🎉 목표 달성! 100개 상품 수집 완료 - 크롤링 중단");
-                        
+
                         // ⭐ 크롤링 완전 중단 신호 설정
                         _shouldStop = true;
                         _isCrawlingActive = false;
-                        
+
                         LogWindow.AddLogStatic($"🛑 크롤링 중단 플래그 설정: _shouldStop = {_shouldStop}");
+
+                        // ⭐ 1차 자동 저장 (목표 달성 직후) - 파일 기반으로 직접 저장!
+                        _ = Task.Run(() =>
+                        {
+                            try
+                            {
+                                LogWindow.AddLogStatic("💾 [목표 달성] 1차 자동 저장 시작...");
+                                SaveProductCardsFromFiles();
+                                LogWindow.AddLogStatic("✅ [목표 달성] 1차 자동 저장 완료!");
+                            }
+                            catch (Exception ex)
+                            {
+                                LogWindow.AddLogStatic($"❌ 1차 자동 저장 실패: {ex.Message}");
+                            }
+                        });
                         
                         // ⭐ 모든 스토어를 done 상태로 변경하여 Chrome 중단
                         lock (_statesLock)
@@ -1180,6 +1276,33 @@ namespace Gumaedaehang.Services
                             LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 - 크롤링 중단");
                             _shouldStop = true;
                             _isCrawlingActive = false;
+
+                            // ⭐ 크롤링 완료 시 자동 저장
+                            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                            {
+                                try
+                                {
+                                    if (_mainWindowReference != null)
+                                    {
+                                        var sourcingContentField = _mainWindowReference.GetType().GetField("_sourcingContent",
+                                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                                        if (sourcingContentField?.GetValue(_mainWindowReference) is ContentControl sourcingContent)
+                                        {
+                                            if (sourcingContent.Content is SourcingPage sourcingPage)
+                                            {
+                                                LogWindow.AddLogStatic("💾 [크롤링 완료] 자동 저장 시작...");
+                                                sourcingPage.SaveProductCardsToJsonPublic();
+                                                LogWindow.AddLogStatic("✅ [크롤링 완료] 자동 저장 완료!");
+                                            }
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogWindow.AddLogStatic($"❌ 자동 저장 실패: {ex.Message}");
+                                }
+                            });
 
                             // ⭐ 즉시 팝업 표시 (한 번만)
                             if (!_completionPopupShown)
@@ -3164,9 +3287,9 @@ namespace Gumaedaehang.Services
                         LogWindow.AddLogStatic($"❌ 앱 프로세스 종료 실패: {ex.Message}");
                     }
                 });
-                
+
                 var failedCount = 100 - count;
-                
+
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
                     var mainWindow = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
@@ -3296,6 +3419,69 @@ namespace Gumaedaehang.Services
             catch
             {
                 return _productCount; // 폴백으로 메모리 카운터 사용
+            }
+        }
+
+        // ⭐ 파일 기반으로 상품 데이터 저장 (UI 카드 없이도 저장 가능)
+        private void SaveProductCardsFromFiles()
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var predviaPath = Path.Combine(appDataPath, "Predvia");
+                var imagesPath = Path.Combine(predviaPath, "Images");
+                var productDataPath = Path.Combine(predviaPath, "ProductData");
+                
+                if (!Directory.Exists(imagesPath))
+                {
+                    LogWindow.AddLogStatic("❌ Images 폴더가 없음");
+                    return;
+                }
+
+                var productCards = new List<object>();
+                var imageFiles = Directory.GetFiles(imagesPath, "*_main.jpg");
+                
+                foreach (var imageFile in imageFiles)
+                {
+                    try
+                    {
+                        var fileName = Path.GetFileNameWithoutExtension(imageFile);
+                        // storeId_productId_main 형식에서 추출
+                        var parts = fileName.Replace("_main", "").Split('_');
+                        if (parts.Length < 2) continue;
+                        
+                        var productId = parts[parts.Length - 1];
+                        var storeId = string.Join("_", parts.Take(parts.Length - 1));
+                        
+                        // 상품명 파일 읽기
+                        var nameFile = Path.Combine(productDataPath, $"{storeId}_{productId}_name.txt");
+                        var productName = File.Exists(nameFile) ? File.ReadAllText(nameFile).Trim() : "";
+                        
+                        productCards.Add(new
+                        {
+                            StoreId = storeId,
+                            RealProductId = productId,
+                            ImageUrl = imageFile,
+                            ProductName = productName
+                        });
+                    }
+                    catch { }
+                }
+
+                var jsonFilePath = Path.Combine(predviaPath, "product_cards.json");
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+                var json = System.Text.Json.JsonSerializer.Serialize(productCards, options);
+                File.WriteAllText(jsonFilePath, json);
+
+                LogWindow.AddLogStatic($"💾 상품 데이터 저장 완료: {productCards.Count}개 상품 ({jsonFilePath})");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 상품 데이터 저장 실패: {ex.Message}");
             }
         }
 

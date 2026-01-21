@@ -17,13 +17,15 @@ namespace Gumaedaehang
     {
         // 탭 버튼들
         private Button? _sourcingTab;
+        private Button? _productDataTab;
         private Button? _marketCheckTab;
         private Button? _mainProductTab;
         private Button? _settingsTab;
-        
+
         // 콘텐츠 영역들
         private Grid? _homeContent;
         private ContentControl? _sourcingContent;
+        private ContentControl? _productDataContent;
         private ContentControl? _marketCheckContent;
         private ContentControl? _marketRegistrationContent;
         private ContentControl? _mainProductContent;
@@ -60,7 +62,10 @@ namespace Gumaedaehang
             // 서비스 초기화
             _adviceService = new AdviceService();
             _thumbnailWebServer = new ThumbnailWebServer();
-            
+
+            // ⭐ ThumbnailWebServer에 MainWindow 참조 전달 (자동 저장용)
+            ThumbnailWebServer.SetMainWindowReference(this);
+
             // LogWindow 인스턴스 미리 생성 (로그 기록을 위해)
             _logWindow = new LogWindow();
             
@@ -111,24 +116,30 @@ namespace Gumaedaehang
             // 탭 버튼 참조
             _sourcingTab = this.FindControl<Button>("SourcingTab");
             Debug.WriteLine($"SourcingTab found: {_sourcingTab != null}");
-            
+
+            _productDataTab = this.FindControl<Button>("ProductDataTab");
+            Debug.WriteLine($"ProductDataTab found: {_productDataTab != null}");
+
             _marketCheckTab = this.FindControl<Button>("MarketCheckTab");
             Debug.WriteLine($"MarketCheckTab found: {_marketCheckTab != null}");
-            
+
             _mainProductTab = this.FindControl<Button>("MainProductTab");
             Debug.WriteLine($"MainProductTab found: {_mainProductTab != null}");
-            
+
             _settingsTab = this.FindControl<Button>("SettingsTab");
             Debug.WriteLine($"SettingsTab found: {_settingsTab != null}");
-            
+
             Debug.WriteLine("Finding content areas...");
             // 콘텐츠 영역 참조
             _homeContent = this.FindControl<Grid>("HomeContent");
             Debug.WriteLine($"HomeContent found: {_homeContent != null}");
-            
+
             _sourcingContent = this.FindControl<ContentControl>("SourcingContent");
             Debug.WriteLine($"SourcingContent found: {_sourcingContent != null}");
-            
+
+            _productDataContent = this.FindControl<ContentControl>("ProductDataContent");
+            Debug.WriteLine($"ProductDataContent found: {_productDataContent != null}");
+
             _marketCheckContent = this.FindControl<ContentControl>("MarketCheckContent");
             Debug.WriteLine($"MarketCheckContent found: {_marketCheckContent != null}");
             
@@ -152,13 +163,19 @@ namespace Gumaedaehang
                 _sourcingTab.Click += SourcingTab_Click;
                 Debug.WriteLine("SourcingTab event handler registered");
             }
-            
+
+            if (_productDataTab != null)
+            {
+                _productDataTab.Click += ProductDataTab_Click;
+                Debug.WriteLine("ProductDataTab event handler registered");
+            }
+
             if (_marketCheckTab != null)
             {
                 _marketCheckTab.Click += MarketCheckTab_Click;
                 Debug.WriteLine("MarketCheckTab event handler registered");
             }
-            
+
             if (_mainProductTab != null)
             {
                 _mainProductTab.Click += MainProductTab_Click;
@@ -343,7 +360,16 @@ namespace Gumaedaehang
             ShowContent(_sourcingContent);
             UpdateTabStyles(_sourcingTab);
         }
-        
+
+        public void ProductDataTab_Click(object? sender, RoutedEventArgs e)
+        {
+            Debug.WriteLine("ProductDataTab_Click called");
+            ShowContent(_productDataContent);
+            UpdateTabStyles(_productDataTab);
+
+            // ⭐ ProductDataPage는 Loaded 이벤트에서 자동으로 JSON 로드함
+        }
+
         public void MarketCheckTab_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("MarketCheckTab_Click called");

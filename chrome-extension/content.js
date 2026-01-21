@@ -3,44 +3,87 @@ console.log('🆕 Predvia 스마트스토어 링크 수집 확장프로그램 �
 console.log('🌐 현재 URL:', window.location.href);
 console.log('⏰ 현재 시간:', new Date().toLocaleString());
 
-// ⭐ 영수증 CAPTCHA 감지 및 서버 알림
-async function checkForCaptcha() {
+// ⭐ 네이버 가격비교 캡챠 감지 및 서버 알림 + 창 닫기
+async function checkForNaverCaptcha() {
+  // 네이버 가격비교 페이지에서만 실행
+  if (!window.location.href.includes('search.shopping.naver.com')) {
+    return false;
+  }
+
   try {
-    // div.captcha_img_cover 요소 확인
-    const captchaElement = document.querySelector('div.captcha_img_cover');
-    if (captchaElement) {
-      console.log('🔍 영수증 CAPTCHA 감지됨!');
-
-      // 서버에 CAPTCHA 감지 알림
-      const response = await fetch('http://localhost:8080/api/captcha/detected', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: window.location.href,
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      if (response.ok) {
-        console.log('✅ 서버에 CAPTCHA 감지 알림 전송 완료');
+    // 캡챠 관련 요소들 확인
+    const captchaSelectors = [
+      'div.captcha_img_cover',
+      'img[src*="captcha"]',
+      'div[class*="captcha"]',
+      'iframe[src*="captcha"]',
+      '#captcha',
+      '.captcha'
+    ];
+    
+    let captchaFound = false;
+    for (const selector of captchaSelectors) {
+      if (document.querySelector(selector)) {
+        captchaFound = true;
+        console.log(`🔍 캡챠 감지됨: ${selector}`);
+        break;
       }
+    }
+
+    // 페이지 텍스트에서 캡챠 관련 문구 확인
+    const bodyText = document.body?.innerText || '';
+    const captchaKeywords = ['자동입력', '보안문자', '로봇이 아닙니다', '캡챠', 'captcha', '본인확인'];
+    for (const keyword of captchaKeywords) {
+      if (bodyText.includes(keyword)) {
+        captchaFound = true;
+        console.log(`🔍 캡챠 키워드 감지됨: ${keyword}`);
+        break;
+      }
+    }
+
+    if (captchaFound) {
+      console.log('🚫 네이버 가격비교 캡챠 감지! 서버에 알림 후 창 닫기');
+
+      // 서버에 캡챠 감지 알림
+      try {
+        await fetch('http://localhost:8080/api/captcha/detected', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: window.location.href,
+            type: 'naver_price_comparison',
+            timestamp: new Date().toISOString()
+          })
+        });
+        console.log('✅ 서버에 캡챠 감지 알림 전송 완료');
+      } catch (e) {
+        console.log('⚠️ 서버 알림 실패:', e.message);
+      }
+
+      // 2초 후 창 닫기
+      setTimeout(() => {
+        console.log('🔥 캡챠로 인해 창 닫기');
+        window.close();
+      }, 2000);
 
       return true;
     }
     return false;
   } catch (error) {
-    console.log('⚠️ CAPTCHA 체크 오류:', error.message);
+    console.log('⚠️ 캡챠 체크 오류:', error.message);
     return false;
   }
 }
 
-// 페이지 로드 후 CAPTCHA 체크
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(checkForCaptcha, 1000);
-  });
-} else {
-  setTimeout(checkForCaptcha, 1000);
+// 페이지 로드 후 캡챠 체크 (네이버 가격비교 페이지에서만)
+if (window.location.href.includes('search.shopping.naver.com')) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(checkForNaverCaptcha, 1500);
+    });
+  } else {
+    setTimeout(checkForNaverCaptcha, 1500);
+  }
 }
 
 // ⭐ 페이지 로드 후 창 크기 및 위치 강제 조절 (우하단 최소 크기)

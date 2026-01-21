@@ -46,6 +46,12 @@ namespace Gumaedaehang.Services
         [DllImport("user32.dll")]
         private static extern bool IsWindowVisible(IntPtr hWnd);
 
+        // ⭐ 창 닫기용 PostMessage
+        [DllImport("user32.dll")]
+        private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        
+        private const uint WM_CLOSE = 0x0010;
+
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
         private const int SW_RESTORE = 9;
@@ -93,6 +99,47 @@ namespace Gumaedaehang.Services
                 }
 
                 return true; // 계속 검색
+            }, IntPtr.Zero);
+
+            return foundHandle;
+        }
+
+        // ⭐ 스마트스토어 창 핸들 찾기 (크롤링 창 전용)
+        private static IntPtr FindSmartStoreWindowByProcessId(int processId)
+        {
+            IntPtr foundHandle = IntPtr.Zero;
+
+            EnumWindows((hWnd, lParam) =>
+            {
+                GetWindowThreadProcessId(hWnd, out uint windowProcessId);
+
+                if (windowProcessId == processId)
+                {
+                    if (!IsWindowVisible(hWnd))
+                        return true;
+
+                    var className = new System.Text.StringBuilder(256);
+                    GetClassName(hWnd, className, className.Capacity);
+
+                    if (className.ToString().Contains("Chrome_WidgetWin"))
+                    {
+                        var windowTitle = new System.Text.StringBuilder(512);
+                        GetWindowText(hWnd, windowTitle, windowTitle.Capacity);
+                        string title = windowTitle.ToString();
+
+                        // 스마트스토어 창 (가격비교 제외)
+                        if ((title.Contains("smartstore") || title.Contains("스마트스토어") || 
+                             title.Contains("전체상품") || title.Contains("공구") ||
+                             title.Contains("category/ALL")) &&
+                            !title.Contains("가격비교") && !title.Contains("네이버 쇼핑"))
+                        {
+                            foundHandle = hWnd;
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
             }, IntPtr.Zero);
 
             return foundHandle;
@@ -367,28 +414,13 @@ namespace Gumaedaehang.Services
                         {
                             if (!process.HasExited)
                             {
-                                Debug.WriteLine("120초 경과 - 네이버 가격비교 Chrome 강제 종료 시작");
+                                Debug.WriteLine("120초 경과 - 네이버 가격비교 Chrome 창 닫기 시작");
 
-                                // ⭐ 모든 하위 Chrome 프로세스 강제 종료
-                                try
-                                {
-                                    process.Kill(entireProcessTree: true);
-                                    process.WaitForExit(3000);
-                                    Debug.WriteLine("✅ 네이버 가격비교 Chrome 프로세스 트리 전체 종료 완료");
-                                }
-                                catch
-                                {
-                                    // Kill이 실패하면 개별적으로 시도
-                                    process.CloseMainWindow();
-                                    await Task.Delay(1000);
+                                // ⭐ CloseMainWindow로 창만 닫기 (프로세스 트리 Kill 안 함!)
+                                process.CloseMainWindow();
+                                await Task.Delay(2000);
 
-                                    if (!process.HasExited)
-                                    {
-                                        process.Kill();
-                                        process.WaitForExit(2000);
-                                    }
-                                    Debug.WriteLine("✅ 네이버 가격비교 Chrome 프로세스 종료 완료");
-                                }
+                                Debug.WriteLine("✅ 네이버 가격비교 Chrome 창 닫기 완료");
                             }
                         }
                         catch (Exception ex)
@@ -474,97 +506,63 @@ namespace Gumaedaehang.Services
             }
         }
 
-        // ⭐ 네이버 가격비교 창만 종료 (static 메서드) - 창 제목으로 찾기
+        // ⭐ 네이버 가격비교 창만 종료 (static 메서드) - 창 핸들로 찾기
         public static async Task CloseNaverPriceComparisonWindowByTitle()
         {
             try
             {
-                LogWindow.AddLogStatic("🔥 네이버 가격비교 창 종료 시작 (--app + 창제목 검색)");
+                LogWindow.AddLogStatic("🔥 네이버 가격비교 창 종료 시작 (창 핸들 기반)");
 
                 var chromeProcesses = Process.GetProcessesByName("chrome");
-                var priceComparisonProcesses = new System.Collections.Generic.List<int>();
-                var checkedCount = 0;
+                var priceComparisonHandles = new System.Collections.Generic.List<(int Pid, IntPtr Handle)>();
 
-                // 1단계: --app 모드이면서 창 제목에 "네이버 가격비교"가 있는 프로세스 찾기
-                foreach (var process in chromeProcesses)
+                LogWindow.AddLogStatic($"🔍 Chrome 프로세스 {chromeProcesses.Length}개 검색 중...");
+
+                // 1단계: 모든 Chrome 프로세스에서 가격비교 창 찾기 (창 제목으로)
+                foreach (var chromeProc in chromeProcesses)
                 {
                     try
                     {
-                        if (process.HasExited) continue;
-                        checkedCount++;
+                        if (chromeProc.HasExited) continue;
 
-                        bool isAppMode = false;
-                        bool isPriceComparison = false;
-
-                        // CommandLine으로 --app 옵션 확인
-                        using (var searcher = new ManagementObjectSearcher(
-                            $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {process.Id}"))
+                        IntPtr handle = FindChromeWindowByProcessId(chromeProc.Id);
+                        if (handle != IntPtr.Zero)
                         {
-                            foreach (ManagementObject obj in searcher.Get())
+                            // 창 제목 확인
+                            var windowTitle = new System.Text.StringBuilder(256);
+                            GetWindowText(handle, windowTitle, windowTitle.Capacity);
+                            var title = windowTitle.ToString();
+
+                            // "네이버 가격비교" 또는 "네이버쇼핑" 포함하는 창
+                            if (title.Contains("네이버") && (title.Contains("가격비교") || title.Contains("쇼핑")))
                             {
-                                var commandLine = obj["CommandLine"]?.ToString() ?? "";
-                                if (commandLine.Contains("--app="))
-                                {
-                                    isAppMode = true;
-                                    LogWindow.AddLogStatic($"🔍 PID {process.Id}: --app 모드 확인");
-                                }
-                                break;
+                                priceComparisonHandles.Add((chromeProc.Id, handle));
+                                LogWindow.AddLogStatic($"✅ 가격비교 창 발견: PID {chromeProc.Id}, Handle: {handle}, Title: {title}");
                             }
-                        }
-
-                        // --app 모드인 경우에만 창 제목 확인
-                        if (isAppMode)
-                        {
-                            var handle = FindChromeWindowByProcessId(process.Id);
-                            if (handle != IntPtr.Zero)
-                            {
-                                var windowTitle = new System.Text.StringBuilder(256);
-                                GetWindowText(handle, windowTitle, windowTitle.Capacity);
-                                string title = windowTitle.ToString();
-
-                                if (title.Contains("네이버 가격비교") || title.Contains("가격비교"))
-                                {
-                                    isPriceComparison = true;
-                                    LogWindow.AddLogStatic($"🔍 PID {process.Id}: 창 제목 '{title}' - 가격비교 확인");
-                                }
-                            }
-                        }
-
-                        // ⭐ --app 모드 AND 가격비교 창 제목 → 종료 대상
-                        if (isAppMode && isPriceComparison)
-                        {
-                            priceComparisonProcesses.Add(process.Id);
-                            LogWindow.AddLogStatic($"✅ 가격비교 창 발견: PID {process.Id}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        LogWindow.AddLogStatic($"⚠️ 프로세스 체크 실패 PID {process.Id}: {ex.Message}");
+                        // 개별 프로세스 체크 실패는 무시
                     }
                 }
 
-                LogWindow.AddLogStatic($"📊 총 {checkedCount}개 Chrome 프로세스 확인, {priceComparisonProcesses.Count}개 가격비교 창 발견");
+                LogWindow.AddLogStatic($"📊 총 {chromeProcesses.Length}개 Chrome 프로세스 확인, {priceComparisonHandles.Count}개 가격비교 창 발견");
 
-                // 2단계: 가격비교 창 종료
+                // 2단계: 가격비교 창 종료 (창만 닫기, 프로세스 Kill 안 함)
                 int closedCount = 0;
-                foreach (var pid in priceComparisonProcesses)
+                foreach (var (pid, handle) in priceComparisonHandles)
                 {
                     try
                     {
-                        var process = Process.GetProcessById(pid);
-                        if (!process.HasExited)
-                        {
-                            LogWindow.AddLogStatic($"🎯 가격비교 창 종료 중: PID {pid}");
-                            process.Kill(entireProcessTree: true);
-                            process.WaitForExit(2000);
-                            closedCount++;
-                            LogWindow.AddLogStatic($"✅ PID {pid} 종료 완료");
-                        }
-                        process.Dispose();
+                        // ⭐ 창 핸들로 창만 닫기 (WM_CLOSE 메시지 전송)
+                        PostMessage(handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                        closedCount++;
+                        LogWindow.AddLogStatic($"✅ 가격비교 창 닫기 완료: Handle {handle}");
                     }
                     catch (Exception ex)
                     {
-                        LogWindow.AddLogStatic($"⚠️ 프로세스 종료 실패 PID {pid}: {ex.Message}");
+                        LogWindow.AddLogStatic($"⚠️ 창 닫기 실패: {ex.Message}");
                     }
                 }
 
@@ -577,85 +575,85 @@ namespace Gumaedaehang.Services
             }
         }
 
-        // ⭐ 크롤링 스마트스토어 앱 창들만 종료 (static 메서드) - CommandLine 확인
+        // ⭐ 크롤링 스마트스토어 창들만 종료 (static 메서드) - 창 제목 기반
         public static async Task CloseSmartStoreCrawlingWindows()
         {
             try
             {
                 LogWindow.AddLogStatic("🔥 크롤링 스마트스토어 창들 종료 시작");
 
-                var chromeProcesses = Process.GetProcessesByName("chrome");
-                var appProcesses = new System.Collections.Generic.List<int>();
-                var checkedCount = 0;
+                var smartStoreHandles = new System.Collections.Generic.List<IntPtr>();
 
-                // 1단계: --app 모드이면서 스마트스토어인 프로세스 찾기
-                foreach (var process in chromeProcesses)
+                // ⭐ 모든 Chrome 창을 순회하며 크롤링 창 찾기
+                EnumWindows((hWnd, lParam) =>
                 {
                     try
                     {
-                        if (process.HasExited) continue;
-                        checkedCount++;
+                        if (!IsWindowVisible(hWnd)) return true;
 
-                        // CommandLine으로 --app 옵션 확인
-                        using (var searcher = new ManagementObjectSearcher(
-                            $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {process.Id}"))
+                        var className = new System.Text.StringBuilder(256);
+                        GetClassName(hWnd, className, className.Capacity);
+                        if (!className.ToString().Contains("Chrome_WidgetWin")) return true;
+
+                        // ⭐ 창 크기로 --app 모드 창 판별 (200x300, 300x300, 800x600 등 작은 창)
+                        RECT rect;
+                        if (!GetWindowRect(hWnd, out rect)) return true;
+                        
+                        int width = rect.Right - rect.Left;
+                        int height = rect.Bottom - rect.Top;
+                        
+                        // --app 모드 창은 작은 크기 (800 이하)
+                        bool isSmallWindow = width <= 850 && height <= 650;
+                        
+                        var windowTitle = new System.Text.StringBuilder(512);
+                        GetWindowText(hWnd, windowTitle, windowTitle.Capacity);
+                        string title = windowTitle.ToString();
+
+                        // 가격비교 창 제외
+                        if (title.Contains("가격비교") || title.Contains("네이버 쇼핑"))
+                            return true;
+
+                        // ⭐ 작은 Chrome 창 = 크롤링 창으로 판별
+                        if (isSmallWindow && !string.IsNullOrEmpty(title))
                         {
-                            foreach (ManagementObject obj in searcher.Get())
-                            {
-                                var commandLine = obj["CommandLine"]?.ToString() ?? "";
-
-                                // ⭐ --app 모드이면서 smartstore.naver.com 포함 (네이버 가격비교 제외)
-                                // 네이버 가격비교는 search.shopping.naver.com이므로 제외됨
-                                if (commandLine.Contains("--app=") &&
-                                    commandLine.Contains("smartstore.naver.com") &&
-                                    !commandLine.Contains("search.shopping.naver.com"))
-                                {
-                                    appProcesses.Add(process.Id);
-                                    LogWindow.AddLogStatic($"✅ 크롤링 창 발견: PID {process.Id}");
-                                    break;
-                                }
-                            }
+                            smartStoreHandles.Add(hWnd);
+                            LogWindow.AddLogStatic($"✅ 크롤링 창 발견: {width}x{height}, Title: {title.Substring(0, Math.Min(40, title.Length))}");
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        LogWindow.AddLogStatic($"⚠️ 프로세스 체크 실패 PID {process.Id}: {ex.Message}");
-                    }
-                }
+                    catch { }
+                    return true;
+                }, IntPtr.Zero);
 
-                LogWindow.AddLogStatic($"📊 총 {checkedCount}개 Chrome 프로세스 확인, {appProcesses.Count}개 크롤링 창 발견");
+                LogWindow.AddLogStatic($"📊 {smartStoreHandles.Count}개 크롤링 창 발견");
 
-                // 2단계: 크롤링 창 종료
                 int closedCount = 0;
-                foreach (var pid in appProcesses)
+                foreach (var handle in smartStoreHandles)
                 {
                     try
                     {
-                        var process = Process.GetProcessById(pid);
-                        if (!process.HasExited)
-                        {
-                            LogWindow.AddLogStatic($"🎯 크롤링 창 종료 중: PID {pid}");
-                            process.Kill(entireProcessTree: true);
-                            process.WaitForExit(2000);
-                            closedCount++;
-                            LogWindow.AddLogStatic($"✅ PID {pid} 종료 완료");
-                        }
-                        process.Dispose();
+                        PostMessage(handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                        closedCount++;
                     }
-                    catch (Exception ex)
-                    {
-                        LogWindow.AddLogStatic($"⚠️ 프로세스 종료 실패 PID {pid}: {ex.Message}");
-                    }
+                    catch { }
                 }
 
                 LogWindow.AddLogStatic($"✅ 크롤링 창 종료 완료: {closedCount}개 종료");
-                await Task.Delay(500);
+                await Task.Delay(300);
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 크롤링 창 종료 오류: {ex.Message}");
             }
         }
+        
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left, Top, Right, Bottom;
+        }
+        
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
         
         private string GetChromePath()
         {
