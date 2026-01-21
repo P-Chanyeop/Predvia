@@ -277,6 +277,7 @@ namespace Gumaedaehang.Services
                     _productCount = 0;
                     _shouldStop = false;
                     _completionPopupShown = false; // 팝업 플래그 초기화
+                    _saveCompleted = false; // 저장 플래그 초기화
                 }
                 
                 lock (_statesLock)
@@ -1902,13 +1903,19 @@ namespace Gumaedaehang.Services
         
         // ⭐ 모든 Chrome 앱 창 닫기 (네이버 + 스마트스토어 + 상품페이지)
         [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+        private static bool _saveCompleted = false;
+        
         private async Task CloseAllChromeApps()
         {
             try
             {
-                // ⭐ 크롤링 완료 시 무조건 저장
-                LogWindow.AddLogStatic("💾 크롤링 완료 - 상품 데이터 저장 중...");
-                SaveProductCardsFromFiles();
+                // ⭐ 중복 저장 방지
+                if (!_saveCompleted)
+                {
+                    _saveCompleted = true;
+                    LogWindow.AddLogStatic("💾 크롤링 완료 - 상품 데이터 저장 중...");
+                    SaveProductCardsFromFiles();
+                }
                 
                 LogWindow.AddLogStatic("🔥 Chrome 앱 창들 닫기 시작 - 가격비교 창 포함");
                 
