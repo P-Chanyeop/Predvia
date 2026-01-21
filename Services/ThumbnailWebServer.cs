@@ -3470,10 +3470,10 @@ namespace Gumaedaehang.Services
                         
                         productCards.Add(new
                         {
-                            StoreId = storeId,
-                            RealProductId = productId,
-                            ImageUrl = imageFile,
-                            ProductName = productName
+                            storeId = storeId,
+                            realProductId = productId,
+                            imageUrl = imageFile,
+                            productName = productName
                         });
                     }
                     catch { }
