@@ -367,7 +367,11 @@ namespace Gumaedaehang
             ShowContent(_productDataContent);
             UpdateTabStyles(_productDataTab);
 
-            // ⭐ ProductDataPage는 Loaded 이벤트에서 자동으로 JSON 로드함
+            // ⭐ 탭 클릭할 때마다 JSON 로드
+            if (_productDataContent?.Content is ProductDataPage productDataPage)
+            {
+                productDataPage.LoadProductCardsFromJsonPublic();
+            }
         }
 
         public void MarketCheckTab_Click(object? sender, RoutedEventArgs e)
