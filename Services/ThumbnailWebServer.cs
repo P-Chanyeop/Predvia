@@ -202,8 +202,8 @@ namespace Gumaedaehang.Services
                 }
                 LogWindow.AddLogStatic("🔄 크롤링 플래그 초기화 완료 (false)");
                 
-                // ⭐ 기존 데이터 초기화
-                ClearPreviousData();
+                // ⭐ 기존 데이터 초기화 비활성화 - 엑셀 추출 시에만 삭제
+                // ClearPreviousData();
                 
                 // ⭐ 타오바오 쿠키 자동 로드
                 await LoadTaobaoCookiesFromFile();

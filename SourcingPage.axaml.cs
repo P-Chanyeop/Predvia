@@ -131,17 +131,17 @@ namespace Gumaedaehang
                     taobaoTestButton.Click += TaobaoTestButton_Click;
                 }
                 
-                // 🧹 프로그램 시작 시 자동 초기화 (조용히)
-                ClearPreviousCrawlingDataSilent();
+                // 🧹 자동 초기화 비활성화 - 엑셀 추출 시에만 삭제
+                // ClearPreviousCrawlingDataSilent();
                 
                 // 초기화 시작 메시지 (지연 후 표시)
-                Task.Delay(500).ContinueWith(_ =>
-                {
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        LogWindow.AddLogStatic("🧹 프로그램 시작 - 이전 크롤링 데이터 자동 초기화 중...");
-                    });
-                });
+                // Task.Delay(500).ContinueWith(_ =>
+                // {
+                //     Dispatcher.UIThread.Post(() =>
+                //     {
+                //         LogWindow.AddLogStatic("🧹 프로그램 시작 - 이전 크롤링 데이터 자동 초기화 중...");
+                //     });
+                // });
                 
                 // 플레이스홀더 설정
                 SetupPlaceholders();
