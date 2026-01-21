@@ -1906,6 +1906,10 @@ namespace Gumaedaehang.Services
         {
             try
             {
+                // ⭐ 크롤링 완료 시 무조건 저장
+                LogWindow.AddLogStatic("💾 크롤링 완료 - 상품 데이터 저장 중...");
+                SaveProductCardsFromFiles();
+                
                 LogWindow.AddLogStatic("🔥 Chrome 앱 창들 닫기 시작 - 가격비교 창 포함");
                 
                 // ⭐ 먼저 가격비교 창 닫기
