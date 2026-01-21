@@ -83,7 +83,10 @@ namespace Gumaedaehang
         private Button? _deleteSelectedButton;
         private Button? _saveDataButton;
         private bool _hasData = false;
-        private bool _isLoadingBatch = false; // ⭐ 배치 로드 중 플래그
+        
+        // ⭐ 로딩 오버레이 UI 요소
+        private Grid? _loadingOverlay;
+        private TextBlock? _loadingText;
         
         // 한글 입력 처리를 위한 타이머
         private DispatcherTimer? _inputTimer;
@@ -749,77 +752,6 @@ namespace Gumaedaehang
         public void AddProductImageCard(string storeId, string productId, string imageUrl)
         {
             AddProductImageCard(storeId, productId, imageUrl, null);
-        }
-        
-        // ⭐ 빠른 카드 추가 (로그 없음)
-        private void AddProductImageCardFast(string storeId, string productId, string imageUrl, string? productName)
-        {
-            try
-            {
-                var container = this.FindControl<StackPanel>("RealDataContainer");
-                if (container == null) return;
-
-                var cardId = container.Children.OfType<StackPanel>().Count() + 1;
-                var productContainer = new StackPanel { Spacing = 0, Margin = new Thickness(0, 0, 0, 40) };
-
-                // 카테고리 패널
-                var categoryPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 0, 0, 15) };
-                var checkBox = new CheckBox { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
-                var redDot = new Ellipse { Width = 8, Height = 8, Fill = new SolidColorBrush(Colors.Red), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
-                var categoryText = new TextBlock { Text = "카테고리 정보", FontSize = 13, FontFamily = new FontFamily("Malgun Gothic"), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
-                categoryPanel.Children.Add(checkBox);
-                categoryPanel.Children.Add(redDot);
-                categoryPanel.Children.Add(categoryText);
-
-                // 메인 그리드
-                var mainGrid = new Grid { Margin = new Thickness(0, 0, 0, 20) };
-                mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
-                mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-
-                // 이미지
-                var imageBorder = new Border { Width = 180, Height = 180, Background = new SolidColorBrush(Color.Parse("#F5F5F5")), CornerRadius = new CornerRadius(8) };
-                Grid.SetColumn(imageBorder, 0);
-                var image = new LazyImage { Stretch = Stretch.Uniform, Margin = new Thickness(10), ImagePath = imageUrl };
-                imageBorder.Child = image;
-
-                // 정보 패널 (간소화)
-                var infoPanel = new StackPanel { Margin = new Thickness(20, 0, 20, 0), Spacing = 15 };
-                var nameText = new TextBox { Text = productName ?? "", FontSize = 14, FontFamily = new FontFamily("Malgun Gothic"), Background = new SolidColorBrush(Color.Parse("#FFDAC4")), BorderThickness = new Thickness(1), BorderBrush = new SolidColorBrush(Color.Parse("#E67E22")), Padding = new Thickness(10, 8), CornerRadius = new CornerRadius(4) };
-                infoPanel.Children.Add(nameText);
-                Grid.SetColumn(infoPanel, 1);
-
-                // 버튼 패널
-                var buttonPanel = new StackPanel { Spacing = 10, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
-                Grid.SetColumn(buttonPanel, 2);
-                var deleteButton = new Button { Content = "삭제", Background = new SolidColorBrush(Color.Parse("#E67E22")), Foreground = Brushes.White, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, Padding = new Thickness(15, 8), CornerRadius = new CornerRadius(4) };
-                var holdButton = new Button { Content = "상품 보류", Background = new SolidColorBrush(Color.Parse("#CCCCCC")), Foreground = new SolidColorBrush(Color.Parse("#333333")), HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, Padding = new Thickness(15, 8), CornerRadius = new CornerRadius(4) };
-                buttonPanel.Children.Add(deleteButton);
-                buttonPanel.Children.Add(holdButton);
-
-                mainGrid.Children.Add(imageBorder);
-                mainGrid.Children.Add(infoPanel);
-                mainGrid.Children.Add(buttonPanel);
-
-                productContainer.Children.Add(categoryPanel);
-                productContainer.Children.Add(mainGrid);
-                container.Children.Add(productContainer);
-
-                // ProductUIElements 저장
-                var productElement = new ProductUIElements
-                {
-                    ProductId = cardId,
-                    StoreId = storeId,
-                    RealProductId = productId,
-                    Container = productContainer,
-                    CheckBox = checkBox,
-                    NameInputBox = nameText,
-                    DeleteButton = deleteButton,
-                    HoldButton = holdButton
-                };
-                _productElements[cardId] = productElement;
-            }
-            catch { }
         }
         
         // 상품명과 함께 카드 추가 (오버로드)
@@ -2815,6 +2747,76 @@ namespace Gumaedaehang
             }
         }
         
+        // ⭐ 로딩 오버레이 표시
+        private void ShowLoadingOverlay(string message)
+        {
+            if (_loadingOverlay == null)
+            {
+                _loadingOverlay = new Grid
+                {
+                    Background = new SolidColorBrush(Color.Parse("#80000000")),
+                    ZIndex = 9999
+                };
+                
+                var panel = new StackPanel
+                {
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    Spacing = 15
+                };
+                
+                // 스피너 (회전하는 원)
+                var spinner = new Border
+                {
+                    Width = 40,
+                    Height = 40,
+                    CornerRadius = new CornerRadius(20),
+                    BorderThickness = new Thickness(4),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#E67E22")),
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                };
+                
+                _loadingText = new TextBlock
+                {
+                    Text = message,
+                    FontSize = 16,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                };
+                
+                panel.Children.Add(spinner);
+                panel.Children.Add(_loadingText);
+                _loadingOverlay.Children.Add(panel);
+                
+                // 메인 그리드에 추가
+                var mainGrid = this.FindControl<Grid>("MainGrid");
+                if (mainGrid != null)
+                {
+                    Grid.SetRowSpan(_loadingOverlay, 10);
+                    Grid.SetColumnSpan(_loadingOverlay, 10);
+                    mainGrid.Children.Add(_loadingOverlay);
+                }
+            }
+            
+            if (_loadingText != null)
+                _loadingText.Text = message;
+            _loadingOverlay.IsVisible = true;
+        }
+        
+        // ⭐ 로딩 오버레이 업데이트
+        private void UpdateLoadingOverlay(string message)
+        {
+            if (_loadingText != null)
+                _loadingText.Text = message;
+        }
+        
+        // ⭐ 로딩 오버레이 숨기기
+        private void HideLoadingOverlay()
+        {
+            if (_loadingOverlay != null)
+                _loadingOverlay.IsVisible = false;
+        }
+        
         private void UpdateViewVisibility()
         {
             if (_noDataView != null && _dataAvailableView != null)
@@ -4667,7 +4669,7 @@ namespace Gumaedaehang
         }
 
         // ⭐ JSON에서 상품 카드 데이터 로드
-        private void LoadProductCardsFromJson()
+        private async void LoadProductCardsFromJson()
         {
             try
             {
@@ -4677,7 +4679,6 @@ namespace Gumaedaehang
 
                 if (!File.Exists(jsonFilePath))
                 {
-                    LogWindow.AddLogStatic("📂 저장된 상품 데이터가 없습니다.");
                     return;
                 }
 
@@ -4686,11 +4687,12 @@ namespace Gumaedaehang
 
                 if (productCards == null || productCards.Count == 0)
                 {
-                    LogWindow.AddLogStatic("📂 저장된 상품 데이터가 비어있습니다.");
                     return;
                 }
 
-                LogWindow.AddLogStatic($"📂 상품 데이터 로드 중: {productCards.Count}개 상품");
+                // ⭐ 로딩 오버레이 표시
+                ShowLoadingOverlay($"상품 데이터 로드 중... (0/{productCards.Count})");
+
                 // ⭐ 기존 카드 초기화
                 var container = this.FindControl<StackPanel>("RealDataContainer");
                 if (container != null)
@@ -4699,23 +4701,31 @@ namespace Gumaedaehang
                 }
                 _productElements.Clear();
 
-                // ⭐ 빠른 로드: 로그 최소화 + 배치 처리
-                _isLoadingBatch = true;
-                
+                // ⭐ 비동기 배치 로드
+                int count = 0;
                 foreach (var card in productCards)
                 {
                     if (card.StoreId != null && card.RealProductId != null)
                     {
-                        AddProductImageCardFast(card.StoreId, card.RealProductId, card.ImageUrl ?? "", card.ProductName);
+                        AddProductImageCard(card.StoreId, card.RealProductId, card.ImageUrl ?? "", card.ProductName);
+                        count++;
+                        
+                        // 10개마다 UI 업데이트 + 진행률 표시
+                        if (count % 10 == 0)
+                        {
+                            UpdateLoadingOverlay($"상품 데이터 로드 중... ({count}/{productCards.Count})");
+                            await Task.Delay(1); // UI 스레드 양보
+                        }
                     }
                 }
-                
-                _isLoadingBatch = false;
 
+                // ⭐ 로딩 오버레이 숨기기
+                HideLoadingOverlay();
                 LogWindow.AddLogStatic($"✅ 상품 데이터 로드 완료: {productCards.Count}개 상품");
             }
             catch (Exception ex)
             {
+                HideLoadingOverlay();
                 LogWindow.AddLogStatic($"❌ 상품 데이터 로드 실패: {ex.Message}");
             }
         }
