@@ -2788,13 +2788,20 @@ namespace Gumaedaehang
                 panel.Children.Add(_loadingText);
                 _loadingOverlay.Children.Add(panel);
                 
-                // 메인 그리드에 추가
-                var mainGrid = this.FindControl<Grid>("MainGrid");
-                if (mainGrid != null)
+                // Content가 Grid면 거기에 추가, 아니면 새 Grid로 감싸기
+                if (this.Content is Grid contentGrid)
                 {
                     Grid.SetRowSpan(_loadingOverlay, 10);
                     Grid.SetColumnSpan(_loadingOverlay, 10);
-                    mainGrid.Children.Add(_loadingOverlay);
+                    contentGrid.Children.Add(_loadingOverlay);
+                }
+                else if (this.Content is Control existingContent)
+                {
+                    var wrapper = new Grid();
+                    this.Content = null;
+                    wrapper.Children.Add(existingContent);
+                    wrapper.Children.Add(_loadingOverlay);
+                    this.Content = wrapper;
                 }
             }
             
