@@ -4619,6 +4619,14 @@ namespace Gumaedaehang
                 }
 
                 LogWindow.AddLogStatic($"📂 상품 데이터 로드 중: {productCards.Count}개 상품");
+                // ⭐ 기존 카드 초기화
+                var container = this.FindControl<StackPanel>("RealDataContainer");
+                if (container != null)
+                {
+                    container.Children.Clear();
+                }
+                _productElements.Clear();
+
 
                 // UI 스레드에서 상품 카드 복원
                 foreach (var card in productCards)
