@@ -4214,13 +4214,24 @@ namespace Gumaedaehang.Services
             lock (_crawlingLock)
             {
                 _crawlingAllowed = true;
-                _isCrawlingActive = true; // ⭐ 새로운 크롤링 세션 시작 시 활성화
-                _shouldStop = false; // ⭐ 중단 플래그도 리셋
-                _currentStoreIndex = 0; // ⭐ 스토어 인덱스 초기화
-                _completionPopupShown = false; // ⭐ 팝업 플래그 초기화
-                LogWindow.AddLogStatic("✅ 새로운 크롤링 세션 시작 - 모든 플래그 초기화 완료");
-                return Results.Json(new { success = true });
+                _isCrawlingActive = true;
+                _shouldStop = false;
+                _currentStoreIndex = 0;
+                _completionPopupShown = false;
+                _saveCompleted = false;
             }
+            lock (_counterLock)
+            {
+                _productCount = 0; // ⭐ 상품 카운터 초기화
+            }
+            lock (_statesLock)
+            {
+                _storeStates.Clear();
+            }
+            _selectedStores.Clear();
+            _processedStores.Clear();
+            LogWindow.AddLogStatic("✅ 새로운 크롤링 세션 시작 - 모든 플래그/카운터 초기화 완료");
+            return Results.Json(new { success = true });
         }
 
         // ⭐ 상품명 처리 API
