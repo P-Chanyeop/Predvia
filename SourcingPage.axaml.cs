@@ -1452,43 +1452,78 @@ namespace Gumaedaehang
         }
         
         // 선택된 카드 삭제 버튼 클릭
+        // 선택된 카드 삭제 버튼 클릭 → 전체 삭제로 변경
         private void DeleteSelectedButton_Click(object? sender, RoutedEventArgs e)
         {
             try
             {
-                var selectedProducts = _productElements.Where(p => p.Value.CheckBox?.IsChecked == true).ToList();
-                
-                if (selectedProducts.Count == 0)
+                var count = _productElements.Count;
+                if (count == 0)
                 {
-                    LogWindow.AddLogStatic("❌ 삭제할 상품이 선택되지 않았습니다.");
+                    LogWindow.AddLogStatic("❌ 삭제할 상품이 없습니다.");
                     return;
                 }
                 
-                LogWindow.AddLogStatic($"🗑️ {selectedProducts.Count}개 상품 카드 삭제 시작");
+                LogWindow.AddLogStatic($"🗑️ 전체 {count}개 상품 삭제 시작 (UI + 파일)");
                 
-                foreach (var product in selectedProducts)
+                // 1. UI에서 모든 카드 제거
+                var container = this.FindControl<StackPanel>("RealDataContainer");
+                if (container != null)
                 {
-                    var cardId = product.Key;
-                    var productElement = product.Value;
-                    
-                    // UI에서 카드 제거
-                    if (productElement.Container?.Parent is Panel parentPanel)
-                    {
-                        parentPanel.Children.Remove(productElement.Container);
-                    }
-                    
-                    // 메모리에서 제거
-                    _productElements.Remove(cardId);
+                    container.Children.Clear();
+                }
+                _productElements.Clear();
+                
+                // 2. 파일 삭제
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
+                
+                // Images 폴더 비우기
+                var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
+                if (Directory.Exists(imagesPath))
+                {
+                    foreach (var file in Directory.GetFiles(imagesPath))
+                        File.Delete(file);
                 }
                 
-                // 전체선택 체크박스 상태 업데이트
-                UpdateSelectAllCheckBoxState();
+                // ProductData 폴더 비우기
+                var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
+                if (Directory.Exists(productDataPath))
+                {
+                    foreach (var file in Directory.GetFiles(productDataPath))
+                        File.Delete(file);
+                }
                 
-                LogWindow.AddLogStatic($"✅ {selectedProducts.Count}개 상품 카드 삭제 완료");
+                // Reviews 폴더 비우기
+                var reviewsPath = System.IO.Path.Combine(predviaPath, "Reviews");
+                if (Directory.Exists(reviewsPath))
+                {
+                    foreach (var file in Directory.GetFiles(reviewsPath))
+                        File.Delete(file);
+                }
+                
+                // Categories 폴더 비우기
+                var categoriesPath = System.IO.Path.Combine(predviaPath, "Categories");
+                if (Directory.Exists(categoriesPath))
+                {
+                    foreach (var file in Directory.GetFiles(categoriesPath))
+                        File.Delete(file);
+                }
+                
+                // JSON 파일 삭제
+                var jsonPath = System.IO.Path.Combine(predviaPath, "product_cards.json");
+                if (File.Exists(jsonPath))
+                    File.Delete(jsonPath);
+                
+                // 전체선택 체크박스 해제
+                if (_selectAllCheckBox != null)
+                    _selectAllCheckBox.IsChecked = false;
+                
+                LogWindow.AddLogStatic($"✅ 전체 {count}개 상품 삭제 완료 (UI + 파일 모두 삭제됨)");
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 카드 삭제 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 전체 삭제 오류: {ex.Message}");
             }
         }
 
