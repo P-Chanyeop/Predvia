@@ -3544,7 +3544,7 @@ namespace Gumaedaehang.Services
             {
                 lock (_counterLock)
                 {
-                    if (_currentStoreIndex >= _smartStoreLinks.Count)
+                    if (_currentStoreIndex >= _selectedStores.Count)
                     {
                         LogWindow.AddLogStatic("✅ 모든 스토어 처리 완료");
                         return;
@@ -3562,9 +3562,9 @@ namespace Gumaedaehang.Services
                 string nextStoreTitle;
                 lock (_counterLock)
                 {
-                    if (_currentStoreIndex >= _smartStoreLinks.Count) return;
+                    if (_currentStoreIndex >= _selectedStores.Count) return;
                     
-                    var nextStore = _smartStoreLinks[_currentStoreIndex];
+                    var nextStore = _selectedStores[_currentStoreIndex];
                     nextStoreUrl = nextStore.Url ?? "";
                     nextStoreTitle = nextStore.Title ?? "알 수 없음";
                     
