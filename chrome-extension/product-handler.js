@@ -106,10 +106,39 @@ async function initProductHandler() {
   }
 }
 
+// ⭐ 페이지 완전 로딩 대기
+async function waitForPageLoad() {
+  return new Promise((resolve) => {
+    if (document.readyState === 'complete') {
+      resolve();
+    } else {
+      window.addEventListener('load', resolve);
+    }
+  });
+}
+
+// ⭐ 특정 요소가 나타날 때까지 대기
+async function waitForElement(selector, timeout = 5000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const element = document.querySelector(selector);
+    if (element) return element;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return null;
+}
+
 // 상품 페이지에서 데이터 수집
 async function collectProductPageData(storeId, productId) {
   try {
     console.log(`🔍 ${storeId}/${productId}: 데이터 수집 시작`);
+    
+    // ⭐ 페이지 완전 로딩 대기
+    await waitForPageLoad();
+    sendLogToServer(`📄 ${storeId}/${productId}: 페이지 로딩 완료`);
+    
+    // ⭐ 카테고리 요소 대기 (최대 3초)
+    await waitForElement('ul.ySOklWNBjf', 3000);
     
     // 1. 가격 정보 먼저 추출 (필터링용)
     const priceResult = await extractProductPrice(storeId, productId);
@@ -131,6 +160,9 @@ async function collectProductPageData(storeId, productId) {
     
     // 4. 리뷰 데이터 추출
     const reviewData = await extractProductReviews(storeId, productId);
+    
+    // 5. ⭐ 카테고리 추출
+    const categoryData = await extractProductCategories(storeId, productId);
     
     console.log(`✅ ${storeId}/${productId}: 데이터 수집 완료`);
     
@@ -442,6 +474,74 @@ async function extractProductPrice(storeId, productId) {
     const message = `❌ ${storeId}/${productId}: 가격 추출 오류 - ${error.message}`;
     console.log(message);
     sendLogToServer(message);
+    return null;
+  }
+}
+
+
+// ⭐ 카테고리 추출
+async function extractProductCategories(storeId, productId) {
+  try {
+    sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 추출 시작`);
+    
+    // ul.ySOklWNBjf 전체 텍스트 가져오기
+    const categoryUl = document.querySelector('ul.ySOklWNBjf');
+    
+    if (!categoryUl) {
+      sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 요소 없음`);
+      return null;
+    }
+    
+    // 전체 텍스트에서 "카테고리 더보기" 제거하고 정리
+    let categoryText = categoryUl.textContent
+      .replace(/카테고리 더보기/g, '')
+      .replace(/\(총\s*\d+개\)/g, '')  // (총 8개) 같은 것도 제거
+      .replace(/\s+/g, ' ')  // 연속 공백 하나로
+      .trim();
+    
+    // 각 li 항목 추출해서 > 로 연결
+    const categoryItems = categoryUl.querySelectorAll('li');
+    const categories = [];
+    
+    categoryItems.forEach((li) => {
+      const span = li.querySelector('.sAla67hq4a');
+      const text = span ? span.textContent.trim() : li.textContent.replace(/카테고리 더보기/g, '').replace(/\(총\s*\d+개\)/g, '').trim();
+      if (text && text !== '홈') {
+        categories.push(text);
+      }
+    });
+    
+    const categoryString = categories.join(' > ');
+    sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 - ${categoryString}`);
+    
+    if (categories.length === 0) {
+      return null;
+    }
+    
+    // 서버로 카테고리 데이터 전송
+    const categoryData = {
+      storeId: storeId,
+      productId: productId,
+      categoryString: categoryString,  // "스포츠/레저 > 낚시 > 낚시의류/잡화 > 낚시복"
+      categories: categories.map((name, index) => ({
+        name: name,
+        order: index
+      })),
+      pageUrl: window.location.href,
+      extractedAt: new Date().toISOString()
+    };
+    
+    await fetch('http://localhost:8080/api/smartstore/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(categoryData)
+    });
+    
+    sendLogToServer(`✅ ${storeId}/${productId}: 카테고리 전송 완료 - ${categoryString}`);
+    return categoryData;
+    
+  } catch (error) {
+    sendLogToServer(`❌ ${storeId}/${productId}: 카테고리 추출 오류 - ${error.message}`);
     return null;
   }
 }
