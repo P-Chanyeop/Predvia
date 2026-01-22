@@ -137,8 +137,11 @@ async function collectProductPageData(storeId, productId) {
     await waitForPageLoad();
     sendLogToServer(`📄 ${storeId}/${productId}: 페이지 로딩 완료`);
     
-    // ⭐ 카테고리 요소 대기 (최대 3초)
-    await waitForElement('ul.ySOklWNBjf', 3000);
+    // ⭐ 추가 대기 (동적 콘텐츠 로딩)
+    await new Promise(r => setTimeout(r, 2000));
+    
+    // ⭐ 카테고리 요소 대기 (최대 5초)
+    await waitForElement('ul.ySOklWNBjf', 5000);
     
     // 1. 가격 정보 먼저 추출 (필터링용)
     const priceResult = await extractProductPrice(storeId, productId);
@@ -152,27 +155,35 @@ async function collectProductPageData(storeId, productId) {
       return;
     }
     
-    // 2. 상품 이미지 추출
-    const imageData = await extractProductImage(storeId, productId);
+    // ⭐ 재시도 포함 데이터 추출
+    let imageData = await extractProductImage(storeId, productId);
+    let nameData = await extractProductName(storeId, productId);
+    let reviewData = await extractProductReviews(storeId, productId);
+    let categoryData = await extractProductCategories(storeId, productId);
     
-    // 3. 상품명 추출  
-    const nameData = await extractProductName(storeId, productId);
+    // ⭐ 실패한 항목 1회 재시도
+    if (!imageData || !nameData || !categoryData) {
+      sendLogToServer(`🔄 ${storeId}/${productId}: 일부 실패 - 2초 후 재시도`);
+      await new Promise(r => setTimeout(r, 2000));
+      
+      if (!imageData) imageData = await extractProductImage(storeId, productId);
+      if (!nameData) nameData = await extractProductName(storeId, productId);
+      if (!categoryData) categoryData = await extractProductCategories(storeId, productId);
+    }
     
-    // 4. 리뷰 데이터 추출
-    const reviewData = await extractProductReviews(storeId, productId);
-    
-    // 5. ⭐ 카테고리 추출
-    const categoryData = await extractProductCategories(storeId, productId);
+    // ⭐ 모든 추출 완료 확인 로그
+    sendLogToServer(`✅ ${storeId}/${productId}: 추출 완료 (이미지:${!!imageData}, 상품명:${!!nameData}, 리뷰:${!!reviewData}, 카테고리:${!!categoryData})`);
     
     console.log(`✅ ${storeId}/${productId}: 데이터 수집 완료`);
     
-    // 2초 후 탭 닫기
+    // ⭐ 모든 작업 완료 후 1초 대기 후 탭 닫기
     setTimeout(() => {
       window.close();
-    }, 2000);
+    }, 1000);
     
   } catch (error) {
     console.error(`❌ ${storeId}/${productId}: 데이터 수집 실패:`, error);
+    sendLogToServer(`❌ ${storeId}/${productId}: 데이터 수집 실패 - ${error.message}`);
     // 오류 시에도 탭 닫기
     setTimeout(() => {
       window.close();
