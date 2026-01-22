@@ -575,6 +575,35 @@ namespace Gumaedaehang.Services
             }
         }
 
+        // ⭐ 스마트스토어 공구탭 열기 (강제 재시작용)
+        public static async Task OpenSmartStoreGongguTab(string url)
+        {
+            try
+            {
+                LogWindow.AddLogStatic($"🔥 공구탭 열기: {url}");
+                
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var extensionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chrome-extension");
+                var userDataDir = Path.Combine(appDataPath, "Predvia", "ChromeCrawling");
+                
+                var startInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "chrome",
+                    Arguments = $"--app=\"{url}\" --window-size=200,300 --window-position=1700,750 --load-extension=\"{extensionPath}\" --user-data-dir=\"{userDataDir}\"",
+                    UseShellExecute = true
+                };
+                
+                System.Diagnostics.Process.Start(startInfo);
+                LogWindow.AddLogStatic($"✅ 공구탭 열기 완료");
+                
+                await Task.Delay(500);
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 공구탭 열기 오류: {ex.Message}");
+            }
+        }
+
         // ⭐ 크롤링 스마트스토어 창들만 종료 (static 메서드) - 창 제목 기반
         public static async Task CloseSmartStoreCrawlingWindows()
         {

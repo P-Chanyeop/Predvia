@@ -246,6 +246,21 @@ async function sendGongguResult(gongguCount) {
         // 공구 개수가 1000개 미만인 경우 (0개 포함) 모두 탭 닫기
         console.log(`❌ ${storeId}: 공구 ${gongguCount}개 < 1000개 - 즉시 탭 닫기`);
         
+        // ⭐ 서버에 스킵 완료 신호 전송 (다음 스토어로 이동 트리거)
+        try {
+          await fetch('http://localhost:8080/api/smartstore/skip-store', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              storeId: storeId,
+              reason: `공구 ${gongguCount}개 < 1000개`
+            })
+          });
+          console.log(`✅ ${storeId}: 스킵 완료 신호 전송`);
+        } catch (e) {
+          console.log(`⚠️ ${storeId}: 스킵 신호 전송 실패`);
+        }
+        
         // 즉시 window.close() 시도
         window.close();
         

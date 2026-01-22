@@ -234,6 +234,7 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/product-data", HandleProductData);
                 _app.MapPost("/api/smartstore/log", HandleExtensionLog);
                 _app.MapPost("/api/smartstore/stop", HandleStopCrawling); // ⭐ 크롤링 중단 API 추가
+                _app.MapPost("/api/smartstore/skip-store", HandleSkipStore); // ⭐ 스토어 스킵 API 추가
                 _app.MapPost("/api/smartstore/image", HandleProductImage); // ⭐ 상품 이미지 처리 API 추가
                 _app.MapPost("/api/smartstore/product-name", HandleProductName); // ⭐ 상품명 처리 API 추가
                 _app.MapPost("/api/smartstore/product-price", HandleProductPrice); // ⭐ 가격 처리 API 추가
@@ -1570,14 +1571,18 @@ namespace Gumaedaehang.Services
                                 _storeStates[key].UpdatedAt = DateTime.Now;
                                 storeState = _storeStates[key];
 
-                                // ⭐ 인덱스 증가는 제거 - Chrome 확장에서 다음 스토어 요청 시 자동으로 증가됨
-                                // 이렇게 하면 확장과 서버의 인덱스가 동기화되어 "순차 처리 위반" 오류가 발생하지 않음
-                                LogWindow.AddLogStatic($"⏭️ {storeId} 강제 완료 - Chrome 확장이 다음 스토어로 이동할 때까지 대기");
+                                LogWindow.AddLogStatic($"⏭️ {storeId} 강제 완료 - 다음 스토어로 강제 이동");
 
                                 // 🔥 크롤링 완료 시 소싱 페이지 새로고침
                                 RefreshSourcingPage();
                             }
                         }
+                        
+                        // ⭐ 강제로 다음 스토어 열기
+                        _ = Task.Run(async () => {
+                            await Task.Delay(1000);
+                            await ForceOpenNextStore();
+                        });
                     }
                 }
                 else
@@ -1837,6 +1842,41 @@ namespace Gumaedaehang.Services
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsync("{\"success\":false,\"error\":\"Stop API error\"}");
 
+                return Results.Ok();
+            }
+        }
+
+        // ⭐ 스토어 스킵 API (1000개 미만 스토어)
+        private async Task<IResult> HandleSkipStore(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var json = await reader.ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<JsonElement>(json);
+                
+                var storeId = data.TryGetProperty("storeId", out var sid) ? sid.GetString() : "unknown";
+                var reason = data.TryGetProperty("reason", out var r) ? r.GetString() : "스킵";
+                
+                LogWindow.AddLogStatic($"⏭️ {storeId}: 스킵 - {reason}");
+                
+                // 스토어 상태를 done으로 설정
+                lock (_counterLock)
+                {
+                    if (_storeStates.ContainsKey(storeId))
+                    {
+                        _storeStates[storeId].Status = "done";
+                        _storeStates[storeId].IsLocked = false;
+                    }
+                }
+                
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync("{\"success\":true}");
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 스킵 API 오류: {ex.Message}");
                 return Results.Ok();
             }
         }
@@ -3496,6 +3536,66 @@ namespace Gumaedaehang.Services
             }
         }
 
+        
+        // ⭐ 강제로 다음 스토어 열기 (Chrome 확장 먹통 시)
+        private async Task ForceOpenNextStore()
+        {
+            try
+            {
+                lock (_counterLock)
+                {
+                    if (_currentStoreIndex >= _smartStoreLinks.Count)
+                    {
+                        LogWindow.AddLogStatic("✅ 모든 스토어 처리 완료");
+                        return;
+                    }
+                    
+                    if (_productCount >= 100)
+                    {
+                        LogWindow.AddLogStatic("✅ 100개 달성 - 추가 스토어 열기 중단");
+                        return;
+                    }
+                }
+                
+                // 다음 스토어 URL 가져오기
+                string nextStoreUrl;
+                string nextStoreTitle;
+                lock (_counterLock)
+                {
+                    if (_currentStoreIndex >= _smartStoreLinks.Count) return;
+                    
+                    var nextStore = _smartStoreLinks[_currentStoreIndex];
+                    nextStoreUrl = nextStore.Url ?? "";
+                    nextStoreTitle = nextStore.Title ?? "알 수 없음";
+                    
+                    // URL에서 실제 스토어 URL 추출
+                    if (nextStoreUrl.Contains("url="))
+                    {
+                        var urlParam = System.Web.HttpUtility.ParseQueryString(new Uri(nextStoreUrl).Query)["url"];
+                        if (!string.IsNullOrEmpty(urlParam))
+                        {
+                            nextStoreUrl = urlParam + "/category/gonggu";
+                        }
+                    }
+                }
+                
+                if (string.IsNullOrEmpty(nextStoreUrl))
+                {
+                    LogWindow.AddLogStatic("❌ 다음 스토어 URL 없음");
+                    return;
+                }
+                
+                LogWindow.AddLogStatic($"🔥 강제 스토어 열기: {nextStoreTitle} - {nextStoreUrl}");
+                
+                // Chrome으로 공구탭 열기
+                await ChromeExtensionService.OpenSmartStoreGongguTab(nextStoreUrl);
+                
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 강제 스토어 열기 오류: {ex.Message}");
+            }
+        }
         
         // 🔥 소싱 페이지 새로고침 (크롤링 완료 후 카드 표시)
         public void RefreshSourcingPage()
