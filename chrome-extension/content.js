@@ -180,18 +180,42 @@ async function waitForProcessingPermission(storeId, resolve) {
   }, 2000);
 }
 
-async function releaseProcessingPermission(storeId) {
+async function releaseProcessingPermission(storeId, retryCount = 0) {
   return new Promise((resolve) => {
+    if (!chrome?.runtime?.sendMessage) {
+      if (retryCount < 3) {
+        console.log(`⚠️ ${storeId}: chrome.runtime 사용 불가 - ${retryCount + 1}초 후 재시도`);
+        setTimeout(() => {
+          releaseProcessingPermission(storeId, retryCount + 1).then(resolve);
+        }, 1000);
+        return;
+      }
+      console.log(`❌ ${storeId}: chrome.runtime 3회 재시도 실패`);
+      resolve(false);
+      return;
+    }
     chrome.runtime.sendMessage({
       action: 'releaseProcessing',
       storeId: storeId
     }, (response) => {
-      if (response.success) {
+      if (chrome.runtime.lastError) {
+        if (retryCount < 3) {
+          console.log(`⚠️ ${storeId}: 권한 해제 오류 - ${retryCount + 1}초 후 재시도`);
+          setTimeout(() => {
+            releaseProcessingPermission(storeId, retryCount + 1).then(resolve);
+          }, 1000);
+          return;
+        }
+        console.log(`❌ ${storeId}: 권한 해제 3회 재시도 실패`);
+        resolve(false);
+        return;
+      }
+      if (response?.success) {
         console.log(`🔓 ${storeId}: 처리 권한 해제 완료`);
       } else {
         console.log(`⚠️ ${storeId}: 처리 권한 해제 실패`);
       }
-      resolve(response.success);
+      resolve(response?.success || false);
     });
   });
 }
