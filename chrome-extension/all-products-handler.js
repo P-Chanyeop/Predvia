@@ -1002,6 +1002,45 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                     await sendLogToServer(`❌ ${storeId}: 상품명 추출 오류 - ${nameError.message}`);
                   }
 
+                  // ⭐ 카테고리 추출
+                  try {
+                    const productId = product.url.split('/products/')[1];
+                    const categoryUl = productTab.document.querySelector('ul.ySOklWNBjf');
+                    
+                    if (categoryUl) {
+                      const categoryItems = categoryUl.querySelectorAll('li');
+                      const categories = [];
+                      
+                      categoryItems.forEach((li) => {
+                        const span = li.querySelector('.sAla67hq4a');
+                        const text = span ? span.textContent.trim() : li.textContent.replace(/카테고리 더보기/g, '').replace(/\(총\s*\d+개\)/g, '').trim();
+                        if (text && text !== '홈') {
+                          categories.push(text);
+                        }
+                      });
+                      
+                      if (categories.length > 0) {
+                        const categoryString = categories.join(' > ');
+                        await sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 - ${categoryString}`);
+                        
+                        await fetch('http://localhost:8080/api/smartstore/categories', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            storeId: storeId,
+                            productId: productId,
+                            categoryString: categoryString,
+                            categories: categories.map((name, index) => ({ name, order: index })),
+                            pageUrl: product.url,
+                            extractedAt: new Date().toISOString()
+                          })
+                        });
+                      }
+                    }
+                  } catch (catError) {
+                    await sendLogToServer(`❌ ${storeId}: 카테고리 추출 오류 - ${catError.message}`);
+                  }
+
                   // ⭐ 가격 정보 추출
                   try {
                     console.log(`💰 ${storeId}: 가격 정보 수집 시작`);
