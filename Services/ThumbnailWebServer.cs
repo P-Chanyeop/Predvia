@@ -70,6 +70,7 @@ namespace Gumaedaehang.Services
         
         // ⭐ 상품 카운터 및 랜덤 선택 관련 변수
         private int _productCount = 0;
+        private int _sessionStartFileCount = 0; // ⭐ 세션 시작 시 파일 개수
         private bool _isCrawlingActive = false;
         private const int TARGET_PRODUCT_COUNT = 100;
         private const int MAX_STORES_TO_VISIT = 10;
@@ -3393,6 +3394,15 @@ namespace Gumaedaehang.Services
         // ⭐ 현재 상품 개수 가져오기
         private int GetCurrentProductCount()
         {
+            // ⭐ 이번 세션에서 추가된 개수만 반환 (기존 파일 제외)
+            var totalFiles = GetRawFileCount();
+            var sessionCount = totalFiles - _sessionStartFileCount;
+            return Math.Max(0, sessionCount);
+        }
+        
+        // ⭐ 실제 파일 개수 (세션 무관)
+        private int GetRawFileCount()
+        {
             try
             {
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -3406,7 +3416,7 @@ namespace Gumaedaehang.Services
             }
             catch
             {
-                return _productCount; // 폴백으로 메모리 카운터 사용
+                return 0;
             }
         }
 
@@ -4222,7 +4232,9 @@ namespace Gumaedaehang.Services
             }
             lock (_counterLock)
             {
-                _productCount = 0; // ⭐ 상품 카운터 초기화
+                _productCount = 0;
+                // ⭐ 세션 시작 시 기존 파일 개수 저장 (이번 세션에서 추가된 개수만 카운트)
+                _sessionStartFileCount = GetRawFileCount();
             }
             lock (_statesLock)
             {
@@ -4230,7 +4242,7 @@ namespace Gumaedaehang.Services
             }
             _selectedStores.Clear();
             _processedStores.Clear();
-            LogWindow.AddLogStatic("✅ 새로운 크롤링 세션 시작 - 모든 플래그/카운터 초기화 완료");
+            LogWindow.AddLogStatic($"✅ 새로운 크롤링 세션 시작 - 기존 파일: {_sessionStartFileCount}개, 목표: +100개");
             return Results.Json(new { success = true });
         }
 
