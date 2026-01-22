@@ -3437,7 +3437,10 @@ namespace Gumaedaehang.Services
                 }
 
                 var productCards = new List<object>();
-                var imageFiles = Directory.GetFiles(imagesPath, "*_main.jpg");
+                // ⭐ 파일 생성 시간순 정렬 (크롤링 순서대로)
+                var imageFiles = Directory.GetFiles(imagesPath, "*_main.jpg")
+                    .OrderBy(f => new FileInfo(f).CreationTime)
+                    .ToArray();
                 
                 foreach (var imageFile in imageFiles)
                 {
