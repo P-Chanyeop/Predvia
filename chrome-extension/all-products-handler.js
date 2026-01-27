@@ -838,63 +838,45 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                   
                   // ⭐ 개별 상품 페이지에서 카테고리 추출
                   try {
-                    const categorySpans = productTab.document.querySelectorAll('ul.ySOklWNBjf .sAla67hq4a');
                     const productId = product.url.split('/products/')[1];
+                    const categoryUl = document.querySelector('ul.ySOklWNBjf');
                     
-                    if (categorySpans.length > 0) {
+                    await sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 추출 시작`);
+                    
+                    if (categoryUl) {
+                      const categoryItems = categoryUl.querySelectorAll('li');
                       const categories = [];
-                      categorySpans.forEach((span, index) => {
-                        const categoryName = span.textContent.trim();
-                        if (categoryName) {
-                          const link = span.closest('a');
-                          categories.push({
-                            name: categoryName,
-                            url: link ? link.getAttribute('href') : null,
-                            categoryId: null,
-                            order: index
-                          });
+                      
+                      categoryItems.forEach((li) => {
+                        const span = li.querySelector('.sAla67hq4a');
+                        const text = span ? span.textContent.trim() : li.textContent.replace(/카테고리 더보기/g, '').replace(/\(총\s*\d+개\)/g, '').trim();
+                        if (text && text !== '홈') {
+                          categories.push({ name: text, order: categories.length });
                         }
                       });
                       
-                      await sendLogToServer(`📂 ${storeId}: 상품 ${productId} 카테고리 ${categories.length}개 발견`);
-                      
-                      // 서버로 카테고리 데이터 전송
-                      const categoryData = {
-                        storeId: storeId,
-                        productId: productId,
-                        categories: categories,
-                        pageUrl: product.url,
-                        extractedAt: new Date().toISOString()
-                      };
-                      
-                      try {
-                        await sendLogToServer(`📂 ${storeId}: 상품 ${productId} 카테고리 전송 시작`);
+                      if (categories.length > 0) {
+                        const categoryString = categories.map(c => c.name).join(' > ');
+                        await sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 - ${categoryString}`);
                         
-                        // ⭐ 기존 categories API 사용 (잘 작동하는 API)
-                        const response = await fetch('http://localhost:8080/api/smartstore/categories', {
+                        await fetch('http://localhost:8080/api/smartstore/categories', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
                             storeId: storeId,
+                            productId: productId,
                             categories: categories,
                             pageUrl: product.url,
-                            extractedAt: new Date().toISOString(),
-                            productId: productId // 상품 ID 추가
+                            extractedAt: new Date().toISOString()
                           })
                         });
                         
-                        if (response.ok) {
-                          await sendLogToServer(`✅ ${storeId}: 상품 ${productId} 카테고리 서버 전송 완료`);
-                        } else {
-                          const errorText = await response.text();
-                          await sendLogToServer(`❌ ${storeId}: 상품 ${productId} 카테고리 서버 전송 실패 - ${response.status}: ${errorText}`);
-                        }
-                      } catch (fetchError) {
-                        await sendLogToServer(`❌ ${storeId}: 카테고리 전송 오류 - ${fetchError.message}`);
+                        await sendLogToServer(`✅ ${storeId}/${productId}: 카테고리 전송 완료`);
+                      } else {
+                        await sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 항목 없음`);
                       }
-                      
                     } else {
-                      await sendLogToServer(`📂 ${storeId}: 상품 ${productId} 카테고리 없음`);
+                      await sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 요소 없음`);
                     }
                   } catch (categoryError) {
                     await sendLogToServer(`❌ ${storeId}: 카테고리 추출 오류 - ${categoryError.message}`);

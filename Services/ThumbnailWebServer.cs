@@ -2932,8 +2932,7 @@ namespace Gumaedaehang.Services
                     UserDataDir = profilePath,  // ⭐ 핵심: 동일한 프로필 사용
                     Args = new[] { 
                         "--window-size=200,300",
-                        // 1920x1080 기준 우하단 위치: 1920-200-20=1700, 1080-300-50=730
-                        "--window-position=1700,730",
+                        "--window-position=1700,680",
                         "--disable-blink-features=AutomationControlled",
                         "--disable-infobars",
                         "--no-sandbox"
@@ -3574,7 +3573,7 @@ namespace Gumaedaehang.Services
                         var urlParam = System.Web.HttpUtility.ParseQueryString(new Uri(nextStoreUrl).Query)["url"];
                         if (!string.IsNullOrEmpty(urlParam))
                         {
-                            nextStoreUrl = urlParam + "/category/gonggu";
+                            nextStoreUrl = urlParam + "/category/50000165";
                         }
                     }
                 }
@@ -4057,34 +4056,26 @@ namespace Gumaedaehang.Services
                     
                     // ⭐ 개별 상품 카테고리인지 확인 (productId 필드 존재)
                     var jsonDoc = JsonDocument.Parse(requestBody);
+                    string? productId = null;
                     if (jsonDoc.RootElement.TryGetProperty("productId", out var productIdElement))
                     {
-                        LogWindow.AddLogStatic($"🔍 개별 상품 카테고리 감지: productId = {productIdElement.GetString()}");
+                        productId = productIdElement.GetString();
+                        LogWindow.AddLogStatic($"🔍 개별 상품 카테고리 감지: productId = {productId}");
                         
-                        // 개별 상품 카테고리 처리 - 파일로 저장
-                        var productId = productIdElement.GetString();
                         var categoryNames = string.Join(", ", categoryData.Categories.Select(c => c.Name));
                         LogWindow.AddLogStatic($"📂 {categoryData.StoreId}: 상품 {productId} 카테고리 수집 성공 - {categoryNames}");
-                        
-                        // ⭐ 개별 상품 카테고리도 파일로 저장
-                        LogWindow.AddLogStatic($"💾 SaveCategories 호출 시작: {categoryData.StoreId}");
-                        await SaveCategories(categoryData);
-                        LogWindow.AddLogStatic($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
-                        
-                        // 소싱 페이지에 카테고리 데이터 실시간 표시
-                        await UpdateSourcingPageCategories(categoryData);
                     }
                     else
                     {
                         LogWindow.AddLogStatic($"🔍 전체 카테고리 감지: productId 없음");
-                        
-                        // 기존 전체 카테고리 처리
-                        await SaveCategories(categoryData);
-                        LogWindow.AddLogStatic($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
-                        
-                        // 소싱 페이지에 카테고리 데이터 실시간 표시
-                        await UpdateSourcingPageCategories(categoryData);
                     }
+                    
+                    // ⭐ productId 전달하여 저장
+                    await SaveCategories(categoryData, productId);
+                    LogWindow.AddLogStatic($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
+                    
+                    // 소싱 페이지에 카테고리 데이터 실시간 표시
+                    await UpdateSourcingPageCategories(categoryData);
                 }
 
                 await context.Response.WriteAsync("{\"status\":\"success\"}");
@@ -4126,7 +4117,7 @@ namespace Gumaedaehang.Services
         }
 
         // 카테고리 데이터 저장
-        private async Task SaveCategories(CategoryData categoryData)
+        private async Task SaveCategories(CategoryData categoryData, string? productId = null)
         {
             try
             {
@@ -4136,10 +4127,22 @@ namespace Gumaedaehang.Services
 
                 Directory.CreateDirectory(categoriesPath);
 
-                // ⭐ 개별 상품 카테고리인지 확인하여 파일명 결정
-                var fileName = categoryData.PageUrl?.Contains("/products/") == true 
-                    ? $"{categoryData.StoreId}_{ExtractProductIdFromUrl(categoryData.PageUrl)}_categories.json"
-                    : $"{categoryData.StoreId}_categories.json";
+                // ⭐ productId가 있으면 개별 상품 카테고리 파일로 저장
+                string fileName;
+                if (!string.IsNullOrEmpty(productId))
+                {
+                    fileName = $"{categoryData.StoreId}_{productId}_categories.json";
+                    LogWindow.AddLogStatic($"💾 개별 상품 카테고리 파일명: {fileName}");
+                }
+                else if (categoryData.PageUrl?.Contains("/products/") == true)
+                {
+                    fileName = $"{categoryData.StoreId}_{ExtractProductIdFromUrl(categoryData.PageUrl)}_categories.json";
+                }
+                else
+                {
+                    fileName = $"{categoryData.StoreId}_categories.json";
+                }
+                
                 var filePath = Path.Combine(categoriesPath, fileName);
 
                 var json = JsonSerializer.Serialize(categoryData, new JsonSerializerOptions

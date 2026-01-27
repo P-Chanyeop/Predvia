@@ -450,8 +450,7 @@ namespace Gumaedaehang.Services
             try
             {
                 // Chrome 새 창에서 URL 열기 (확장프로그램 로드) - 앱 모드 우하단 최소 창, 처음부터 우하단 배치
-                // 1920x1080 기준 우하단 위치: 1920-200-20=1700, 1080-300-50=730
-                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{url}\" --window-size=200,300 --window-position=1700,730 --no-first-run --no-default-browser-check --disable-web-security";
+                var chromeArgs = $"--load-extension=\"{_extensionPath}\" --app=\"{url}\" --window-size=200,300 --window-position=1700,680 --no-first-run --no-default-browser-check --disable-web-security";
                 
                 var processInfo = new ProcessStartInfo
                 {
@@ -589,7 +588,7 @@ namespace Gumaedaehang.Services
                 var startInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "chrome",
-                    Arguments = $"--app=\"{url}\" --window-size=200,300 --window-position=1700,750 --load-extension=\"{extensionPath}\" --user-data-dir=\"{userDataDir}\"",
+                    Arguments = $"--app=\"{url}\" --window-size=200,300 --window-position=1700,680 --load-extension=\"{extensionPath}\" --user-data-dir=\"{userDataDir}\"",
                     UseShellExecute = true
                 };
                 

@@ -99,7 +99,7 @@ namespace Gumaedaehang
         private ChromeExtensionService? _extensionService;
         
         // 상품별 UI 요소들을 관리하는 딕셔너리
-        private Dictionary<int, ProductUIElements> _productElements = new Dictionary<int, ProductUIElements>();
+        protected Dictionary<int, ProductUIElements> _productElements = new Dictionary<int, ProductUIElements>();
         
         // 카테고리 데이터 캐시
         private Dictionary<string, CategoryData> _categoryDataCache = new Dictionary<string, CategoryData>();
@@ -184,6 +184,7 @@ namespace Gumaedaehang
                 _testDataButton = this.FindControl<Button>("TestDataButton");
                 _testDataButton2 = this.FindControl<Button>("TestDataButton2");
                 _selectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
+                LogWindow.AddLogStatic($"🔍 SelectAllCheckBox 찾기 결과: {(_selectAllCheckBox != null ? "성공" : "실패")}");
                 _deleteSelectedButton = this.FindControl<Button>("DeleteSelectedButton");
                 _saveDataButton = this.FindControl<Button>("SaveDataButton");
 
@@ -529,6 +530,21 @@ namespace Gumaedaehang
                         }, Avalonia.Threading.DispatcherPriority.Background);
                     });
                 }
+                
+                // ⭐ 데이터 로드 완료 후 전체선택 체크박스 이벤트 재연결
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (_selectAllCheckBox == null)
+                    {
+                        _selectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
+                    }
+                    if (_selectAllCheckBox != null)
+                    {
+                        _selectAllCheckBox.IsCheckedChanged -= SelectAllCheckBox_Changed;
+                        _selectAllCheckBox.IsCheckedChanged += SelectAllCheckBox_Changed;
+                        LogWindow.AddLogStatic($"✅ 전체선택 체크박스 이벤트 연결 완료 (상품 {_productElements.Count}개)");
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -1295,6 +1311,11 @@ namespace Gumaedaehang
             if (_selectAllCheckBox != null)
             {
                 _selectAllCheckBox.IsCheckedChanged += SelectAllCheckBox_Changed;
+                LogWindow.AddLogStatic($"✅ SelectAllCheckBox 이벤트 연결 완료");
+            }
+            else
+            {
+                LogWindow.AddLogStatic($"❌ SelectAllCheckBox가 null - 이벤트 연결 실패");
             }
             
             if (_deleteSelectedButton != null)
@@ -1390,25 +1411,28 @@ namespace Gumaedaehang
         // 전체 선택 체크박스 변경 이벤트
         private void SelectAllCheckBox_Changed(object? sender, RoutedEventArgs e)
         {
-            LogWindow.AddLogStatic($"🔄 전체선택 체크박스 클릭됨: {_selectAllCheckBox?.IsChecked}");
+            SelectAllCheckBox_Click(sender, e);
+        }
+        
+        private void SelectAllCheckBox_Click(object? sender, RoutedEventArgs e)
+        {
+            LogWindow.AddLogStatic($"🔄 전체선택 클릭됨: {_selectAllCheckBox?.IsChecked}");
+            LogWindow.AddLogStatic($"🔄 _productElements 개수: {_productElements.Count}");
             
             if (_selectAllCheckBox != null)
             {
                 bool isChecked = _selectAllCheckBox.IsChecked ?? false;
-                LogWindow.AddLogStatic($"🔄 {_productElements.Count}개 상품 체크박스 상태를 {isChecked}로 변경");
                 
-                foreach (var product in _productElements.Values)
+                foreach (var kvp in _productElements)
                 {
+                    var product = kvp.Value;
                     if (product.CheckBox != null)
                     {
                         product.CheckBox.IsChecked = isChecked;
-                        LogWindow.AddLogStatic($"✅ 상품 {product.ProductId} 체크박스: {isChecked}");
-                    }
-                    else
-                    {
-                        LogWindow.AddLogStatic($"❌ 상품 {product.ProductId} 체크박스가 null");
                     }
                 }
+                
+                LogWindow.AddLogStatic($"✅ 전체선택 완료: {isChecked}");
             }
         }
         
@@ -4764,6 +4788,18 @@ namespace Gumaedaehang
                 // ⭐ 로딩 오버레이 숨기기
                 HideLoadingOverlay();
                 LogWindow.AddLogStatic($"✅ 상품 데이터 로드 완료: {productCards.Count}개 상품");
+                
+                // ⭐ 전체선택 체크박스 이벤트 연결
+                if (_selectAllCheckBox == null)
+                {
+                    _selectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
+                }
+                if (_selectAllCheckBox != null)
+                {
+                    _selectAllCheckBox.Click -= SelectAllCheckBox_Click;
+                    _selectAllCheckBox.Click += SelectAllCheckBox_Click;
+                    LogWindow.AddLogStatic($"✅ 전체선택 체크박스 이벤트 연결됨");
+                }
             }
             catch (Exception ex)
             {

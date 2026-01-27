@@ -495,35 +495,28 @@ async function extractProductCategories(storeId, productId) {
   try {
     sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 추출 시작`);
     
-    // ul.ySOklWNBjf 전체 텍스트 가져오기
-    const categoryUl = document.querySelector('ul.ySOklWNBjf');
-    
-    if (!categoryUl) {
-      sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 요소 없음`);
-      return null;
-    }
-    
-    // 전체 텍스트에서 "카테고리 더보기" 제거하고 정리
-    let categoryText = categoryUl.textContent
-      .replace(/카테고리 더보기/g, '')
-      .replace(/\(총\s*\d+개\)/g, '')  // (총 8개) 같은 것도 제거
-      .replace(/\s+/g, ' ')  // 연속 공백 하나로
-      .trim();
-    
-    // 각 li 항목 추출해서 > 로 연결
-    const categoryItems = categoryUl.querySelectorAll('li');
+    // ⭐ 선택자 대신 href에 /category/ 포함된 모든 링크에서 카테고리 추출
+    const allLinks = document.querySelectorAll('a[href*="/category/"]');
     const categories = [];
     
-    categoryItems.forEach((li) => {
-      const span = li.querySelector('.sAla67hq4a');
-      const text = span ? span.textContent.trim() : li.textContent.replace(/카테고리 더보기/g, '').replace(/\(총\s*\d+개\)/g, '').trim();
-      if (text && text !== '홈') {
-        categories.push(text);
+    allLinks.forEach(link => {
+      const href = link.getAttribute('href') || '';
+      // /category/ 포함된 링크만 (홈 제외)
+      if (href.includes('/category/')) {
+        const text = link.textContent
+          .replace(/\(총\s*\d+개\)/g, '')
+          .replace(/카테고리 더보기/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        
+        if (text && text !== '홈' && text.length > 0 && !categories.includes(text)) {
+          categories.push(text);
+        }
       }
     });
     
     const categoryString = categories.join(' > ');
-    sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 - ${categoryString}`);
+    sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 - ${categoryString || '없음'}`);
     
     if (categories.length === 0) {
       return null;
@@ -533,7 +526,7 @@ async function extractProductCategories(storeId, productId) {
     const categoryData = {
       storeId: storeId,
       productId: productId,
-      categoryString: categoryString,  // "스포츠/레저 > 낚시 > 낚시의류/잡화 > 낚시복"
+      categoryString: categoryString,
       categories: categories.map((name, index) => ({
         name: name,
         order: index

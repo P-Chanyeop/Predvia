@@ -456,6 +456,26 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         }, 1000);
       });
     }
+    
+    // ⭐ 공구탭 없어서 리다이렉트된 경우 감지 (스토어 메인으로 이동)
+    if (tab.url.includes('smartstore.naver.com') && 
+        !tab.url.includes('/category/') && 
+        !tab.url.includes('/products/')) {
+      const storeIdMatch = tab.url.match(/smartstore\.naver\.com\/([^\/\?]+)/);
+      const storeId = storeIdMatch ? storeIdMatch[1] : 'unknown';
+      
+      console.log(`⚠️ ${storeId}: 공구탭 없음 - 리다이렉트 감지`);
+      
+      // 서버에 스킵 신호 전송
+      fetch('http://localhost:8080/api/smartstore/skip-store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId: storeId, reason: '공구탭 없음' })
+      }).then(() => {
+        console.log(`✅ ${storeId}: 스킵 완료`);
+        chrome.tabs.remove(tabId);
+      }).catch(() => {});
+    }
   }
 });
 
