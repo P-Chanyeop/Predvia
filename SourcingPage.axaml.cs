@@ -1476,78 +1476,85 @@ namespace Gumaedaehang
         }
         
         // 선택된 카드 삭제 버튼 클릭
-        // 선택된 카드 삭제 버튼 클릭 → 전체 삭제로 변경
         private void DeleteSelectedButton_Click(object? sender, RoutedEventArgs e)
         {
             try
             {
-                var count = _productElements.Count;
-                if (count == 0)
+                // 선택된 상품만 찾기
+                var selectedProducts = _productElements.Where(kvp => kvp.Value.CheckBox?.IsChecked == true).ToList();
+                
+                if (selectedProducts.Count == 0)
                 {
-                    LogWindow.AddLogStatic("❌ 삭제할 상품이 없습니다.");
+                    LogWindow.AddLogStatic("❌ 선택된 상품이 없습니다.");
                     return;
                 }
                 
-                LogWindow.AddLogStatic($"🗑️ 전체 {count}개 상품 삭제 시작 (UI + 파일)");
+                LogWindow.AddLogStatic($"🗑️ 선택된 {selectedProducts.Count}개 상품 삭제 시작");
                 
-                // 1. UI에서 모든 카드 제거
                 var container = this.FindControl<StackPanel>("RealDataContainer");
-                if (container != null)
-                {
-                    container.Children.Clear();
-                }
-                _productElements.Clear();
-                
-                // 2. 파일 삭제
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
                 
-                // Images 폴더 비우기
-                var imagesPath = System.IO.Path.Combine(predviaPath, "Images");
-                if (Directory.Exists(imagesPath))
+                foreach (var kvp in selectedProducts)
                 {
-                    foreach (var file in Directory.GetFiles(imagesPath))
-                        File.Delete(file);
+                    var product = kvp.Value;
+                    var storeId = product.StoreId;
+                    var productId = product.RealProductId;
+                    
+                    // UI에서 제거
+                    if (container != null && product.Container != null)
+                    {
+                        container.Children.Remove(product.Container);
+                    }
+                    
+                    // 파일 삭제
+                    DeleteProductFiles(predviaPath, storeId, productId);
+                    
+                    // Dictionary에서 제거
+                    _productElements.Remove(kvp.Key);
                 }
-                
-                // ProductData 폴더 비우기
-                var productDataPath = System.IO.Path.Combine(predviaPath, "ProductData");
-                if (Directory.Exists(productDataPath))
-                {
-                    foreach (var file in Directory.GetFiles(productDataPath))
-                        File.Delete(file);
-                }
-                
-                // Reviews 폴더 비우기
-                var reviewsPath = System.IO.Path.Combine(predviaPath, "Reviews");
-                if (Directory.Exists(reviewsPath))
-                {
-                    foreach (var file in Directory.GetFiles(reviewsPath))
-                        File.Delete(file);
-                }
-                
-                // Categories 폴더 비우기
-                var categoriesPath = System.IO.Path.Combine(predviaPath, "Categories");
-                if (Directory.Exists(categoriesPath))
-                {
-                    foreach (var file in Directory.GetFiles(categoriesPath))
-                        File.Delete(file);
-                }
-                
-                // JSON 파일 삭제
-                var jsonPath = System.IO.Path.Combine(predviaPath, "product_cards.json");
-                if (File.Exists(jsonPath))
-                    File.Delete(jsonPath);
                 
                 // 전체선택 체크박스 해제
                 if (_selectAllCheckBox != null)
                     _selectAllCheckBox.IsChecked = false;
                 
-                LogWindow.AddLogStatic($"✅ 전체 {count}개 상품 삭제 완료 (UI + 파일 모두 삭제됨)");
+                // JSON 파일 업데이트
+                SaveProductCardsToJson();
+                
+                LogWindow.AddLogStatic($"✅ {selectedProducts.Count}개 상품 삭제 완료");
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 전체 삭제 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 선택 삭제 오류: {ex.Message}");
+            }
+        }
+        
+        // 개별 상품 파일 삭제
+        private void DeleteProductFiles(string predviaPath, string storeId, string productId)
+        {
+            try
+            {
+                // 이미지 파일
+                var imagePath = System.IO.Path.Combine(predviaPath, "Images", $"{storeId}_{productId}_main.jpg");
+                if (File.Exists(imagePath)) File.Delete(imagePath);
+                
+                // 상품명 파일
+                var namePath = System.IO.Path.Combine(predviaPath, "ProductData", $"{storeId}_{productId}_name.txt");
+                if (File.Exists(namePath)) File.Delete(namePath);
+                
+                // 리뷰 파일
+                var reviewPath = System.IO.Path.Combine(predviaPath, "Reviews", $"{storeId}_{productId}_reviews.json");
+                if (File.Exists(reviewPath)) File.Delete(reviewPath);
+                
+                // 카테고리 파일
+                var categoryPath = System.IO.Path.Combine(predviaPath, "Categories", $"{storeId}_{productId}_categories.json");
+                if (File.Exists(categoryPath)) File.Delete(categoryPath);
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"⚠️ 파일 삭제 오류 ({storeId}/{productId}): {ex.Message}");
+            }
+        }
             }
         }
 
@@ -1698,20 +1705,30 @@ namespace Gumaedaehang
             {
                 LogWindow.AddLogStatic($"🗑️ 개별 삭제 버튼 클릭: 상품 {productId}");
                 
-                // 해당 상품 요소 찾기
                 if (_productElements.TryGetValue(productId, out var product) && product.Container != null)
                 {
+                    var storeId = product.StoreId;
+                    var realProductId = product.RealProductId;
+                    
                     // UI에서 제거
                     var container = this.FindControl<StackPanel>("RealDataContainer");
                     if (container != null)
                     {
                         container.Children.Remove(product.Container);
-                        LogWindow.AddLogStatic($"✅ UI에서 상품 {productId} 제거 완료");
                     }
+                    
+                    // 파일 삭제
+                    var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                    var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
+                    DeleteProductFiles(predviaPath, storeId, realProductId);
                     
                     // 메모리에서 제거
                     _productElements.Remove(productId);
-                    LogWindow.AddLogStatic($"✅ 메모리에서 상품 {productId} 제거 완료");
+                    
+                    // JSON 파일 업데이트
+                    SaveProductCardsToJson();
+                    
+                    LogWindow.AddLogStatic($"✅ 상품 {productId} 삭제 완료 (UI + 파일)");
                 }
                 else
                 {
