@@ -1,6 +1,147 @@
 // ⭐ 중앙 집중식 순차 처리 시스템
 console.log('🚀 Predvia 중앙 순차 처리 시스템 시작');
 
+// ⭐ MD5 해시 함수 (타오바오 서명용)
+function md5(string) {
+    function md5cycle(x, k) {
+        var a = x[0], b = x[1], c = x[2], d = x[3];
+        a = ff(a, b, c, d, k[0], 7, -680876936); d = ff(d, a, b, c, k[1], 12, -389564586);
+        c = ff(c, d, a, b, k[2], 17, 606105819); b = ff(b, c, d, a, k[3], 22, -1044525330);
+        a = ff(a, b, c, d, k[4], 7, -176418897); d = ff(d, a, b, c, k[5], 12, 1200080426);
+        c = ff(c, d, a, b, k[6], 17, -1473231341); b = ff(b, c, d, a, k[7], 22, -45705983);
+        a = ff(a, b, c, d, k[8], 7, 1770035416); d = ff(d, a, b, c, k[9], 12, -1958414417);
+        c = ff(c, d, a, b, k[10], 17, -42063); b = ff(b, c, d, a, k[11], 22, -1990404162);
+        a = ff(a, b, c, d, k[12], 7, 1804603682); d = ff(d, a, b, c, k[13], 12, -40341101);
+        c = ff(c, d, a, b, k[14], 17, -1502002290); b = ff(b, c, d, a, k[15], 22, 1236535329);
+        a = gg(a, b, c, d, k[1], 5, -165796510); d = gg(d, a, b, c, k[6], 9, -1069501632);
+        c = gg(c, d, a, b, k[11], 14, 643717713); b = gg(b, c, d, a, k[0], 20, -373897302);
+        a = gg(a, b, c, d, k[5], 5, -701558691); d = gg(d, a, b, c, k[10], 9, 38016083);
+        c = gg(c, d, a, b, k[15], 14, -660478335); b = gg(b, c, d, a, k[4], 20, -405537848);
+        a = gg(a, b, c, d, k[9], 5, 568446438); d = gg(d, a, b, c, k[14], 9, -1019803690);
+        c = gg(c, d, a, b, k[3], 14, -187363961); b = gg(b, c, d, a, k[8], 20, 1163531501);
+        a = gg(a, b, c, d, k[13], 5, -1444681467); d = gg(d, a, b, c, k[2], 9, -51403784);
+        c = gg(c, d, a, b, k[7], 14, 1735328473); b = gg(b, c, d, a, k[12], 20, -1926607734);
+        a = hh(a, b, c, d, k[5], 4, -378558); d = hh(d, a, b, c, k[8], 11, -2022574463);
+        c = hh(c, d, a, b, k[11], 16, 1839030562); b = hh(b, c, d, a, k[14], 23, -35309556);
+        a = hh(a, b, c, d, k[1], 4, -1530992060); d = hh(d, a, b, c, k[4], 11, 1272893353);
+        c = hh(c, d, a, b, k[7], 16, -155497632); b = hh(b, c, d, a, k[10], 23, -1094730640);
+        a = hh(a, b, c, d, k[13], 4, 681279174); d = hh(d, a, b, c, k[0], 11, -358537222);
+        c = hh(c, d, a, b, k[3], 16, -722521979); b = hh(b, c, d, a, k[6], 23, 76029189);
+        a = hh(a, b, c, d, k[9], 4, -640364487); d = hh(d, a, b, c, k[12], 11, -421815835);
+        c = hh(c, d, a, b, k[15], 16, 530742520); b = hh(b, c, d, a, k[2], 23, -995338651);
+        a = ii(a, b, c, d, k[0], 6, -198630844); d = ii(d, a, b, c, k[7], 10, 1126891415);
+        c = ii(c, d, a, b, k[14], 15, -1416354905); b = ii(b, c, d, a, k[5], 21, -57434055);
+        a = ii(a, b, c, d, k[12], 6, 1700485571); d = ii(d, a, b, c, k[3], 10, -1894986606);
+        c = ii(c, d, a, b, k[10], 15, -1051523); b = ii(b, c, d, a, k[1], 21, -2054922799);
+        a = ii(a, b, c, d, k[8], 6, 1873313359); d = ii(d, a, b, c, k[15], 10, -30611744);
+        c = ii(c, d, a, b, k[6], 15, -1560198380); b = ii(b, c, d, a, k[13], 21, 1309151649);
+        a = ii(a, b, c, d, k[4], 6, -145523070); d = ii(d, a, b, c, k[11], 10, -1120210379);
+        c = ii(c, d, a, b, k[2], 15, 718787259); b = ii(b, c, d, a, k[9], 21, -343485551);
+        x[0] = add32(a, x[0]); x[1] = add32(b, x[1]); x[2] = add32(c, x[2]); x[3] = add32(d, x[3]);
+    }
+    function cmn(q, a, b, x, s, t) { a = add32(add32(a, q), add32(x, t)); return add32((a << s) | (a >>> (32 - s)), b); }
+    function ff(a, b, c, d, x, s, t) { return cmn((b & c) | ((~b) & d), a, b, x, s, t); }
+    function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & (~d)), a, b, x, s, t); }
+    function hh(a, b, c, d, x, s, t) { return cmn(b ^ c ^ d, a, b, x, s, t); }
+    function ii(a, b, c, d, x, s, t) { return cmn(c ^ (b | (~d)), a, b, x, s, t); }
+    function md51(s) {
+        var n = s.length, state = [1732584193, -271733879, -1732584194, 271733878], i;
+        for (i = 64; i <= s.length; i += 64) md5cycle(state, md5blk(s.substring(i - 64, i)));
+        s = s.substring(i - 64);
+        var tail = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+        for (i = 0; i < s.length; i++) tail[i >> 2] |= s.charCodeAt(i) << ((i % 4) << 3);
+        tail[i >> 2] |= 0x80 << ((i % 4) << 3);
+        if (i > 55) { md5cycle(state, tail); tail = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]; }
+        tail[14] = n * 8; md5cycle(state, tail); return state;
+    }
+    function md5blk(s) {
+        var md5blks = [], i;
+        for (i = 0; i < 64; i += 4) md5blks[i >> 2] = s.charCodeAt(i) + (s.charCodeAt(i + 1) << 8) + (s.charCodeAt(i + 2) << 16) + (s.charCodeAt(i + 3) << 24);
+        return md5blks;
+    }
+    var hex_chr = '0123456789abcdef'.split('');
+    function rhex(n) { var s = '', j = 0; for (; j < 4; j++) s += hex_chr[(n >> (j * 8 + 4)) & 0x0F] + hex_chr[(n >> (j * 8)) & 0x0F]; return s; }
+    function hex(x) { for (var i = 0; i < x.length; i++) x[i] = rhex(x[i]); return x.join(''); }
+    function add32(a, b) { return (a + b) & 0xFFFFFFFF; }
+    return hex(md51(string));
+}
+
+// ⭐ 타오바오 이미지 검색 함수
+async function searchTaobaoByImage(imageUrl) {
+    console.log('🔍 타오바오 이미지 검색 시작:', imageUrl?.substring(0, 50));
+    
+    // 1. 타오바오 쿠키에서 토큰 가져오기
+    const cookies = await chrome.cookies.getAll({ domain: '.taobao.com' });
+    let token = null;
+    
+    for (const cookie of cookies) {
+        if (cookie.name === '_m_h5_tk' && cookie.value) {
+            token = cookie.value.split('_')[0];
+            console.log('🔑 토큰 발견:', token.substring(0, 10) + '...');
+            break;
+        }
+    }
+    
+    if (!token) {
+        console.log('❌ 타오바오 토큰 없음 - 로그인 필요');
+        return { success: false, error: '타오바오 로그인이 필요합니다' };
+    }
+    
+    // 2. API 파라미터 생성
+    const timestamp = Date.now();
+    const appKey = '12574478';
+    const data = JSON.stringify({
+        imageUrl: imageUrl,
+        extendInfo: '{}',
+        p: 'mm_26632258_3504122_32538762'
+    });
+    
+    // 3. 서명 생성
+    const signStr = `${token}&${timestamp}&${appKey}&${data}`;
+    const sign = md5(signStr);
+    
+    // 4. API 호출
+    const apiUrl = 'https://h5api.m.taobao.com/h5/mtop.relationrecommend.wirelessrecommend.recommend/2.0/';
+    const params = new URLSearchParams({
+        jsv: '2.6.1',
+        appKey: appKey,
+        t: timestamp,
+        sign: sign,
+        api: 'mtop.relationrecommend.wirelessrecommend.recommend',
+        v: '2.0',
+        type: 'jsonp',
+        dataType: 'jsonp',
+        callback: 'mtopjsonp1',
+        data: data
+    });
+    
+    try {
+        const response = await fetch(`${apiUrl}?${params.toString()}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Referer': 'https://s.taobao.com/' }
+        });
+        
+        const text = await response.text();
+        console.log('📥 API 응답:', text.substring(0, 200));
+        
+        // JSONP 파싱
+        const jsonStr = text.replace(/^mtopjsonp\d+\(/, '').replace(/\)$/, '');
+        const result = JSON.parse(jsonStr);
+        
+        if (result.ret && result.ret[0] === 'SUCCESS::调用成功') {
+            console.log('✅ 이미지 검색 성공');
+            return { success: true, data: result.data };
+        } else {
+            console.log('❌ API 오류:', result.ret);
+            return { success: false, error: result.ret?.[0] || 'API 오류' };
+        }
+    } catch (e) {
+        console.error('❌ 요청 실패:', e);
+        return { success: false, error: e.message };
+    }
+}
+
 let globalProcessingState = {
   isProcessing: false,
   currentStore: null,
@@ -9,6 +150,106 @@ let globalProcessingState = {
   queue: [],
   openWindows: new Map()  // 열린 앱 창들 추적
 };
+
+// ⭐ 이미지 검색 요청 폴링 (3초마다)
+setInterval(async () => {
+    try {
+        const response = await fetch('http://localhost:8080/api/taobao/pending-search');
+        if (!response.ok) {
+            console.log('❌ pending-search 응답 오류:', response.status);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('📡 폴링 응답:', JSON.stringify(data));
+        
+        if (!data.hasPending) return;
+        
+        console.log('🔍 검색 요청 발견:', data.productId);
+        
+        // Base64 이미지를 타오바오에 업로드하고 검색
+        const result = await uploadAndSearchTaobao(data.imageBase64);
+        console.log('🔎 검색 결과:', JSON.stringify(result).substring(0, 200));
+        
+        // 결과를 서버로 전송
+        await fetch('http://localhost:8080/api/taobao/image-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                productId: data.productId,
+                success: result.success,
+                products: result.products || [],
+                error: result.error
+            })
+        });
+        
+        console.log('✅ 검색 결과 전송 완료');
+    } catch (e) {
+        console.log('❌ 폴링 오류:', e.message);
+    }
+}, 3000);
+
+// ⭐ Base64 이미지를 타오바오에 업로드하고 검색
+async function uploadAndSearchTaobao(base64Image) {
+    try {
+        // 1. 타오바오 토큰 가져오기
+        const cookies = await chrome.cookies.getAll({ domain: '.taobao.com' });
+        console.log('🍪 타오바오 쿠키 개수:', cookies.length);
+        
+        let token = null;
+        let tokenEnc = null;
+        for (const cookie of cookies) {
+            if (cookie.name === '_m_h5_tk' && cookie.value) {
+                token = cookie.value.split('_')[0];
+                console.log('🔑 토큰 발견:', token.substring(0, 15) + '...');
+            }
+            if (cookie.name === '_m_h5_tk_enc') {
+                tokenEnc = cookie.value;
+            }
+        }
+        
+        if (!token) {
+            console.log('❌ _m_h5_tk 쿠키 없음');
+            return { success: false, error: '타오바오 로그인 필요' };
+        }
+        
+        // 2. 이미지를 imgbb에 임시 업로드 (무료 이미지 호스팅)
+        console.log('📤 이미지 업로드 중...');
+        const formData = new FormData();
+        formData.append('image', base64Image);
+        
+        const uploadResp = await fetch('https://api.imgbb.com/1/upload?key=d36eb6591370ae79f9bb33b06007e46e', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const uploadText = await uploadResp.text();
+        console.log('📤 업로드 응답:', uploadText.substring(0, 500));
+        
+        let uploadResult;
+        try {
+            uploadResult = JSON.parse(uploadText);
+        } catch (e) {
+            return { success: false, error: '업로드 응답 파싱 실패: ' + uploadText.substring(0, 100) };
+        }
+        
+        if (!uploadResult.success) {
+            console.log('❌ 업로드 실패:', uploadResult);
+            return { success: false, error: '이미지 업로드 실패: ' + (uploadResult.error?.message || 'unknown') };
+        }
+        
+        const imageUrl = uploadResult.data.url;
+        console.log('✅ 이미지 업로드 완료:', imageUrl);
+        
+        // 3. 타오바오 이미지 검색 API 호출
+        const result = await searchTaobaoByImage(imageUrl);
+        return result;
+        
+    } catch (e) {
+        console.error('❌ 업로드/검색 오류:', e);
+        return { success: false, error: e.message };
+    }
+}
 
 // ⭐ 타오바오 쿠키 자동 전송 함수
 async function sendTaobaoCookies() {
@@ -178,6 +419,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
         
         return true; // 비동기 응답
+    }
+    
+    // ⭐ 타오바오 이미지 검색 요청 처리
+    if (request.action === 'searchTaobaoByImage') {
+        console.log('🔍 타오바오 이미지 검색 요청:', request.imageUrl?.substring(0, 50));
+        searchTaobaoByImage(request.imageUrl).then(result => {
+            sendResponse(result);
+        }).catch(err => {
+            sendResponse({ error: err.message });
+        });
+        return true;
     }
     
     console.log('🔥 Background 메시지 수신:', request.action, request.storeId);

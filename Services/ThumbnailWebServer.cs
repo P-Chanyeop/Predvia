@@ -270,8 +270,12 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/taobao/login", HandleTaobaoLogin); // ⭐ 타오바오 로그인 API
                 _app.MapPost("/api/taobao/cookies", HandleTaobaoCookies); // ⭐ 타오바오 쿠키 수신 API
                 _app.MapGet("/api/taobao/cookies", HandleGetTaobaoCookies); // ⭐ 타오바오 쿠키 상태 확인 API
+                _app.MapPost("/api/taobao/image-search", HandleTaobaoImageSearch); // ⭐ 타오바오 이미지 검색 결과 수신
+                _app.MapPost("/api/taobao/search-request", HandleTaobaoSearchRequest); // ⭐ 이미지 검색 요청
+                _app.MapGet("/api/taobao/search-result", HandleTaobaoSearchResult); // ⭐ 검색 결과 조회
+                _app.MapGet("/api/taobao/pending-search", HandlePendingSearch); // ⭐ 대기 중인 검색 요청 (확장프로그램용)
                 
-                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (20개)");
+                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (24개)");
 
                 // ⭐ 서버 변수 초기화
                 lock (_counterLock)
@@ -2297,6 +2301,177 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+        
+        // ⭐ 타오바오 이미지 검색 결과 저장용
+        private static List<TaobaoProduct>? _lastImageSearchResults = null;
+        private static readonly object _imageSearchLock = new object();
+        
+        // ⭐ 타오바오 이미지 검색 핸들러 (확장프로그램에서 결과 수신)
+        private async Task<IResult> HandleTaobaoImageSearch(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var body = await reader.ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<JsonElement>(body);
+                
+                var productId = data.TryGetProperty("productId", out var pid) ? pid.GetInt32() : 0;
+                
+                if (data.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
+                {
+                    if (data.TryGetProperty("products", out var productsProp))
+                    {
+                        var products = new List<TaobaoProduct>();
+                        foreach (var item in productsProp.EnumerateArray())
+                        {
+                            products.Add(new TaobaoProduct
+                            {
+                                ProductId = item.TryGetProperty("nid", out var nid) ? nid.GetString() ?? "" : "",
+                                Title = item.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "",
+                                Price = item.TryGetProperty("price", out var price) ? price.GetString() ?? "" : "",
+                                ImageUrl = item.TryGetProperty("imageUrl", out var img) ? img.GetString() ?? "" : "",
+                                Sales = item.TryGetProperty("sales", out var sales) ? sales.GetString() ?? "" : ""
+                            });
+                        }
+                        
+                        // productId별로 결과 저장
+                        lock (_searchLock)
+                        {
+                            _searchResults[productId] = products;
+                        }
+                        
+                        LogWindow.AddLogStatic($"✅ 타오바오 검색 결과: 상품 {productId} → {products.Count}개");
+                        return Results.Ok(new { success = true, count = products.Count });
+                    }
+                }
+                else if (data.TryGetProperty("error", out var errorProp))
+                {
+                    var error = errorProp.GetString();
+                    LogWindow.AddLogStatic($"❌ 타오바오 검색 실패: {error}");
+                    return Results.Ok(new { success = false, error = error });
+                }
+                
+                return Results.Ok(new { success = false, error = "알 수 없는 응답" });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 이미지 검색 오류: {ex.Message}");
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+        
+        // ⭐ 검색 요청 저장용
+        private static Dictionary<int, string> _pendingSearchRequests = new();
+        private static Dictionary<int, List<TaobaoProduct>> _searchResults = new();
+        private static readonly object _searchLock = new();
+        
+        // ⭐ 이미지 검색 요청 핸들러 (C# → 확장프로그램)
+        private async Task<IResult> HandleTaobaoSearchRequest(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var body = await reader.ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<JsonElement>(body);
+                
+                var productId = data.TryGetProperty("productId", out var pid) ? pid.GetInt32() : 0;
+                var imageBase64 = data.TryGetProperty("imageBase64", out var img) ? img.GetString() ?? "" : "";
+                
+                if (productId == 0 || string.IsNullOrEmpty(imageBase64))
+                {
+                    return Results.BadRequest(new { error = "productId와 imageBase64 필요" });
+                }
+                
+                // 요청 저장 (확장프로그램이 폴링해서 가져감)
+                lock (_searchLock)
+                {
+                    _pendingSearchRequests[productId] = imageBase64;
+                }
+                
+                LogWindow.AddLogStatic($"📥 이미지 검색 요청 저장: 상품 {productId}");
+                return Results.Ok(new { success = true, message = "검색 요청 등록됨" });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+        
+        // ⭐ 검색 결과 조회 핸들러
+        private async Task<IResult> HandleTaobaoSearchResult(HttpContext context)
+        {
+            try
+            {
+                var productIdStr = context.Request.Query["productId"].ToString();
+                if (!int.TryParse(productIdStr, out var productId))
+                {
+                    return Results.BadRequest(new { error = "productId 필요" });
+                }
+                
+                List<TaobaoProduct>? products = null;
+                lock (_searchLock)
+                {
+                    if (_searchResults.TryGetValue(productId, out var result))
+                    {
+                        products = result;
+                        _searchResults.Remove(productId); // 한 번 조회하면 삭제
+                    }
+                }
+                
+                if (products != null && products.Count > 0)
+                {
+                    return Results.Ok(new { success = true, products = products });
+                }
+                
+                return Results.Ok(new { success = false, message = "결과 없음" });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        }
+        
+        // ⭐ 대기 중인 검색 요청 조회 (확장프로그램 폴링용)
+        private async Task<IResult> HandlePendingSearch(HttpContext context)
+        {
+            try
+            {
+                int? productId = null;
+                string? imageBase64 = null;
+                
+                lock (_searchLock)
+                {
+                    if (_pendingSearchRequests.Count > 0)
+                    {
+                        var first = _pendingSearchRequests.First();
+                        productId = first.Key;
+                        imageBase64 = first.Value;
+                        _pendingSearchRequests.Remove(first.Key);
+                    }
+                }
+                
+                context.Response.ContentType = "application/json";
+                
+                if (productId.HasValue && imageBase64 != null)
+                {
+                    LogWindow.AddLogStatic($"📤 검색 요청 전달: 상품 {productId}");
+                    var json = JsonSerializer.Serialize(new { hasPending = true, productId = productId.Value, imageBase64 = imageBase64 });
+                    await context.Response.WriteAsync(json);
+                }
+                else
+                {
+                    await context.Response.WriteAsync("{\"hasPending\":false}");
+                }
+                
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync($"{{\"hasPending\":false,\"error\":\"{ex.Message}\"}}");
+                return Results.Ok();
             }
         }
         

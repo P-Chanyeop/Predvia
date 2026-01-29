@@ -21,32 +21,41 @@ def load_proxy_list():
 
     if not os.path.exists(proxy_file):
         print(f"⚠️ 프록시 파일 없음: {proxy_file}")
+        sys.stdout.flush()
         return []
 
     try:
         with open(proxy_file, 'r', encoding='utf-8') as f:
             proxies = [line.strip() for line in f if line.strip()]
         print(f"✅ 프록시 {len(proxies)}개 로드 완료 (파일: {proxy_file})")
+        sys.stdout.flush()
         return proxies
     except Exception as e:
         print(f"❌ 프록시 로드 실패: {e}")
+        sys.stdout.flush()
         return []
 
 def get_random_proxy(proxy_list):
     """랜덤으로 프록시 선택"""
     if not proxy_list:
         print("⚠️ 프록시 없음 - 직접 연결")
+        sys.stdout.flush()
         return None
 
     proxy = random.choice(proxy_list)
     print(f"🔄 프록시 사용: {proxy}")
+    sys.stdout.flush()
     return {
         'http': f'http://{proxy}',
         'https': f'http://{proxy}'
     }
 
 # 전역 프록시 목록
+print("🔍 프록시 목록 로드 시작...")
+sys.stdout.flush()
 _proxy_list = load_proxy_list()
+print(f"📊 전역 프록시 목록: {len(_proxy_list)}개")
+sys.stdout.flush()
 
 def get_chrome_cookies_all():
     """크롬에서 모든 타오바오 쿠키 가져오기"""
@@ -93,10 +102,10 @@ def get_chrome_cookie():
     return token
 
 def load_taobao_upload():
-    """타오바오 업로드 객체 생성 (쿠키 로드 + 프록시 설정)"""
+    """타오바오 업로드 객체 생성 (쿠키 로드)"""
     taobao_upload = None
 
-    # ⭐ 프록시 선택
+    # ⭐ 프록시 선택 (나중에 세션에 적용)
     proxy_dict = get_random_proxy(_proxy_list)
 
     # 1순위: 환경변수에서 토큰 확인
@@ -106,7 +115,11 @@ def load_taobao_upload():
     if env_token:
         print(f"🔑 환경변수에서 _m_h5_tk 토큰 발견: {env_token[:20]}...")
         try:
-            taobao_upload = ali1688.WorldTaobao(manual_cookie=env_token, proxies=proxy_dict)
+            taobao_upload = ali1688.WorldTaobao(manual_cookie=env_token)
+            # ⭐ 프록시를 세션에 적용
+            if proxy_dict and hasattr(taobao_upload, 'session'):
+                taobao_upload.session.proxies.update(proxy_dict)
+                print(f"✅ 세션에 프록시 적용 완료")
             print("✅ 환경변수 토큰으로 타오바오 연결 성공")
         except Exception as e:
             print(f"❌ 환경변수 토큰 연결 실패: {e}")
@@ -135,7 +148,11 @@ def load_taobao_upload():
                 if '_m_h5_tk' in saved_cookies:
                     token = saved_cookies['_m_h5_tk']
                     print(f"🔑 _m_h5_tk 토큰 발견: {token[:20]}...")
-                    taobao_upload = ali1688.WorldTaobao(manual_cookie=token, proxies=proxy_dict)
+                    taobao_upload = ali1688.WorldTaobao(manual_cookie=token)
+                    # ⭐ 프록시를 세션에 적용
+                    if proxy_dict and hasattr(taobao_upload, 'session'):
+                        taobao_upload.session.proxies.update(proxy_dict)
+                        print(f"✅ 세션에 프록시 적용 완료")
                     print("✅ 저장된 쿠키로 타오바오 연결 성공")
                 else:
                     print("❌ _m_h5_tk 토큰이 저장된 쿠키에 없습니다")
@@ -144,14 +161,22 @@ def load_taobao_upload():
             else:
                 print("❌ 저장된 쿠키 파일이 없습니다")
                 print("세션 모드로 타오바오 연결 시도...")
-                taobao_upload = ali1688.WorldTaobao(use_session=True, proxies=proxy_dict)
+                taobao_upload = ali1688.WorldTaobao(use_session=True)
+                # ⭐ 프록시를 세션에 적용
+                if proxy_dict and hasattr(taobao_upload, 'session'):
+                    taobao_upload.session.proxies.update(proxy_dict)
+                    print(f"✅ 세션에 프록시 적용 완료")
                 print("✅ 세션 모드 성공")
         except Exception as e:
             print(f"저장된 쿠키/세션 모드 실패: {e}")
             print("Chrome 쿠키 직접 읽기 모드로 전환...")
             manual_cookie = get_chrome_cookie()
             if manual_cookie:
-                taobao_upload = ali1688.WorldTaobao(manual_cookie=manual_cookie, proxies=proxy_dict)
+                taobao_upload = ali1688.WorldTaobao(manual_cookie=manual_cookie)
+                # ⭐ 프록시를 세션에 적용
+                if proxy_dict and hasattr(taobao_upload, 'session'):
+                    taobao_upload.session.proxies.update(proxy_dict)
+                    print(f"✅ 세션에 프록시 적용 완료")
                 print("✅ Chrome 쿠키 직접 읽기 성공")
             else:
                 print("❌ 모든 쿠키 획득 방법 실패")
@@ -205,48 +230,88 @@ if __name__ == "__main__":
     if is_retry:
         print("🔄 [재시도 모드] 쿠키 파일을 다시 로드합니다...")
 
-    # ⭐ 먼저 타오바오 연결 설정
-    taobao_upload = load_taobao_upload()
+    # ⭐ 최대 3번 재시도 (프록시 변경)
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                print(f"🔄 재시도 {attempt}/{max_retries} - 새로운 프록시로 연결...")
+                sys.stdout.flush()
 
-    # 1688 example
-    # get cookie and token
-    # upload image and get image id
-    upload = ali1688.Ali1688Upload()
-    res = upload.upload(filename=path)
-    image_id = res.json().get("data", {}).get("imageId", "")
-    if not image_id:
-        raise Exception("not image id")
-    print(image_id)
+            # ⭐ 타오바오 연결 설정 (매번 새 프록시)
+            taobao_upload = load_taobao_upload()
 
-    # search goods by i®mage id
-    image_search = ali1688.Ali1688ImageSearch()
-    req = image_search.request(image_id=image_id)
-    print(req.url)
-        
-    res = taobao_upload.upload(filename=path)
-    response_json = res.json()
+            # 1688 example
+            # get cookie and token
+            # upload image and get image id
+            upload = ali1688.Ali1688Upload()
+            res = upload.upload(filename=path)
+            image_id = res.json().get("data", {}).get("imageId", "")
+            if not image_id:
+                raise Exception("not image id")
+            print(image_id)
 
-    # ⭐ 응답 분석
-    print(f"📊 타오바오 API 응답 코드: {res.status_code}")
-    sys.stdout.flush()
+            # search goods by image id
+            image_search = ali1688.Ali1688ImageSearch()
+            req = image_search.request(image_id=image_id)
+            print(req.url)
+                
+            res = taobao_upload.upload(filename=path)
+            response_json = res.json()
 
-    # ret 필드 확인 (오류 체크)
-    if "ret" in response_json:
-        ret_value = response_json["ret"]
-        print(f"📋 API ret 값: {ret_value}")
-        sys.stdout.flush()
+            # ⭐ 응답 분석
+            print(f"📊 타오바오 API 응답 코드: {res.status_code}")
+            sys.stdout.flush()
 
-    # ⭐ 항상 "Full response:" 형식으로 출력 (C# 파싱용)
-    import json
-    json_str = json.dumps(response_json, ensure_ascii=False, separators=(',', ':'))
-    print(f"Full response: {json_str}")
-    sys.stdout.flush()
+            # ret 필드 확인 (오류 체크)
+            if "ret" in response_json:
+                ret_value = response_json["ret"]
+                print(f"📋 API ret 값: {ret_value}")
+                sys.stdout.flush()
 
-    # data 필드 확인
-    data = response_json.get("data")
-    if data and isinstance(data, dict) and len(data) > 0:
-        print("✅ taobao_upload success")
-        sys.stdout.flush()
+                # CAPTCHA 또는 차단 감지
+                if isinstance(ret_value, list):
+                    ret_str = ' '.join(str(x) for x in ret_value)
+                    if 'FAIL_SYS_USER_VALIDATE' in ret_str or 'RGV587_ERROR' in ret_str or '被挤爆' in ret_str:
+                        if attempt < max_retries - 1:
+                            print(f"🚫 CAPTCHA/차단 감지 - 프록시 변경 후 재시도 ({attempt + 1}/{max_retries})")
+                            sys.stdout.flush()
+                            continue  # 다음 프록시로 재시도
+                        else:
+                            print(f"❌ {max_retries}번 재시도 후에도 CAPTCHA 문제 지속됨")
+                            sys.stdout.flush()
+                            break
+
+            # ⭐ 항상 "Full response:" 형식으로 출력 (C# 파싱용)
+            import json
+            json_str = json.dumps(response_json, ensure_ascii=False, separators=(',', ':'))
+            print(f"Full response: {json_str}")
+            sys.stdout.flush()
+
+            # data 필드 확인
+            data = response_json.get("data")
+            if data and isinstance(data, dict) and len(data) > 0:
+                print("✅ taobao_upload success")
+                sys.stdout.flush()
+                break  # 성공하면 루프 종료
+            else:
+                if attempt < max_retries - 1:
+                    print(f"⚠️ 데이터 없음 - 재시도 ({attempt + 1}/{max_retries})")
+                    sys.stdout.flush()
+                    continue
+                else:
+                    print("❌ 최종 실패: 데이터 없음")
+                    sys.stdout.flush()
+
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"❌ 오류 발생: {e} - 재시도 ({attempt + 1}/{max_retries})")
+                sys.stdout.flush()
+                continue
+            else:
+                print(f"❌ 최종 실패: {e}")
+                sys.stdout.flush()
+                raise
 
         image_id = data.get("imageId", "")
         print(f"🆔 Image ID: {image_id}")
