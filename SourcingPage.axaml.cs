@@ -4847,7 +4847,31 @@ namespace Gumaedaehang
         {
             try
             {
-                LogWindow.AddLogStatic("📊 Excel 내보내기 시작...");
+                // 타오바오 페어링된 상품 개수 확인
+                var container = this.FindControl<StackPanel>("RealDataContainer");
+                if (container == null) return;
+
+                int pairedCount = 0;
+                foreach (var productCard in container.Children.OfType<StackPanel>())
+                {
+                    if (productCard.Tag is string tagStr && tagStr.Contains("_"))
+                    {
+                        var parts = tagStr.Split('_');
+                        if (parts.Length >= 2)
+                        {
+                            var taobaoProducts = GetTaobaoProductsFromFile(parts[0], parts[1]);
+                            if (taobaoProducts.Count > 0) pairedCount++;
+                        }
+                    }
+                }
+
+                if (pairedCount == 0)
+                {
+                    LogWindow.AddLogStatic("⚠️ 타오바오 페어링된 상품이 없습니다. 먼저 타오바오 페어링을 진행해주세요.");
+                    return;
+                }
+
+                LogWindow.AddLogStatic($"📊 Excel 내보내기 시작... (타오바오 페어링 상품: {pairedCount}개)");
                 
                 // 현재 날짜+시간으로 파일명 자동 생성
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
@@ -4900,7 +4924,7 @@ namespace Gumaedaehang
             }
 
             var productCards = container.Children.OfType<StackPanel>().ToList();
-            var productDataList = new List<(string storeId, string productId)>();
+            var productDataList = new List<(string storeId, string productId, string taobaoUrl)>();
 
             foreach (var productCard in productCards)
             {
@@ -4909,9 +4933,22 @@ namespace Gumaedaehang
                     var parts = tagStr.Split('_');
                     if (parts.Length >= 2)
                     {
-                        productDataList.Add((parts[0], parts[1]));
+                        var taobaoProducts = GetTaobaoProductsFromFile(parts[0], parts[1]);
+                        if (taobaoProducts.Count > 0)
+                        {
+                            // 첫 번째 타오바오 상품 링크 사용
+                            var firstProduct = taobaoProducts[0];
+                            var taobaoUrl = $"https://item.taobao.com/item.htm?id={firstProduct.Nid}";
+                            productDataList.Add((parts[0], parts[1], taobaoUrl));
+                        }
                     }
                 }
+            }
+
+            if (productDataList.Count == 0)
+            {
+                LogWindow.AddLogStatic("⚠️ 타오바오 페어링된 상품이 없습니다.");
+                return;
             }
 
             // 백그라운드 스레드에서 Excel 생성
@@ -4939,18 +4976,17 @@ namespace Gumaedaehang
                 // 데이터 행 (3행부터)
                 int row = 3;
                 
-                foreach (var (storeId, productId) in productDataList)
+                foreach (var (storeId, productId, taobaoUrl) in productDataList)
                 {
                     var categoryInfo = GetCategoryInfo(storeId, productId);
                     var productName = GetProductNameFromFile(storeId, productId);
                     var byteCount = Encoding.UTF8.GetByteCount(productName);
-                    var productUrl = $"https://smartstore.naver.com/{storeId}/products/{productId}";
 
                     worksheet.Cell(row, 1).Value = categoryInfo;
                     worksheet.Cell(row, 2).Value = productName;
                     worksheet.Cell(row, 3).Value = byteCount;
                     worksheet.Cell(row, 4).Value = 0;
-                    worksheet.Cell(row, 5).Value = productUrl;
+                    worksheet.Cell(row, 5).Value = taobaoUrl;
                     worksheet.Cell(row, 6).Value = "";
                     worksheet.Cell(row, 7).Value = 0;
                     worksheet.Cell(row, 8).Value = "";
@@ -4984,6 +5020,32 @@ namespace Gumaedaehang
             catch { }
 
             return "";
+        }
+
+        // 타오바오 상품 정보 파일에서 가져오기
+        private List<TaobaoProductData> GetTaobaoProductsFromFile(string? storeId, string? productId)
+        {
+            if (string.IsNullOrEmpty(storeId) || string.IsNullOrEmpty(productId))
+                return new List<TaobaoProductData>();
+
+            try
+            {
+                var predviaPath = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "Predvia"
+                );
+                var taobaoPath = System.IO.Path.Combine(predviaPath, "TaobaoProducts", $"{storeId}_{productId}_taobao.json");
+                
+                if (File.Exists(taobaoPath))
+                {
+                    var json = File.ReadAllText(taobaoPath, Encoding.UTF8);
+                    var products = JsonSerializer.Deserialize<List<TaobaoProductData>>(json);
+                    return products ?? new List<TaobaoProductData>();
+                }
+            }
+            catch { }
+
+            return new List<TaobaoProductData>();
         }
     }
 
