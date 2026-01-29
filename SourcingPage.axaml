@@ -290,6 +290,12 @@
                                 Padding="20,8" CornerRadius="6"
                                 VerticalAlignment="Center"
                                 FontWeight="Bold"/>
+                        <Button x:Name="ExportExcelButton" Content="📊 Excel 내보내기" FontSize="14"
+                                Background="#2E7D32" Foreground="White"
+                                Padding="20,8" CornerRadius="6"
+                                VerticalAlignment="Center"
+                                FontWeight="Bold"
+                                Click="ExportExcelButton_Click"/>
                     </StackPanel>
                     
                     <!-- 실제 상품 데이터가 여기에 동적으로 추가됩니다 -->

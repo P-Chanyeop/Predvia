@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v2.05-orange)
+![Release](https://img.shields.io/badge/Release-v2.06-orange)
 
 ## 📋 프로젝트 개요
 
@@ -244,7 +244,21 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v2.05 - 타오바오 이미지 로드 시스템 완전 개선)
+### 🔄 최신 업데이트 (v2.06 - 로그인 인증 오류 해결 및 Excel 내보내기 기능 완성)
+- [x] **🔐 로그인 인증 오류 완전 해결**: MethodAccessException 오류 수정 및 안정성 강화
+  - **ExportExcelButton_Click 접근 제한자 수정**: private → protected로 변경하여 ProductDataPage 상속 문제 해결
+  - **ApiKeyAuthWindow 오류 로깅 강화**: Console.WriteLine으로 전체 오류 메시지 및 스택 트레이스 출력
+  - **중복 catch 블록 제거**: sed 명령어 오류로 발생한 중복 예외 처리 블록 정리
+  - **완벽한 빌드 안정성**: 모든 컴파일 오류 해결 및 정상 실행 확인
+- [x] **📊 Excel 내보내기 기능 완성**: 날짜+시간 자동 파일명 생성 및 UI 스레드 문제 해결
+  - **자동 파일명 생성**: `2026-01-29_140230_결과물추출.xlsx` 형식으로 현재 날짜+시간 자동 적용
+  - **UI 스레드 문제 해결**: Task.Run 내부에서 UI 요소 접근 오류 수정 (Call from invalid thread)
+  - **데이터 수집 최적화**: UI 스레드에서 데이터 수집 후 백그라운드에서 Excel 생성
+  - **상세한 오류 로깅**: 파일 저장 실패 시 전체 스택 트레이스 출력으로 디버깅 지원
+  - **SaveFileDialog 개선**: InitialFileName 속성으로 기본 파일명 자동 제안
+  - **완벽한 예외 처리**: MainWindow 찾기 실패, 파일 저장 취소 등 모든 상황 대응
+
+### 🔄 이전 업데이트 (v2.05 - 타오바오 이미지 로드 시스템 완전 개선)
 - [x] **🖼️ 타오바오 이미지 로컬 다운로드 시스템 구현**: 메모리 기반에서 로컬 파일 기반으로 완전 전환
   - **중복 확장자 문제 해결**: .jpg.jpg 중복 확장자를 정규식으로 자동 수정 (xxx.jpg.jpg → xxx.jpg)
   - **로컬 저장 시스템**: %AppData%/Predvia/TaobaoImages/ 폴더에 체계적 저장

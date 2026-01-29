@@ -120,10 +120,10 @@ namespace Gumaedaehang
             }
             catch (Exception ex)
             {
-                // 기타 예외 처리 - 디버깅을 위해 실제 예외 정보 출력
-                System.Diagnostics.Debug.WriteLine($"API 키 인증 중 예외 발생: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"스택 트레이스: {ex.StackTrace}");
-                _errorMessage.Text = $"인증 중 오류가 발생했습니다. 다시 시도해주세요. (오류: {ex.Message})";
+                // 전체 오류 정보 콘솔 출력
+                Console.WriteLine($"[오류] {ex.GetType().FullName}: {ex.Message}");
+                Console.WriteLine($"스택: {ex.StackTrace}");
+                _errorMessage.Text = $"오류: {ex.Message}";
                 _errorMessage.IsVisible = true;
             }
             finally

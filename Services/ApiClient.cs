@@ -113,11 +113,7 @@ namespace Gumaedaehang.Services
             }
             else
             {
-                return new AuthResponse
-                {
-                    IsSuccess = false,
-                    Message = "잘못된 사용자명 또는 비밀번호입니다."
-                };
+                throw new ApiException("로그인 실패", "잘못된 사용자명 또는 비밀번호입니다.");
             }
         }
 
@@ -129,21 +125,13 @@ namespace Gumaedaehang.Services
             // 비밀번호 확인
             if (password != confirmPassword)
             {
-                return new AuthResponse
-                {
-                    IsSuccess = false,
-                    Message = "비밀번호가 일치하지 않습니다."
-                };
+                throw new ApiException("회원가입 실패", "비밀번호가 일치하지 않습니다.");
             }
 
             // 사용자명 길이 확인
             if (username.Length < 3)
             {
-                return new AuthResponse
-                {
-                    IsSuccess = false,
-                    Message = "사용자명은 3자 이상이어야 합니다."
-                };
+                throw new ApiException("회원가입 실패", "사용자명은 3자 이상이어야 합니다.");
             }
 
             return new AuthResponse
@@ -185,11 +173,21 @@ namespace Gumaedaehang.Services
     // API 예외 클래스
     public class ApiException : Exception
     {
-        public string Details { get; }
+        public string ErrorDetails { get; }
 
-        public ApiException(string message, string details) : base(message)
+        public ApiException(string message) : base(message)
         {
-            Details = details;
+            ErrorDetails = message;
+        }
+
+        public ApiException(string message, string errorDetails) : base(message)
+        {
+            ErrorDetails = errorDetails;
+        }
+
+        public ApiException(string message, Exception innerException) : base(message, innerException)
+        {
+            ErrorDetails = innerException?.Message ?? message;
         }
     }
 }

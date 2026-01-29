@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using System.Text.Json;
 using Gumaedaehang.Services;
+using ClosedXML.Excel;
 
 namespace Gumaedaehang
 {
@@ -786,7 +787,12 @@ namespace Gumaedaehang
                 LogWindow.AddLogStatic($"🆔 새 카드 ID 생성: {cardId}");
 
                 // 전체 상품 컨테이너
-                var productContainer = new StackPanel { Spacing = 0, Margin = new Thickness(0, 0, 0, 40) };
+                var productContainer = new StackPanel 
+                { 
+                    Spacing = 0, 
+                    Margin = new Thickness(0, 0, 0, 40),
+                    Tag = $"{storeId}_{productId}" // ⭐ Excel 내보내기를 위한 Tag 설정
+                };
 
                 // 1. 카테고리 경로 (체크박스 + 빨간 점 + 텍스트)
                 var categoryPanel = new StackPanel 
@@ -1553,8 +1559,6 @@ namespace Gumaedaehang
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"⚠️ 파일 삭제 오류 ({storeId}/{productId}): {ex.Message}");
-            }
-        }
             }
         }
 
@@ -4836,6 +4840,150 @@ namespace Gumaedaehang
         {
             LogWindow.AddLogStatic("📂 상품데이터 페이지 진입 - 저장된 상품 데이터 로드 중...");
             LoadProductCardsFromJson();
+        }
+
+        // 📊 Excel 내보내기 버튼 클릭 이벤트
+        protected async void ExportExcelButton_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                LogWindow.AddLogStatic("📊 Excel 내보내기 시작...");
+                
+                // 현재 날짜+시간으로 파일명 자동 생성
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
+                var defaultFileName = $"{timestamp}_결과물추출.xlsx";
+                
+                var saveDialog = new SaveFileDialog
+                {
+                    Title = "Excel 파일 저장",
+                    InitialFileName = defaultFileName,
+                    DefaultExtension = "xlsx",
+                    Filters = new List<FileDialogFilter>
+                    {
+                        new FileDialogFilter { Name = "Excel 파일", Extensions = new List<string> { "xlsx" } }
+                    }
+                };
+
+                var mainWindow = (MainWindow?)TopLevel.GetTopLevel(this);
+                if (mainWindow == null)
+                {
+                    LogWindow.AddLogStatic("❌ MainWindow를 찾을 수 없습니다.");
+                    return;
+                }
+
+                var result = await saveDialog.ShowAsync(mainWindow);
+                if (string.IsNullOrEmpty(result))
+                {
+                    LogWindow.AddLogStatic("⚠️ 파일 저장 취소됨");
+                    return;
+                }
+
+                await ExportToExcel(result);
+                LogWindow.AddLogStatic($"✅ Excel 파일 저장 완료: {result}");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ Excel 내보내기 실패: {ex.Message}");
+                LogWindow.AddLogStatic($"스택: {ex.StackTrace}");
+            }
+        }
+
+        // 📊 Excel 파일 생성 메서드
+        private async Task ExportToExcel(string filePath)
+        {
+            // UI 스레드에서 데이터 수집
+            var container = this.FindControl<StackPanel>("RealDataContainer");
+            if (container == null)
+            {
+                LogWindow.AddLogStatic("❌ RealDataContainer를 찾을 수 없습니다.");
+                return;
+            }
+
+            var productCards = container.Children.OfType<StackPanel>().ToList();
+            var productDataList = new List<(string storeId, string productId)>();
+
+            foreach (var productCard in productCards)
+            {
+                if (productCard.Tag is string tagStr && tagStr.Contains("_"))
+                {
+                    var parts = tagStr.Split('_');
+                    if (parts.Length >= 2)
+                    {
+                        productDataList.Add((parts[0], parts[1]));
+                    }
+                }
+            }
+
+            // 백그라운드 스레드에서 Excel 생성
+            await Task.Run(() =>
+            {
+                using var workbook = new XLWorkbook();
+                var worksheet = workbook.Worksheets.Add("상품수집");
+
+                // 헤더 행 (1행)
+                worksheet.Cell(1, 1).Value = "카테고리";
+                worksheet.Cell(1, 2).Value = "상품명";
+                worksheet.Cell(1, 3).Value = "글자수(Byte)";
+                worksheet.Cell(1, 4).Value = "배대지 비용";
+                worksheet.Cell(1, 5).Value = "수집링크";
+                worksheet.Cell(1, 6).Value = "보스 메시지";
+                worksheet.Cell(1, 7).Value = "메모 글자수";
+                worksheet.Cell(1, 8).Value = "주의사항";
+
+                // 2행 양식 설명
+                for (int col = 1; col <= 8; col++)
+                {
+                    worksheet.Cell(2, col).Value = "양식맞춤2줄";
+                }
+
+                // 데이터 행 (3행부터)
+                int row = 3;
+                
+                foreach (var (storeId, productId) in productDataList)
+                {
+                    var categoryInfo = GetCategoryInfo(storeId, productId);
+                    var productName = GetProductNameFromFile(storeId, productId);
+                    var byteCount = Encoding.UTF8.GetByteCount(productName);
+                    var productUrl = $"https://smartstore.naver.com/{storeId}/products/{productId}";
+
+                    worksheet.Cell(row, 1).Value = categoryInfo;
+                    worksheet.Cell(row, 2).Value = productName;
+                    worksheet.Cell(row, 3).Value = byteCount;
+                    worksheet.Cell(row, 4).Value = 0;
+                    worksheet.Cell(row, 5).Value = productUrl;
+                    worksheet.Cell(row, 6).Value = "";
+                    worksheet.Cell(row, 7).Value = 0;
+                    worksheet.Cell(row, 8).Value = "";
+
+                    row++;
+                }
+
+                workbook.SaveAs(filePath);
+            });
+        }
+
+        // 상품명 파일에서 가져오기
+        private string GetProductNameFromFile(string? storeId, string? productId)
+        {
+            if (string.IsNullOrEmpty(storeId) || string.IsNullOrEmpty(productId))
+                return "";
+
+            try
+            {
+                var predviaPath = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "Predvia"
+                );
+                var namePath = System.IO.Path.Combine(predviaPath, "ProductData", $"{storeId}_{productId}_name.txt");
+                
+                if (File.Exists(namePath))
+                {
+                    return File.ReadAllText(namePath, Encoding.UTF8).Trim();
+                }
+            }
+            catch { }
+
+            return "";
         }
     }
 
