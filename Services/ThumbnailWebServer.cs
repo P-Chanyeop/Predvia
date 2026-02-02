@@ -2471,46 +2471,25 @@ namespace Gumaedaehang.Services
                     return Results.BadRequest(new { error = "이미지 데이터가 필요합니다" });
                 }
                 
-                // Chrome 확장프로그램에 검색 요청 등록 (폴링으로 처리됨)
-                var imageBase64 = Convert.ToBase64String(imageBytes);
-                lock (_searchLock)
+                // ⭐ C# 서버에서 직접 프록시로 타오바오 API 호출
+                LogWindow.AddLogStatic($"📤 C# 서버에서 프록시 기반 타오바오 검색 시작");
+                var foundProducts = await SearchTaobaoWithProxy(imageBytes);
+                
+                if (foundProducts != null && foundProducts.Count > 0)
                 {
-                    _pendingSearchRequests[request.ProductId] = imageBase64;
-                    _searchResults.Remove(request.ProductId); // 이전 결과 제거
+                    LogWindow.AddLogStatic($"✅ 검색 완료: {foundProducts.Count}개 상품 발견");
+                    var responseJson = JsonSerializer.Serialize(new { success = true, products = foundProducts, count = foundProducts.Count });
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    await context.Response.WriteAsync(responseJson);
+                    return Results.Ok();
                 }
-                
-                LogWindow.AddLogStatic($"📤 Chrome 확장프로그램에 검색 요청 등록: 상품 {request.ProductId}");
-                
-                // 결과 대기 (최대 30초)
-                var startTime = DateTime.Now;
-                List<TaobaoProduct>? foundProducts = null;
-                
-                while ((DateTime.Now - startTime).TotalSeconds < 30)
+                else
                 {
-                    await Task.Delay(500);
-                    
-                    lock (_searchLock)
-                    {
-                        if (_searchResults.TryGetValue(request.ProductId, out var products))
-                        {
-                            foundProducts = products;
-                        }
-                    }
-                    
-                    if (foundProducts != null)
-                    {
-                        LogWindow.AddLogStatic($"✅ 검색 완료: {foundProducts.Count}개 상품 발견");
-                        var responseJson = JsonSerializer.Serialize(new { success = true, products = foundProducts, count = foundProducts.Count });
-                        context.Response.ContentType = "application/json; charset=utf-8";
-                        await context.Response.WriteAsync(responseJson);
-                        return Results.Ok();
-                    }
+                    LogWindow.AddLogStatic($"⚠️ 검색 결과 없음");
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, products = new List<TaobaoProduct>(), count = 0, error = "결과 없음" }));
+                    return Results.Ok();
                 }
-                
-                LogWindow.AddLogStatic($"⚠️ 검색 타임아웃 (30초)");
-                context.Response.ContentType = "application/json; charset=utf-8";
-                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, products = new List<TaobaoProduct>(), count = 0, error = "타임아웃" }));
-                return Results.Ok();
             }
             catch (Exception ex)
             {
@@ -2520,6 +2499,169 @@ namespace Gumaedaehang.Services
                 await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = ex.Message }));
                 return Results.Ok();
             }
+        }
+        
+        // ⭐ 프록시 기반 타오바오 이미지 검색 (Chrome 확장 방식과 동일)
+        private static async Task<List<TaobaoProduct>> SearchTaobaoWithProxy(byte[] imageBytes)
+        {
+            var products = new List<TaobaoProduct>();
+            
+            try
+            {
+                // 1. 타오바오 쿠키 로드
+                var cookiePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "taobao_cookies.json");
+                string cookieString = "";
+                string? token = null;
+                
+                if (File.Exists(cookiePath))
+                {
+                    var cookieJson = await File.ReadAllTextAsync(cookiePath);
+                    var cookies = JsonSerializer.Deserialize<Dictionary<string, string>>(cookieJson);
+                    if (cookies != null)
+                    {
+                        cookieString = string.Join("; ", cookies.Select(c => $"{c.Key}={c.Value}"));
+                        if (cookies.TryGetValue("_m_h5_tk", out var h5tk))
+                        {
+                            token = h5tk.Split('_')[0];
+                            LogWindow.AddLogStatic($"🔑 토큰: {token?.Substring(0, Math.Min(8, token?.Length ?? 0))}...");
+                        }
+                    }
+                }
+                
+                if (string.IsNullOrEmpty(token))
+                {
+                    LogWindow.AddLogStatic("⚠️ 타오바오 로그인 필요");
+                    return products;
+                }
+                
+                // 2. Base64 이미지 준비 (Chrome 확장과 동일한 방식)
+                var strimg = Convert.ToBase64String(imageBytes).TrimEnd('=');
+                LogWindow.AddLogStatic($"🖼️ strimg 길이: {strimg.Length}");
+                
+                // 3. mtop API 직접 호출 (프록시 사용)
+                for (int attempt = 0; attempt < 5 && products.Count == 0; attempt++)
+                {
+                    var proxy = GetRandomProxy();
+                    LogWindow.AddLogStatic($"🔄 시도 {attempt + 1}/5 (프록시: {proxy ?? "없음"})");
+                    
+                    try
+                    {
+                        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                        var appKey = "12574478";
+                        
+                        // Chrome 확장과 동일한 params 구조
+                        var paramsObj = new {
+                            strimg = strimg,
+                            pcGraphSearch = true,
+                            sortOrder = 0,
+                            tab = "all",
+                            vm = "nv"
+                        };
+                        var paramsJson = JsonSerializer.Serialize(paramsObj);
+                        var dataObj = new { @params = paramsJson, appId = "34850" };
+                        var dataJson = JsonSerializer.Serialize(dataObj);
+                        
+                        var sign = GenerateMd5Sign($"{token}&{timestamp}&{appKey}&{dataJson}");
+                        
+                        var apiUrl = $"https://h5api.m.taobao.com/h5/mtop.relationrecommend.wirelessrecommend.recommend/2.0/?" +
+                            $"jsv=2.7.2&appKey={appKey}&t={timestamp}&sign={sign}" +
+                            $"&api=mtop.relationrecommend.wirelessrecommend.recommend&v=2.0" +
+                            $"&type=json&dataType=json";
+                        
+                        var handler = new HttpClientHandler { UseCookies = false };
+                        if (!string.IsNullOrEmpty(proxy))
+                        {
+                            handler.Proxy = new System.Net.WebProxy($"http://{proxy}");
+                            handler.UseProxy = true;
+                        }
+                        
+                        using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+                        client.DefaultRequestHeaders.Add("Referer", "https://www.taobao.com/");
+                        client.DefaultRequestHeaders.Add("Origin", "https://www.taobao.com");
+                        client.DefaultRequestHeaders.Add("User-Agent", GetRandomUserAgent());
+                        client.DefaultRequestHeaders.Add("Cookie", cookieString);
+                        
+                        // POST 요청 (Chrome 확장과 동일)
+                        var postContent = new StringContent($"data={Uri.EscapeDataString(dataJson)}", 
+                            System.Text.Encoding.UTF8, "application/x-www-form-urlencoded");
+                        
+                        var response = await client.PostAsync(apiUrl, postContent);
+                        var responseText = await response.Content.ReadAsStringAsync();
+                        
+                        LogWindow.AddLogStatic($"📥 응답: {responseText.Substring(0, Math.Min(200, responseText.Length))}");
+                        
+                        // JSON 파싱
+                        var json = JsonSerializer.Deserialize<JsonElement>(responseText);
+                        if (json.TryGetProperty("data", out var data) && data.TryGetProperty("itemsArray", out var itemsArray))
+                        {
+                            foreach (var item in itemsArray.EnumerateArray().Take(10))
+                            {
+                                var product = new TaobaoProduct
+                                {
+                                    ProductId = item.TryGetProperty("nid", out var nid) ? nid.GetString() ?? "" : "",
+                                    Title = item.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "",
+                                    Price = "",
+                                    ImageUrl = "",
+                                    Sales = "",
+                                    ShopName = "",
+                                    ProductUrl = ""
+                                };
+                                
+                                // 가격
+                                if (item.TryGetProperty("priceInfo", out var priceInfo))
+                                {
+                                    if (priceInfo.TryGetProperty("wapFinalPrice", out var wfp))
+                                        product.Price = $"¥{wfp}";
+                                    else if (priceInfo.TryGetProperty("pcFinalPrice", out var pfp))
+                                        product.Price = $"¥{pfp}";
+                                }
+                                
+                                // 이미지
+                                if (item.TryGetProperty("pics", out var pics) && pics.TryGetProperty("mainPic", out var mainPic))
+                                {
+                                    var imgUrl = mainPic.GetString() ?? "";
+                                    if (!string.IsNullOrEmpty(imgUrl) && !imgUrl.StartsWith("http"))
+                                        imgUrl = "https:" + imgUrl;
+                                    product.ImageUrl = imgUrl;
+                                }
+                                
+                                // 판매량
+                                if (item.TryGetProperty("salesInfo", out var salesInfo) && salesInfo.TryGetProperty("totalSale", out var totalSale))
+                                    product.Sales = totalSale.GetString() ?? "";
+                                
+                                // 상점명
+                                if (item.TryGetProperty("sellerInfo", out var sellerInfo) && sellerInfo.TryGetProperty("shopTitle", out var shopTitle))
+                                    product.ShopName = shopTitle.GetString() ?? "";
+                                
+                                // URL
+                                if (item.TryGetProperty("auctionUrl", out var auctionUrl))
+                                    product.ProductUrl = auctionUrl.GetString() ?? "";
+                                else
+                                    product.ProductUrl = $"https://item.taobao.com/item.htm?id={product.ProductId}";
+                                
+                                products.Add(product);
+                            }
+                            
+                            LogWindow.AddLogStatic($"📦 상품 {products.Count}개 파싱 완료");
+                        }
+                        else if (responseText.Contains("SCENE_FLOW_CONTROL"))
+                        {
+                            LogWindow.AddLogStatic($"⚠️ QPS 제한 - 다른 프록시로 재시도");
+                            await Task.Delay(1000);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 시도 {attempt + 1} 실패: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 프록시 검색 오류: {ex.Message}");
+            }
+            
+            return products;
         }
         
         // ⭐ Chrome 확장프로그램과 동일한 방식의 타오바오 이미지 검색
