@@ -1,195 +1,258 @@
-// 타오바오 이미지 검색 API 직접 호출
-(function() {
-    const API_URL = 'https://h5api.m.taobao.com/h5/mtop.relationrecommend.wirelessrecommend.recommend/2.0/';
+// 타오바오 이미지 검색 전용 Content Script
+console.log('🔍 [taobao-image-search.js] 스크립트 로드됨, URL:', window.location.href);
+
+(async function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchRequestId = urlParams.get('predvia_search_id');
     
-    // MD5 해시 함수
-    function md5(string) {
-        function md5cycle(x, k) {
-            var a = x[0], b = x[1], c = x[2], d = x[3];
-            a = ff(a, b, c, d, k[0], 7, -680876936);
-            d = ff(d, a, b, c, k[1], 12, -389564586);
-            c = ff(c, d, a, b, k[2], 17, 606105819);
-            b = ff(b, c, d, a, k[3], 22, -1044525330);
-            a = ff(a, b, c, d, k[4], 7, -176418897);
-            d = ff(d, a, b, c, k[5], 12, 1200080426);
-            c = ff(c, d, a, b, k[6], 17, -1473231341);
-            b = ff(b, c, d, a, k[7], 22, -45705983);
-            a = ff(a, b, c, d, k[8], 7, 1770035416);
-            d = ff(d, a, b, c, k[9], 12, -1958414417);
-            c = ff(c, d, a, b, k[10], 17, -42063);
-            b = ff(b, c, d, a, k[11], 22, -1990404162);
-            a = ff(a, b, c, d, k[12], 7, 1804603682);
-            d = ff(d, a, b, c, k[13], 12, -40341101);
-            c = ff(c, d, a, b, k[14], 17, -1502002290);
-            b = ff(b, c, d, a, k[15], 22, 1236535329);
-            a = gg(a, b, c, d, k[1], 5, -165796510);
-            d = gg(d, a, b, c, k[6], 9, -1069501632);
-            c = gg(c, d, a, b, k[11], 14, 643717713);
-            b = gg(b, c, d, a, k[0], 20, -373897302);
-            a = gg(a, b, c, d, k[5], 5, -701558691);
-            d = gg(d, a, b, c, k[10], 9, 38016083);
-            c = gg(c, d, a, b, k[15], 14, -660478335);
-            b = gg(b, c, d, a, k[4], 20, -405537848);
-            a = gg(a, b, c, d, k[9], 5, 568446438);
-            d = gg(d, a, b, c, k[14], 9, -1019803690);
-            c = gg(c, d, a, b, k[3], 14, -187363961);
-            b = gg(b, c, d, a, k[8], 20, 1163531501);
-            a = gg(a, b, c, d, k[13], 5, -1444681467);
-            d = gg(d, a, b, c, k[2], 9, -51403784);
-            c = gg(c, d, a, b, k[7], 14, 1735328473);
-            b = gg(b, c, d, a, k[12], 20, -1926607734);
-            a = hh(a, b, c, d, k[5], 4, -378558);
-            d = hh(d, a, b, c, k[8], 11, -2022574463);
-            c = hh(c, d, a, b, k[11], 16, 1839030562);
-            b = hh(b, c, d, a, k[14], 23, -35309556);
-            a = hh(a, b, c, d, k[1], 4, -1530992060);
-            d = hh(d, a, b, c, k[4], 11, 1272893353);
-            c = hh(c, d, a, b, k[7], 16, -155497632);
-            b = hh(b, c, d, a, k[10], 23, -1094730640);
-            a = hh(a, b, c, d, k[13], 4, 681279174);
-            d = hh(d, a, b, c, k[0], 11, -358537222);
-            c = hh(c, d, a, b, k[3], 16, -722521979);
-            b = hh(b, c, d, a, k[6], 23, 76029189);
-            a = hh(a, b, c, d, k[9], 4, -640364487);
-            d = hh(d, a, b, c, k[12], 11, -421815835);
-            c = hh(c, d, a, b, k[15], 16, 530742520);
-            b = hh(b, c, d, a, k[2], 23, -995338651);
-            a = ii(a, b, c, d, k[0], 6, -198630844);
-            d = ii(d, a, b, c, k[7], 10, 1126891415);
-            c = ii(c, d, a, b, k[14], 15, -1416354905);
-            b = ii(b, c, d, a, k[5], 21, -57434055);
-            a = ii(a, b, c, d, k[12], 6, 1700485571);
-            d = ii(d, a, b, c, k[3], 10, -1894986606);
-            c = ii(c, d, a, b, c, k[10], 15, -1051523);
-            b = ii(b, c, d, a, k[1], 21, -2054922799);
-            a = ii(a, b, c, d, k[8], 6, 1873313359);
-            d = ii(d, a, b, c, k[15], 10, -30611744);
-            c = ii(c, d, a, b, k[6], 15, -1560198380);
-            b = ii(b, c, d, a, k[13], 21, 1309151649);
-            a = ii(a, b, c, d, k[4], 6, -145523070);
-            d = ii(d, a, b, c, k[11], 10, -1120210379);
-            c = ii(c, d, a, b, k[2], 15, 718787259);
-            b = ii(b, c, d, a, k[9], 21, -343485551);
-            x[0] = add32(a, x[0]);
-            x[1] = add32(b, x[1]);
-            x[2] = add32(c, x[2]);
-            x[3] = add32(d, x[3]);
-        }
-        function cmn(q, a, b, x, s, t) {
-            a = add32(add32(a, q), add32(x, t));
-            return add32((a << s) | (a >>> (32 - s)), b);
-        }
-        function ff(a, b, c, d, x, s, t) { return cmn((b & c) | ((~b) & d), a, b, x, s, t); }
-        function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & (~d)), a, b, x, s, t); }
-        function hh(a, b, c, d, x, s, t) { return cmn(b ^ c ^ d, a, b, x, s, t); }
-        function ii(a, b, c, d, x, s, t) { return cmn(c ^ (b | (~d)), a, b, x, s, t); }
-        function md51(s) {
-            var n = s.length, state = [1732584193, -271733879, -1732584194, 271733878], i;
-            for (i = 64; i <= s.length; i += 64) {
-                md5cycle(state, md5blk(s.substring(i - 64, i)));
-            }
-            s = s.substring(i - 64);
-            var tail = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-            for (i = 0; i < s.length; i++) tail[i >> 2] |= s.charCodeAt(i) << ((i % 4) << 3);
-            tail[i >> 2] |= 0x80 << ((i % 4) << 3);
-            if (i > 55) { md5cycle(state, tail); tail = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]; }
-            tail[14] = n * 8;
-            md5cycle(state, tail);
-            return state;
-        }
-        function md5blk(s) {
-            var md5blks = [], i;
-            for (i = 0; i < 64; i += 4) {
-                md5blks[i >> 2] = s.charCodeAt(i) + (s.charCodeAt(i + 1) << 8) + (s.charCodeAt(i + 2) << 16) + (s.charCodeAt(i + 3) << 24);
-            }
-            return md5blks;
-        }
-        var hex_chr = '0123456789abcdef'.split('');
-        function rhex(n) {
-            var s = '', j = 0;
-            for (; j < 4; j++) s += hex_chr[(n >> (j * 8 + 4)) & 0x0F] + hex_chr[(n >> (j * 8)) & 0x0F];
-            return s;
-        }
-        function hex(x) { for (var i = 0; i < x.length; i++) x[i] = rhex(x[i]); return x.join(''); }
-        function add32(a, b) { return (a + b) & 0xFFFFFFFF; }
-        return hex(md51(string));
+    console.log('🔍 [taobao-image-search.js] searchRequestId:', searchRequestId);
+    
+    if (!searchRequestId) {
+        console.log('🔍 [taobao-image-search.js] 검색 요청 ID 없음, 종료');
+        return;
     }
-
-    // 타오바오 쿠키에서 토큰 추출
-    async function getTaobaoToken() {
-        const cookies = await chrome.cookies.getAll({ domain: '.taobao.com' });
-        let token = null;
-        for (const cookie of cookies) {
-            if (cookie.name === '_m_h5_tk') {
-                token = cookie.value.split('_')[0];
-                break;
-            }
+    
+    console.log('🎯 검색 요청 ID:', searchRequestId);
+    
+    // 페이지 로드 대기
+    await new Promise(r => setTimeout(r, 2000));
+    
+    try {
+        // 서버에서 이미지 데이터 가져오기
+        const response = await fetch(`http://localhost:8080/api/taobao/get-search-image?id=${searchRequestId}`);
+        if (!response.ok) {
+            console.log('❌ 이미지 데이터 가져오기 실패:', response.status);
+            await sendResult(searchRequestId, { success: false, error: '이미지 데이터 없음' });
+            return;
         }
-        return token;
-    }
-
-    // 서명 생성
-    function generateSign(token, timestamp, appKey, data) {
-        const str = `${token}&${timestamp}&${appKey}&${data}`;
-        return md5(str);
-    }
-
-    // 이미지 검색 API 호출
-    async function searchByImage(imageUrl) {
-        const token = await getTaobaoToken();
-        if (!token) {
-            return { error: '타오바오 로그인이 필요합니다' };
+        
+        const data = await response.json();
+        if (!data.imageBase64) {
+            console.log('❌ 이미지 데이터 없음');
+            await sendResult(searchRequestId, { success: false, error: '이미지 데이터 없음' });
+            return;
         }
-
-        const timestamp = Date.now();
-        const appKey = '12574478';
-        const data = JSON.stringify({
-            imageUrl: imageUrl,
-            extendInfo: '{}',
-            p: 'mm_26632258_3504122_32538762'
+        
+        console.log('✅ 이미지 데이터 수신, 길이:', data.imageBase64.length);
+        
+        // Base64를 Blob으로 변환
+        const byteString = atob(data.imageBase64);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        const blob = new Blob([ab], { type: 'image/jpeg' });
+        
+        // FormData 생성
+        const formData = new FormData();
+        formData.append('imgfile', blob, 'search.jpg');
+        formData.append('_input_charset', 'utf-8');
+        
+        console.log('📤 이미지 업로드 시작...');
+        
+        // 이미지 업로드
+        const uploadResp = await fetch('https://s.taobao.com/api?_ksTS=' + Date.now() + '&callback=jsonp&m=upload', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
         });
-
-        const sign = generateSign(token, timestamp, appKey, data);
-
-        const params = new URLSearchParams({
-            jsv: '2.6.1',
-            appKey: appKey,
-            t: timestamp,
-            sign: sign,
-            api: 'mtop.relationrecommend.wirelessrecommend.recommend',
-            v: '2.0',
-            type: 'jsonp',
-            dataType: 'jsonp',
-            callback: 'mtopjsonp1',
-            data: data
-        });
-
+        
+        const uploadText = await uploadResp.text();
+        console.log('📤 업로드 응답:', uploadText.substring(0, 500));
+        
+        // JSONP 파싱
+        let uploadResult;
         try {
-            const response = await fetch(`${API_URL}?${params.toString()}`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Referer': 'https://s.taobao.com/'
-                }
-            });
-            
-            const text = await response.text();
-            // JSONP 응답 파싱
-            const jsonStr = text.replace(/^mtopjsonp\d+\(/, '').replace(/\)$/, '');
-            return JSON.parse(jsonStr);
+            const jsonStr = uploadText.replace(/^jsonp\d*\(/, '').replace(/\);?$/, '');
+            uploadResult = JSON.parse(jsonStr);
         } catch (e) {
-            return { error: e.message };
+            console.log('❌ 업로드 응답 파싱 실패:', e.message);
+            await sendResult(searchRequestId, { success: false, error: '업로드 응답 파싱 실패: ' + uploadText.substring(0, 100) });
+            return;
         }
+        
+        if (uploadResult.rgv587_flag === 'sm') {
+            console.log('⚠️ CAPTCHA 필요');
+            await sendResult(searchRequestId, { success: false, error: 'CAPTCHA_REQUIRED', needLogin: true });
+            return;
+        }
+        
+        if (!uploadResult.url) {
+            console.log('❌ 이미지 URL 없음:', JSON.stringify(uploadResult));
+            await sendResult(searchRequestId, { success: false, error: '이미지 URL 없음' });
+            return;
+        }
+        
+        console.log('✅ 이미지 업로드 성공, URL:', uploadResult.url);
+        
+        // 쿠키에서 토큰 추출
+        const tokenMatch = document.cookie.match(/_m_h5_tk=([^;]+)/);
+        const fullToken = tokenMatch ? tokenMatch[1] : '';
+        const token = fullToken.split('_')[0];
+        
+        if (!token) {
+            console.log('⚠️ 토큰 없음');
+            await sendResult(searchRequestId, { success: false, error: 'NO_TOKEN', needLogin: true });
+            return;
+        }
+        
+        console.log('🔑 토큰:', token.substring(0, 10) + '...');
+        
+        // 검색 API 호출
+        const appKey = '12574478';
+        const timestamp = Date.now();
+        const apiData = JSON.stringify({ imageUrl: uploadResult.url, extendInfo: '{}' });
+        
+        // MD5 서명 생성
+        const signStr = `${token}&${timestamp}&${appKey}&${apiData}`;
+        const sign = md5(signStr);
+        
+        console.log('🔍 검색 API 호출...');
+        
+        const searchUrl = `https://h5api.m.taobao.com/h5/mtop.relationrecommend.wirelessrecommend.recommend/2.0/?jsv=2.6.1&appKey=${appKey}&t=${timestamp}&sign=${sign}&api=mtop.relationrecommend.wirelessrecommend.recommend&v=2.0&type=jsonp&dataType=jsonp&callback=mtopjsonp1&data=${encodeURIComponent(apiData)}`;
+        
+        const searchResp = await fetch(searchUrl, { credentials: 'include' });
+        const searchText = await searchResp.text();
+        
+        console.log('🔎 검색 응답:', searchText.substring(0, 500));
+        
+        // JSONP 파싱
+        let searchResult;
+        try {
+            const searchJson = searchText.replace(/^mtopjsonp\d*\(/, '').replace(/\);?$/, '');
+            searchResult = JSON.parse(searchJson);
+        } catch (e) {
+            console.log('❌ 검색 응답 파싱 실패:', e.message);
+            await sendResult(searchRequestId, { success: false, error: '검색 응답 파싱 실패' });
+            return;
+        }
+        
+        if (searchResult.data && searchResult.data.resultList) {
+            const products = searchResult.data.resultList.slice(0, 10).map(item => ({
+                nid: item.nid || item.itemId || '',
+                title: item.title || '',
+                price: item.price || '',
+                imageUrl: item.pic || item.picUrl || '',
+                sales: item.sales || '',
+                shopName: item.nick || ''
+            }));
+            
+            console.log('✅ 상품 발견:', products.length);
+            await sendResult(searchRequestId, { success: true, products: products });
+        } else {
+            console.log('❌ 검색 결과 없음:', JSON.stringify(searchResult).substring(0, 200));
+            await sendResult(searchRequestId, { success: false, error: '검색 결과 없음' });
+        }
+        
+    } catch (e) {
+        console.error('❌ 오류:', e);
+        await sendResult(searchRequestId, { success: false, error: e.message });
     }
-
-    // 메시지 리스너
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (request.action === 'searchTaobaoByImage') {
-            searchByImage(request.imageUrl).then(sendResponse);
-            return true;
-        }
-    });
-
-    // 전역 노출
-    window.taobaoImageSearch = searchByImage;
+    
+    // 결과 전송 후 탭 닫기
+    setTimeout(() => window.close(), 2000);
 })();
+
+// 결과 전송 함수
+async function sendResult(searchId, result) {
+    try {
+        await fetch('http://localhost:8080/api/taobao/image-search-result', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ searchId, ...result })
+        });
+        console.log('📤 결과 전송 완료');
+    } catch (e) {
+        console.error('❌ 결과 전송 실패:', e);
+    }
+}
+
+// MD5 해시 함수 (동기)
+function md5(string) {
+    function rotateLeft(v, s) { return (v << s) | (v >>> (32 - s)); }
+    function addUnsigned(x, y) {
+        const x8 = x & 0x80000000, y8 = y & 0x80000000;
+        const x4 = x & 0x40000000, y4 = y & 0x40000000;
+        const result = (x & 0x3FFFFFFF) + (y & 0x3FFFFFFF);
+        if (x4 & y4) return result ^ 0x80000000 ^ x8 ^ y8;
+        if (x4 | y4) return result & 0x40000000 ? result ^ 0xC0000000 ^ x8 ^ y8 : result ^ 0x40000000 ^ x8 ^ y8;
+        return result ^ x8 ^ y8;
+    }
+    function F(x, y, z) { return (x & y) | (~x & z); }
+    function G(x, y, z) { return (x & z) | (y & ~z); }
+    function H(x, y, z) { return x ^ y ^ z; }
+    function I(x, y, z) { return y ^ (x | ~z); }
+    function FF(a, b, c, d, x, s, ac) { a = addUnsigned(a, addUnsigned(addUnsigned(F(b, c, d), x), ac)); return addUnsigned(rotateLeft(a, s), b); }
+    function GG(a, b, c, d, x, s, ac) { a = addUnsigned(a, addUnsigned(addUnsigned(G(b, c, d), x), ac)); return addUnsigned(rotateLeft(a, s), b); }
+    function HH(a, b, c, d, x, s, ac) { a = addUnsigned(a, addUnsigned(addUnsigned(H(b, c, d), x), ac)); return addUnsigned(rotateLeft(a, s), b); }
+    function II(a, b, c, d, x, s, ac) { a = addUnsigned(a, addUnsigned(addUnsigned(I(b, c, d), x), ac)); return addUnsigned(rotateLeft(a, s), b); }
+    function convertToWordArray(str) {
+        let lWordCount, lMessageLength = str.length;
+        let lNumberOfWords_temp1 = lMessageLength + 8;
+        let lNumberOfWords_temp2 = (lNumberOfWords_temp1 - (lNumberOfWords_temp1 % 64)) / 64;
+        let lNumberOfWords = (lNumberOfWords_temp2 + 1) * 16;
+        let lWordArray = Array(lNumberOfWords - 1);
+        let lBytePosition = 0, lByteCount = 0;
+        while (lByteCount < lMessageLength) {
+            lWordCount = (lByteCount - (lByteCount % 4)) / 4;
+            lBytePosition = (lByteCount % 4) * 8;
+            lWordArray[lWordCount] = (lWordArray[lWordCount] | (str.charCodeAt(lByteCount) << lBytePosition));
+            lByteCount++;
+        }
+        lWordCount = (lByteCount - (lByteCount % 4)) / 4;
+        lBytePosition = (lByteCount % 4) * 8;
+        lWordArray[lWordCount] = lWordArray[lWordCount] | (0x80 << lBytePosition);
+        lWordArray[lNumberOfWords - 2] = lMessageLength << 3;
+        lWordArray[lNumberOfWords - 1] = lMessageLength >>> 29;
+        return lWordArray;
+    }
+    function wordToHex(lValue) {
+        let WordToHexValue = "", WordToHexValue_temp = "", lByte, lCount;
+        for (lCount = 0; lCount <= 3; lCount++) {
+            lByte = (lValue >>> (lCount * 8)) & 255;
+            WordToHexValue_temp = "0" + lByte.toString(16);
+            WordToHexValue = WordToHexValue + WordToHexValue_temp.substr(WordToHexValue_temp.length - 2, 2);
+        }
+        return WordToHexValue;
+    }
+    let x = convertToWordArray(string);
+    let a = 0x67452301, b = 0xEFCDAB89, c = 0x98BADCFE, d = 0x10325476;
+    for (let k = 0; k < x.length; k += 16) {
+        let AA = a, BB = b, CC = c, DD = d;
+        a = FF(a, b, c, d, x[k], 7, 0xD76AA478); d = FF(d, a, b, c, x[k + 1], 12, 0xE8C7B756);
+        c = FF(c, d, a, b, x[k + 2], 17, 0x242070DB); b = FF(b, c, d, a, x[k + 3], 22, 0xC1BDCEEE);
+        a = FF(a, b, c, d, x[k + 4], 7, 0xF57C0FAF); d = FF(d, a, b, c, x[k + 5], 12, 0x4787C62A);
+        c = FF(c, d, a, b, x[k + 6], 17, 0xA8304613); b = FF(b, c, d, a, x[k + 7], 22, 0xFD469501);
+        a = FF(a, b, c, d, x[k + 8], 7, 0x698098D8); d = FF(d, a, b, c, x[k + 9], 12, 0x8B44F7AF);
+        c = FF(c, d, a, b, x[k + 10], 17, 0xFFFF5BB1); b = FF(b, c, d, a, x[k + 11], 22, 0x895CD7BE);
+        a = FF(a, b, c, d, x[k + 12], 7, 0x6B901122); d = FF(d, a, b, c, x[k + 13], 12, 0xFD987193);
+        c = FF(c, d, a, b, x[k + 14], 17, 0xA679438E); b = FF(b, c, d, a, x[k + 15], 22, 0x49B40821);
+        a = GG(a, b, c, d, x[k + 1], 5, 0xF61E2562); d = GG(d, a, b, c, x[k + 6], 9, 0xC040B340);
+        c = GG(c, d, a, b, x[k + 11], 14, 0x265E5A51); b = GG(b, c, d, a, x[k], 20, 0xE9B6C7AA);
+        a = GG(a, b, c, d, x[k + 5], 5, 0xD62F105D); d = GG(d, a, b, c, x[k + 10], 9, 0x2441453);
+        c = GG(c, d, a, b, x[k + 15], 14, 0xD8A1E681); b = GG(b, c, d, a, x[k + 4], 20, 0xE7D3FBC8);
+        a = GG(a, b, c, d, x[k + 9], 5, 0x21E1CDE6); d = GG(d, a, b, c, x[k + 14], 9, 0xC33707D6);
+        c = GG(c, d, a, b, x[k + 3], 14, 0xF4D50D87); b = GG(b, c, d, a, x[k + 8], 20, 0x455A14ED);
+        a = GG(a, b, c, d, x[k + 13], 5, 0xA9E3E905); d = GG(d, a, b, c, x[k + 2], 9, 0xFCEFA3F8);
+        c = GG(c, d, a, b, x[k + 7], 14, 0x676F02D9); b = GG(b, c, d, a, x[k + 12], 20, 0x8D2A4C8A);
+        a = HH(a, b, c, d, x[k + 5], 4, 0xFFFA3942); d = HH(d, a, b, c, x[k + 8], 11, 0x8771F681);
+        c = HH(c, d, a, b, x[k + 11], 16, 0x6D9D6122); b = HH(b, c, d, a, x[k + 14], 23, 0xFDE5380C);
+        a = HH(a, b, c, d, x[k + 1], 4, 0xA4BEEA44); d = HH(d, a, b, c, x[k + 4], 11, 0x4BDECFA9);
+        c = HH(c, d, a, b, x[k + 7], 16, 0xF6BB4B60); b = HH(b, c, d, a, x[k + 10], 23, 0xBEBFBC70);
+        a = HH(a, b, c, d, x[k + 13], 4, 0x289B7EC6); d = HH(d, a, b, c, x[k], 11, 0xEAA127FA);
+        c = HH(c, d, a, b, x[k + 3], 16, 0xD4EF3085); b = HH(b, c, d, a, x[k + 6], 23, 0x4881D05);
+        a = HH(a, b, c, d, x[k + 9], 4, 0xD9D4D039); d = HH(d, a, b, c, x[k + 12], 11, 0xE6DB99E5);
+        c = HH(c, d, a, b, x[k + 15], 16, 0x1FA27CF8); b = HH(b, c, d, a, x[k + 2], 23, 0xC4AC5665);
+        a = II(a, b, c, d, x[k], 6, 0xF4292244); d = II(d, a, b, c, x[k + 7], 10, 0x432AFF97);
+        c = II(c, d, a, b, x[k + 14], 15, 0xAB9423A7); b = II(b, c, d, a, x[k + 5], 21, 0xFC93A039);
+        a = II(a, b, c, d, x[k + 12], 6, 0x655B59C3); d = II(d, a, b, c, x[k + 3], 10, 0x8F0CCC92);
+        c = II(c, d, a, b, x[k + 10], 15, 0xFFEFF47D); b = II(b, c, d, a, x[k + 1], 21, 0x85845DD1);
+        a = II(a, b, c, d, x[k + 8], 6, 0x6FA87E4F); d = II(d, a, b, c, x[k + 15], 10, 0xFE2CE6E0);
+        c = II(c, d, a, b, x[k + 6], 15, 0xA3014314); b = II(b, c, d, a, x[k + 13], 21, 0x4E0811A1);
+        a = II(a, b, c, d, x[k + 4], 6, 0xF7537E82); d = II(d, a, b, c, x[k + 11], 10, 0xBD3AF235);
+        c = II(c, d, a, b, x[k + 2], 15, 0x2AD7D2BB); b = II(b, c, d, a, x[k + 9], 21, 0xEB86D391);
+        a = addUnsigned(a, AA); b = addUnsigned(b, BB); c = addUnsigned(c, CC); d = addUnsigned(d, DD);
+    }
+    return (wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d)).toLowerCase();
+}

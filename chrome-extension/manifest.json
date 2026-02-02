@@ -8,14 +8,24 @@
     "storage",
     "tabs",
     "scripting",
-    "cookies"
+    "cookies",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "*://search.shopping.naver.com/*",
     "*://smartstore.naver.com/*",
     "*://*.taobao.com/*",
+    "*://s.taobao.com/*",
+    "*://h5api.m.taobao.com/*",
     "http://localhost:8080/*"
   ],
+  "declarative_net_request": {
+    "rule_resources": [{
+      "id": "taobao_headers",
+      "enabled": true,
+      "path": "rules.json"
+    }]
+  },
   "background": {
     "service_worker": "background.js"
   },
@@ -42,8 +52,13 @@
       "all_frames": true
     },
     {
-      "matches": ["*://*.taobao.com/*"],
+      "matches": ["*://www.taobao.com/*", "*://world.taobao.com/*", "*://login.taobao.com/*"],
       "js": ["content.js", "taobao-cookies.js", "taobao-auto-cookies.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["*://s.taobao.com/*"],
+      "js": ["taobao-image-search.js"],
       "run_at": "document_end"
     }
   ],

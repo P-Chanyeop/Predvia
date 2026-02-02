@@ -27,6 +27,7 @@ Avalonia UI를 기반으로 하여 Windows, macOS, Linux에서 동일한 사용�
    - `chrome-extension` 폴더 선택
 4. **실행**: `실행.bat` 더블클릭 또는 `Predvia.exe` 직접 실행
 
+
 ### 🔑 테스트 API 키
 ```
 PREDVIA-API-KEY-12345  (프리미엄 라이선스)

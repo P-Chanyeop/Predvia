@@ -209,8 +209,8 @@ namespace Gumaedaehang
                 // 초기 상태 설정
                 UpdateViewVisibility();
                 
-                // 크롤링된 데이터 자동 로드
-                LoadCrawledData();
+                // 크롤링된 데이터 자동 로드 (비동기)
+                _ = Task.Run(() => LoadCrawledData());
                 
                 // 테스트 로그 추가
                 LogWindow.AddLogStatic("🔥 SourcingPage 초기화 완료 - 버튼 테스트 준비됨");
@@ -387,7 +387,7 @@ namespace Gumaedaehang
         }
 
         // 크롤링된 데이터를 로드하는 메서드
-        public void LoadCrawledData()
+        public async Task LoadCrawledData()
         {
             // 중복 로드 방지
             if (_dataAlreadyLoaded)
@@ -495,45 +495,49 @@ namespace Gumaedaehang
                 
                 LogWindow.AddLogStatic($"✅ 실제 크롤링 데이터 로드 완료: {allProducts.Count}개 상품");
                 
-                // 모든 상품에 대해 카드 생성
-                foreach (var (storeId, productId) in allProducts)
+                // 모든 상품에 대해 카드 생성 (배치 처리로 UI 렉 방지)
+                var productList = allProducts.ToList();
+                const int batchSize = 10;
+                
+                for (int i = 0; i < productList.Count; i += batchSize)
                 {
-                    var imageFile = System.IO.Path.Combine(imagesPath, $"{storeId}_{productId}_main.jpg");
-                    if (!File.Exists(imageFile))
-                    {
-                        imageFile = ""; // 이미지 없음
-                    }
+                    var batch = productList.Skip(i).Take(batchSize).ToList();
                     
-                    // UI에 상품 추가
-                    Dispatcher.UIThread.Post(() =>
+                    await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        AddProductImageCard(storeId, productId, imageFile);
+                        foreach (var (storeId, productId) in batch)
+                        {
+                            var imageFile = System.IO.Path.Combine(imagesPath, $"{storeId}_{productId}_main.jpg");
+                            if (!File.Exists(imageFile)) imageFile = "";
+                            AddProductImageCard(storeId, productId, imageFile);
+                        }
                     });
+                    
+                    // 배치 사이에 약간의 딜레이로 UI 반응성 유지
+                    if (i + batchSize < productList.Count)
+                        await Task.Delay(10);
                 }
                 
                 // 데이터가 있으면 표시
                 if (allProducts.Count > 0)
                 {
-                    Dispatcher.UIThread.Post(() =>
+                    await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         _hasData = true;
                         UpdateViewVisibility();
                         
                         // ⭐ 카드 생성 완료 후 이벤트 핸들러 재등록
-                        Dispatcher.UIThread.Post(() =>
+                        LogWindow.AddLogStatic($"🔗 {allProducts.Count}개 카드 생성 완료 - 이벤트 핸들러 재등록");
+                        foreach (var product in _productElements.Values)
                         {
-                            LogWindow.AddLogStatic($"🔗 {allProducts.Count}개 카드 생성 완료 - 이벤트 핸들러 재등록");
-                            foreach (var product in _productElements.Values)
-                            {
-                                RegisterProductEventHandlers(product);
-                            }
-                            LogWindow.AddLogStatic($"✅ 모든 체크박스 이벤트 등록 완료");
-                        }, Avalonia.Threading.DispatcherPriority.Background);
+                            RegisterProductEventHandlers(product);
+                        }
+                        LogWindow.AddLogStatic($"✅ 모든 체크박스 이벤트 등록 완료");
                     });
                 }
                 
                 // ⭐ 데이터 로드 완료 후 전체선택 체크박스 이벤트 재연결
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (_selectAllCheckBox == null)
                     {
@@ -1254,7 +1258,8 @@ namespace Gumaedaehang
                     AddKeywordButton = addButton,
                     DeleteButton = deleteButton, // 삭제 버튼 참조 추가
                     HoldButton = holdButton, // 보류 버튼 참조 추가
-                    TaobaoPairingButton = pairingButton
+                    TaobaoPairingButton = pairingButton,
+                    TaobaoProductsPanel = productBoxPanel // ⭐ 타오바오 상품 패널 추가
                 };
                 
                 _productElements[cardId] = productElement;
@@ -1382,9 +1387,8 @@ namespace Gumaedaehang
                 
             if (product.HoldButton != null)
                 product.HoldButton.Click += (s, e) => HoldButton_Click(product.ProductId);
-                
-            if (product.TaobaoPairingButton != null)
-                product.TaobaoPairingButton.Click += (s, e) => TaobaoPairingButton_Click(product.ProductId);
+            
+            // TaobaoPairingButton 이벤트는 AddProductImageCard에서 이미 등록됨 (중복 방지)
             
             // 키워드 클릭 이벤트 등록
             RegisterKeywordEvents(product);
@@ -1751,7 +1755,7 @@ namespace Gumaedaehang
             Debug.WriteLine($"상품 {productId} 상품 보류 버튼 클릭됨");
         }
         
-        // 타오바오 페어링 버튼 클릭 이벤트 (확장프로그램 방식)
+        // 타오바오 페어링 버튼 클릭 이벤트 (프록시 기반 서버 측 검색)
         private async void TaobaoPairingButton_Click(int productId)
         {
             LogWindow.AddLogStatic($"🔥 [타오바오 페어링] 상품 ID: {productId}");
@@ -1764,10 +1768,56 @@ namespace Gumaedaehang
                 if (product.TaobaoPairingButton != null)
                 {
                     product.TaobaoPairingButton.IsEnabled = false;
-                    product.TaobaoPairingButton.Content = "검색 중...";
+                    product.TaobaoPairingButton.Content = "확인 중...";
                 }
                 
-                // 1. 이미지 URL 가져오기 (로컬 파일 → 타오바오 업로드 필요)
+                // 0. 쿠키 상태 확인
+                using var checkClient = new HttpClient();
+                checkClient.Timeout = TimeSpan.FromSeconds(5);
+                
+                bool hasToken = false;
+                try
+                {
+                    var cookieResponse = await checkClient.GetAsync("http://localhost:8080/api/taobao/cookies");
+                    var cookieJson = await cookieResponse.Content.ReadAsStringAsync();
+                    
+                    if (!string.IsNullOrWhiteSpace(cookieJson))
+                    {
+                        var cookieData = JsonSerializer.Deserialize<JsonElement>(cookieJson);
+                        hasToken = cookieData.TryGetProperty("hasToken", out var ht) && ht.GetBoolean();
+                    }
+                }
+                catch
+                {
+                    // 서버 연결 실패 시 토큰 없음으로 처리
+                }
+                
+                if (!hasToken)
+                {
+                    LogWindow.AddLogStatic("⚠️ 타오바오 로그인 필요");
+                    
+                    // 메시지박스 표시
+                    var msgBox = new Window
+                    {
+                        Title = "타오바오 로그인 필요",
+                        Width = 300, Height = 120,
+                        WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                        CanResize = false
+                    };
+                    var panel = new StackPanel { Margin = new Thickness(20), Spacing = 15 };
+                    panel.Children.Add(new TextBlock { Text = "타오바오에 로그인 후 다시 시도하세요.", TextAlignment = TextAlignment.Center });
+                    var okBtn = new Button { Content = "확인", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, Padding = new Thickness(20, 5) };
+                    okBtn.Click += (s, e) => msgBox.Close();
+                    panel.Children.Add(okBtn);
+                    msgBox.Content = panel;
+                    msgBox.Show();
+                    return;
+                }
+                
+                if (product.TaobaoPairingButton != null)
+                    product.TaobaoPairingButton.Content = "검색 중...";
+                
+                // 1. 이미지 경로 가져오기
                 string? imagePath = null;
                 if (product.StoreId != null && product.RealProductId != null)
                     imagePath = FindProductImagePath(product.StoreId, product.RealProductId);
@@ -1778,79 +1828,44 @@ namespace Gumaedaehang
                     return;
                 }
                 
-                // 2. 이미지를 Base64로 변환해서 확장프로그램에 전달
-                var imageBytes = await File.ReadAllBytesAsync(imagePath);
-                var base64Image = Convert.ToBase64String(imageBytes);
-                LogWindow.AddLogStatic($"📷 이미지 준비 완료 ({imageBytes.Length} bytes)");
+                LogWindow.AddLogStatic($"📷 이미지: {System.IO.Path.GetFileName(imagePath)}");
                 
-                // 3. 확장프로그램에 이미지 검색 요청 (서버 경유)
+                // 2. 프록시 기반 서버 측 검색 요청
                 using var client = new HttpClient();
-                client.Timeout = TimeSpan.FromSeconds(30);
+                client.Timeout = TimeSpan.FromSeconds(60);
                 
-                var requestData = new
-                {
-                    action = "searchTaobaoByImage",
-                    imageBase64 = base64Image,
-                    productId = productId
-                };
-                
+                var requestData = new { imagePath = imagePath, productId = productId };
                 var json = JsonSerializer.Serialize(requestData);
                 var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
                 
-                LogWindow.AddLogStatic("🔍 확장프로그램에 이미지 검색 요청...");
-                var response = await client.PostAsync("http://localhost:8080/api/taobao/search-request", content);
+                LogWindow.AddLogStatic("🔍 프록시 기반 타오바오 검색 중...");
+                var response = await client.PostAsync("http://localhost:8080/api/taobao/proxy-search", content);
+                var resultJson = await response.Content.ReadAsStringAsync();
                 
-                if (response.IsSuccessStatusCode)
+                LogWindow.AddLogStatic($"📥 응답: {resultJson.Substring(0, Math.Min(200, resultJson.Length))}...");
+                
+                if (response.IsSuccessStatusCode && !string.IsNullOrEmpty(resultJson))
                 {
-                    LogWindow.AddLogStatic($"✅ 검색 요청 완료 - 결과 대기 중...");
+                    var resultData = JsonSerializer.Deserialize<JsonElement>(resultJson);
                     
-                    // 4. 결과 대기 (최대 15초, 3초마다 확인)
-                    for (int i = 0; i < 5; i++)
+                    if (resultData.TryGetProperty("products", out var products) && products.GetArrayLength() > 0)
                     {
-                        await Task.Delay(3000);
+                        LogWindow.AddLogStatic($"✅ 타오바오 상품 {products.GetArrayLength()}개 발견!");
                         
-                        var resultResponse = await client.GetAsync($"http://localhost:8080/api/taobao/search-result?productId={productId}");
-                        if (resultResponse.IsSuccessStatusCode)
+                        // UI에 타오바오 상품 표시
+                        await Dispatcher.UIThread.InvokeAsync(() =>
                         {
-                            var resultJson = await resultResponse.Content.ReadAsStringAsync();
-                            if (string.IsNullOrWhiteSpace(resultJson))
-                            {
-                                LogWindow.AddLogStatic($"⏳ 결과 대기 중... ({i+1}/5)");
-                                continue;
-                            }
-                            
-                            try
-                            {
-                                var resultData = JsonSerializer.Deserialize<JsonElement>(resultJson);
-                                
-                                if (resultData.TryGetProperty("products", out var products) && products.GetArrayLength() > 0)
-                                {
-                                    LogWindow.AddLogStatic($"✅ 타오바오 상품 {products.GetArrayLength()}개 발견!");
-                                    
-                                    // UI에 타오바오 상품 표시
-                                    await Dispatcher.UIThread.InvokeAsync(() =>
-                                    {
-                                        DisplayTaobaoProducts(productId, products);
-                                    });
-                                    break; // 결과 찾으면 루프 종료
-                                }
-                                else
-                                {
-                                    LogWindow.AddLogStatic($"⏳ 결과 대기 중... ({i+1}/5)");
-                                }
-                            }
-                            catch
-                            {
-                                LogWindow.AddLogStatic($"⏳ 결과 대기 중... ({i+1}/5)");
-                            }
-                        }
+                            DisplayTaobaoProducts(productId, products);
+                        });
                     }
-                    
-                    LogWindow.AddLogStatic("⚠️ 검색 완료 (결과 없거나 타임아웃)");
+                    else
+                    {
+                        LogWindow.AddLogStatic($"⚠️ products 없음. keys: {string.Join(",", resultData.EnumerateObject().Select(p => p.Name))}");
+                    }
                 }
                 else
                 {
-                    LogWindow.AddLogStatic($"❌ 검색 요청 실패: {response.StatusCode}");
+                    LogWindow.AddLogStatic($"❌ HTTP 실패: {response.StatusCode}, body: {resultJson.Substring(0, Math.Min(100, resultJson.Length))}");
                 }
             }
             catch (Exception ex)
@@ -1873,80 +1888,121 @@ namespace Gumaedaehang
             if (!_productElements.TryGetValue(productId, out var product)) return;
             if (product.TaobaoProductsPanel == null) return;
             
-            product.TaobaoProductsPanel.Children.Clear();
-            
             int count = 0;
             foreach (var item in products.EnumerateArray())
             {
-                if (count >= 5) break; // 최대 5개
+                if (count >= 5) break;
                 
+                // 기존 productBoxPanel의 자식 StackPanel 가져오기
+                if (count >= product.TaobaoProductsPanel.Children.Count) break;
+                var productBox = product.TaobaoProductsPanel.Children[count] as StackPanel;
+                if (productBox == null || productBox.Children.Count < 2) { count++; continue; }
+                
+                var logoBorder = productBox.Children[0] as Border;
+                var infoText = productBox.Children[1] as TextBlock;
+                if (logoBorder == null) { count++; continue; }
+                
+                // JSON 필드명: nid, img, price, url, sales (서버 TaobaoProduct 클래스 기준)
                 var nid = item.TryGetProperty("nid", out var n) ? n.GetString() ?? "" : "";
-                var title = item.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "";
                 var price = item.TryGetProperty("price", out var p) ? p.GetString() ?? "" : "";
-                var imageUrl = item.TryGetProperty("imageUrl", out var img) ? img.GetString() ?? "" : "";
+                var imageUrl = item.TryGetProperty("img", out var img) ? img.GetString() ?? "" : "";
+                var productUrl = item.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "";
+                var sales = item.TryGetProperty("sales", out var s) ? s.GetString() ?? "" : "";
                 
-                // 상품 박스 생성
-                var box = new Border
+                LogWindow.AddLogStatic($"🔍 상품{count}: nid={nid}, img={!string.IsNullOrEmpty(imageUrl)}, url={productUrl}");
+                
+                // URL 설정 (타오바오 링크)
+                if (string.IsNullOrEmpty(productUrl) && !string.IsNullOrEmpty(nid))
+                    productUrl = $"https://item.taobao.com/item.htm?id={nid}";
+                logoBorder.Tag = productUrl;
+                
+                // 이미지 로드 (로컬 저장)
+                if (!string.IsNullOrEmpty(imageUrl) && logoBorder.Child is Grid grid)
                 {
-                    Width = 100, Height = 80,
-                    BorderBrush = Avalonia.Media.Brushes.Orange,
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(4),
-                    Margin = new Thickness(2),
-                    Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
-                    Tag = $"https://item.taobao.com/item.htm?id={nid}"
-                };
-                
-                var stack = new StackPanel { Spacing = 2 };
-                
-                // 이미지
-                if (!string.IsNullOrEmpty(imageUrl))
+                    foreach (var child in grid.Children)
+                    {
+                        if (child is TextBlock placeholder) placeholder.IsVisible = false;
+                        if (child is Avalonia.Controls.Image taobaoImg)
+                        {
+                            taobaoImg.IsVisible = true;
+                            LoadTaobaoImage(taobaoImg, imageUrl, productId, count);
+                        }
+                    }
+                }
+                else
                 {
-                    var image = new Avalonia.Controls.Image { Height = 50 };
-                    LoadTaobaoImage(image, imageUrl);
-                    stack.Children.Add(image);
+                    LogWindow.AddLogStatic($"⚠️ 이미지 없음 또는 Grid 없음: imageUrl={imageUrl}");
                 }
                 
-                // 가격
-                stack.Children.Add(new TextBlock
+                // 가격 + 판매량 표시
+                if (infoText != null)
                 {
-                    Text = $"¥{price}",
-                    FontSize = 10,
-                    Foreground = Avalonia.Media.Brushes.Red,
-                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
-                });
-                
-                box.Child = stack;
-                
-                // 클릭 이벤트
-                box.PointerPressed += (s, e) =>
-                {
-                    if (s is Border b && b.Tag is string url)
+                    var priceStr = "";
+                    if (!string.IsNullOrEmpty(price) && price != "0")
                     {
-                        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
-                        catch { }
+                        var priceNum = price.Replace("¥", "").Trim();
+                        priceStr = $"{priceNum} 위안";
                     }
-                };
+                    
+                    var salesStr = "";
+                    if (!string.IsNullOrEmpty(sales) && sales != "0")
+                    {
+                        salesStr = $" | 판매량 {sales}";
+                    }
+                    
+                    infoText.Text = priceStr + salesStr;
+                    infoText.Foreground = Avalonia.Media.Brushes.Red;
+                }
                 
-                product.TaobaoProductsPanel.Children.Add(box);
                 count++;
             }
             
             LogWindow.AddLogStatic($"✅ 타오바오 상품 {count}개 UI 표시 완료");
         }
         
-        // 타오바오 이미지 로드
-        private async void LoadTaobaoImage(Avalonia.Controls.Image imageControl, string url)
+        // 타오바오 이미지 로드 (로컬 저장 후 표시)
+        private async void LoadTaobaoImage(Avalonia.Controls.Image imageControl, string url, int cardId = 0, int index = 0)
         {
             try
             {
+                if (string.IsNullOrEmpty(url)) return;
+                if (url.StartsWith("//")) url = "https:" + url;
+                
+                // 로컬 저장 경로 - URL 해시로 고유 파일명 생성
+                var taobaoDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "TaobaoImages");
+                Directory.CreateDirectory(taobaoDir);
+                var urlHash = url.GetHashCode().ToString("X8");
+                var fileName = $"taobao_{cardId}_{index}_{urlHash}.jpg";
+                var localPath = System.IO.Path.Combine(taobaoDir, fileName);
+                
+                // 이미 있으면 로컬에서 로드
+                if (File.Exists(localPath))
+                {
+                    LogWindow.AddLogStatic($"📁 캐시 사용: {fileName}");
+                    await Dispatcher.UIThread.InvokeAsync(() => {
+                        imageControl.Source = new Avalonia.Media.Imaging.Bitmap(localPath);
+                    });
+                    return;
+                }
+                
+                // 다운로드
+                LogWindow.AddLogStatic($"⬇️ 다운로드: {url.Substring(0, Math.Min(60, url.Length))}...");
                 using var client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(15);
                 client.DefaultRequestHeaders.Add("Referer", "https://www.taobao.com/");
-                var bytes = await client.GetByteArrayAsync(url.StartsWith("//") ? "https:" + url : url);
-                using var stream = new MemoryStream(bytes);
-                imageControl.Source = new Avalonia.Media.Imaging.Bitmap(stream);
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
+                var bytes = await client.GetByteArrayAsync(url);
+                
+                // 로컬 저장
+                await File.WriteAllBytesAsync(localPath, bytes);
+                LogWindow.AddLogStatic($"✅ 저장 완료: {fileName} ({bytes.Length/1024}KB)");
+                
+                // 표시
+                await Dispatcher.UIThread.InvokeAsync(() => {
+                    imageControl.Source = new Avalonia.Media.Imaging.Bitmap(localPath);
+                });
             }
-            catch { }
+            catch (Exception ex) { LogWindow.AddLogStatic($"❌ 이미지 로드 실패: {ex.Message}"); }
         }
         
         // ===== 기존 Python 방식 (백업) =====
@@ -4395,8 +4451,9 @@ namespace Gumaedaehang
                     Directory.CreateDirectory(taobaoImagesPath);
                 }
 
-                // 파일명 생성 (cardId_index.jpg)
-                var fileName = $"taobao_{cardId}_{index}.jpg";
+                // 파일명 생성 (URL 해시로 고유 파일명)
+                var urlHash = imageUrl.GetHashCode().ToString("X8");
+                var fileName = $"taobao_{cardId}_{index}_{urlHash}.jpg";
                 var localFilePath = System.IO.Path.Combine(taobaoImagesPath, fileName);
 
                 // 이미 다운로드된 파일이 있으면 재사용
@@ -4957,6 +5014,12 @@ namespace Gumaedaehang
                     {
                         AddProductImageCard(card.StoreId, card.RealProductId, card.ImageUrl ?? "", card.ProductName);
                         count++;
+                        
+                        // ⭐ 타오바오 매칭 데이터 복원
+                        if (card.TaobaoProducts != null && card.TaobaoProducts.Count > 0)
+                        {
+                            UpdateTaobaoProductBoxes(card.ProductId, card.TaobaoProducts);
+                        }
                         
                         // 10개마다 UI 업데이트 + 진행률 표시
                         if (count % 10 == 0)

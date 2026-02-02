@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "Referer", "operation": "set", "value": "https://s.taobao.com/search" },
+        { "header": "Origin", "operation": "set", "value": "https://s.taobao.com" }
+      ]
+    },
+    "condition": {
+      "regexFilter": ".*taobao\\.com.*",
+      "resourceTypes": ["xmlhttprequest"]
+    }
+  }
+]

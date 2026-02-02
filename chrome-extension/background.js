@@ -66,78 +66,173 @@ function md5(string) {
     return hex(md51(string));
 }
 
-// ⭐ 타오바오 이미지 검색 함수
-async function searchTaobaoByImage(imageUrl) {
-    console.log('🔍 타오바오 이미지 검색 시작:', imageUrl?.substring(0, 50));
+// ⭐ AliPrice 방식 타오바오 이미지 검색 - chrome.cookies.getAll() + Cookie 헤더
+// C# 서버를 통해 imgur에 이미지 업로드 (프록시 사용)
+async function uploadToImgur(base64Data) {
+    console.log('📤 imgur 업로드 요청 시작...');
+    try {
+        const resp = await fetch('http://localhost:8080/api/imgur/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Data })
+        });
+        console.log('📥 imgur 응답 상태:', resp.status);
+        const result = await resp.json();
+        console.log('📥 imgur 결과:', result);
+        if (result.success) return result.url;
+        throw new Error(result.error || 'imgur 업로드 실패');
+    } catch (e) {
+        console.error('❌ imgur 업로드 오류:', e);
+        throw e;
+    }
+}
+
+// ⭐ Python 방식: Base64 이미지를 strimg 파라미터로 전달
+async function searchTaobaoByImage(imageUrlOrBase64) {
+    console.log('🔍 타오바오 이미지 검색 시작');
     
-    // 1. 타오바오 쿠키에서 토큰 가져오기
-    const cookies = await chrome.cookies.getAll({ domain: '.taobao.com' });
+    // Base64 데이터 준비 (URL이면 다운로드해서 Base64로 변환)
+    let base64Data = imageUrlOrBase64;
+    if (imageUrlOrBase64 && imageUrlOrBase64.startsWith('http')) {
+        console.log('📥 이미지 URL에서 Base64 변환 중...');
+        try {
+            const resp = await fetch(imageUrlOrBase64);
+            const blob = await resp.blob();
+            base64Data = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(blob);
+            });
+            console.log('✅ Base64 변환 완료, 길이:', base64Data.length);
+        } catch (e) {
+            console.error('❌ 이미지 다운로드 실패:', e.message);
+            return { success: false, error: '이미지 다운로드 실패: ' + e.message };
+        }
+    } else if (imageUrlOrBase64 && imageUrlOrBase64.startsWith('data:')) {
+        base64Data = imageUrlOrBase64.split(',')[1];
+    }
+    
+    // Base64 패딩 제거 (Python과 동일: rstrip('='))
+    const strimg = base64Data.replace(/=+$/, '');
+    console.log('🖼️ strimg 길이:', strimg.length);
+    
+    // 타오바오 쿠키 가져오기 (여러 도메인)
+    const domains = ['.taobao.com', 'taobao.com', '.tmall.com', 'www.taobao.com'];
+    let allCookies = [];
+    for (const domain of domains) {
+        const c = await chrome.cookies.getAll({ domain });
+        allCookies = allCookies.concat(c);
+    }
+    // 중복 제거
+    const cookieMap = {};
+    allCookies.forEach(c => cookieMap[c.name] = c);
+    const cookies = Object.values(cookieMap);
+    
     let token = null;
+    let cookieStr = cookies.map(c => `${c.name}=${c.value}`).join('; ');
     
-    for (const cookie of cookies) {
-        if (cookie.name === '_m_h5_tk' && cookie.value) {
-            token = cookie.value.split('_')[0];
-            console.log('🔑 토큰 발견:', token.substring(0, 10) + '...');
+    for (const c of cookies) {
+        if (c.name === '_m_h5_tk' && c.value) {
+            token = c.value.split('_')[0];
+            console.log('🔑 토큰 발견:', c.domain, c.name);
             break;
         }
     }
     
     if (!token) {
-        console.log('❌ 타오바오 토큰 없음 - 로그인 필요');
-        return { success: false, error: '타오바오 로그인이 필요합니다' };
+        console.log('❌ 타오바오 토큰 없음');
+        return { success: false, error: 'LOGIN_REQUIRED', needLogin: true };
     }
     
-    // 2. API 파라미터 생성
-    const timestamp = Date.now();
+    console.log('🔑 토큰:', token.substring(0, 8) + '...');
+    
+    // ⭐ Python과 동일한 파라미터 구조
+    const ts = Date.now();
     const appKey = '12574478';
+    const params = JSON.stringify({
+        strimg: strimg,           // ⭐ Base64 이미지 데이터
+        pcGraphSearch: true,      // PC 그래프 검색
+        sortOrder: 0,
+        tab: 'all',
+        vm: 'nv'
+    });
     const data = JSON.stringify({
-        imageUrl: imageUrl,
-        extendInfo: '{}',
-        p: 'mm_26632258_3504122_32538762'
+        params: params,
+        appId: '34850'            // ⭐ Python과 동일한 appId
     });
+    const sign = md5(`${token}&${ts}&${appKey}&${data}`);
     
-    // 3. 서명 생성
-    const signStr = `${token}&${timestamp}&${appKey}&${data}`;
-    const sign = md5(signStr);
+    // ⭐ POST 요청 (Python과 동일) - data는 body로 전달
+    const url = `https://h5api.m.taobao.com/h5/mtop.relationrecommend.wirelessrecommend.recommend/2.0/?` +
+        `jsv=2.6.1&appKey=${appKey}&t=${ts}&sign=${sign}` +
+        `&api=mtop.relationrecommend.wirelessrecommend.recommend&v=2.0`;
     
-    // 4. API 호출
-    const apiUrl = 'https://h5api.m.taobao.com/h5/mtop.relationrecommend.wirelessrecommend.recommend/2.0/';
-    const params = new URLSearchParams({
-        jsv: '2.6.1',
-        appKey: appKey,
-        t: timestamp,
-        sign: sign,
-        api: 'mtop.relationrecommend.wirelessrecommend.recommend',
-        v: '2.0',
-        type: 'jsonp',
-        dataType: 'jsonp',
-        callback: 'mtopjsonp1',
-        data: data
-    });
+    console.log('🌐 타오바오 API POST 호출...');
     
     try {
-        const response = await fetch(`${apiUrl}?${params.toString()}`, {
-            method: 'GET',
-            credentials: 'include',
-            headers: { 'Referer': 'https://s.taobao.com/' }
+        const resp = await fetch(url, { 
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Referer': 'https://www.taobao.com/',
+                'Origin': 'https://www.taobao.com'
+            },
+            body: `data=${encodeURIComponent(data)}`,
+            credentials: 'include'
         });
+        const text = await resp.text();
+        console.log('📥 타오바오 응답:', text.substring(0, 300));
         
-        const text = await response.text();
-        console.log('📥 API 응답:', text.substring(0, 200));
+        const result = JSON.parse(text);
+        console.log('📊 응답 키:', Object.keys(result.data || {}));
         
-        // JSONP 파싱
-        const jsonStr = text.replace(/^mtopjsonp\d+\(/, '').replace(/\)$/, '');
-        const result = JSON.parse(jsonStr);
-        
-        if (result.ret && result.ret[0] === 'SUCCESS::调用成功') {
-            console.log('✅ 이미지 검색 성공');
-            return { success: true, data: result.data };
-        } else {
-            console.log('❌ API 오류:', result.ret);
-            return { success: false, error: result.ret?.[0] || 'API 오류' };
+        if (result.ret?.[0]?.includes('TOKEN')) {
+            return { success: false, error: 'TOKEN_EXPIRED', needLogin: true };
         }
+        
+        // ⭐ itemsArray 우선 확인 (result는 빈 배열일 수 있음)
+        const items = result.data?.itemsArray || result.data?.result || result.data?.resultList || [];
+        console.log('📦 상품 개수:', items.length);
+        if (items.length > 0) {
+            console.log('📊 pics:', JSON.stringify(items[0].pics));
+            console.log('📊 priceInfo:', JSON.stringify(items[0].priceInfo));
+            console.log('📊 salesInfo:', JSON.stringify(items[0].salesInfo));
+            console.log('📊 sellerInfo:', JSON.stringify(items[0].sellerInfo));
+        }
+        
+        if (items.length > 0) {
+            const products = items.slice(0, 10).map(item => {
+                // 이미지: pics.mainPic
+                let imgUrl = item.pics?.mainPic || '';
+                if (imgUrl && !imgUrl.startsWith('http')) imgUrl = 'https:' + imgUrl;
+                
+                // 가격: priceInfo.wapFinalPrice 또는 pcFinalPrice
+                const priceVal = item.priceInfo?.wapFinalPrice || item.priceInfo?.pcFinalPrice || item.priceInfo?.reservePrice || '';
+                const price = priceVal ? `¥${priceVal}` : '';
+                
+                // 판매량: salesInfo.totalSale
+                const sales = item.salesInfo?.totalSale || item.salesInfo?.monthSale || '';
+                
+                // 판매자: sellerInfo.shopTitle
+                const shopName = item.sellerInfo?.shopTitle || item.sellerInfo?.nick || '';
+                
+                return {
+                    nid: item.nid || '',
+                    title: item.title || '',
+                    price: price,
+                    imageUrl: imgUrl,
+                    sales: sales,
+                    shopName: shopName,
+                    url: item.auctionUrl || `https://item.taobao.com/item.htm?id=${item.nid || ''}`
+                };
+            });
+            console.log('✅ 파싱된 상품:', JSON.stringify(products[0]));
+            return { success: true, products };
+        }
+        
+        return { success: false, error: '상품 없음' };
     } catch (e) {
-        console.error('❌ 요청 실패:', e);
+        console.error('❌ 타오바오 API 오류:', e);
         return { success: false, error: e.message };
     }
 }
@@ -151,25 +246,21 @@ let globalProcessingState = {
   openWindows: new Map()  // 열린 앱 창들 추적
 };
 
-// ⭐ 이미지 검색 요청 폴링 (3초마다)
+// ⭐ 이미지 검색 요청 폴링 (3초마다) - Background에서 직접 처리
 setInterval(async () => {
     try {
         const response = await fetch('http://localhost:8080/api/taobao/pending-search');
-        if (!response.ok) {
-            console.log('❌ pending-search 응답 오류:', response.status);
-            return;
-        }
+        if (!response.ok) return;
         
         const data = await response.json();
-        console.log('📡 폴링 응답:', JSON.stringify(data));
-        
         if (!data.hasPending) return;
         
         console.log('🔍 검색 요청 발견:', data.productId);
         
-        // Base64 이미지를 타오바오에 업로드하고 검색
-        const result = await uploadAndSearchTaobao(data.imageBase64);
-        console.log('🔎 검색 결과:', JSON.stringify(result).substring(0, 200));
+        // Background에서 직접 타오바오 이미지 검색 실행
+        const result = await searchTaobaoByImage(data.imageBase64);
+        
+        console.log('📥 검색 결과:', result.success ? `${result.products?.length}개 상품` : result.error);
         
         // 결과를 서버로 전송
         await fetch('http://localhost:8080/api/taobao/image-search', {
@@ -179,77 +270,16 @@ setInterval(async () => {
                 productId: data.productId,
                 success: result.success,
                 products: result.products || [],
-                error: result.error
+                error: result.error || null,
+                needLogin: result.needLogin || false,
+                needCaptcha: result.needCaptcha || false
             })
         });
         
-        console.log('✅ 검색 결과 전송 완료');
     } catch (e) {
-        console.log('❌ 폴링 오류:', e.message);
+        // 조용히 실패
     }
 }, 3000);
-
-// ⭐ Base64 이미지를 타오바오에 업로드하고 검색
-async function uploadAndSearchTaobao(base64Image) {
-    try {
-        // 1. 타오바오 토큰 가져오기
-        const cookies = await chrome.cookies.getAll({ domain: '.taobao.com' });
-        console.log('🍪 타오바오 쿠키 개수:', cookies.length);
-        
-        let token = null;
-        let tokenEnc = null;
-        for (const cookie of cookies) {
-            if (cookie.name === '_m_h5_tk' && cookie.value) {
-                token = cookie.value.split('_')[0];
-                console.log('🔑 토큰 발견:', token.substring(0, 15) + '...');
-            }
-            if (cookie.name === '_m_h5_tk_enc') {
-                tokenEnc = cookie.value;
-            }
-        }
-        
-        if (!token) {
-            console.log('❌ _m_h5_tk 쿠키 없음');
-            return { success: false, error: '타오바오 로그인 필요' };
-        }
-        
-        // 2. 이미지를 imgbb에 임시 업로드 (무료 이미지 호스팅)
-        console.log('📤 이미지 업로드 중...');
-        const formData = new FormData();
-        formData.append('image', base64Image);
-        
-        const uploadResp = await fetch('https://api.imgbb.com/1/upload?key=d36eb6591370ae79f9bb33b06007e46e', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const uploadText = await uploadResp.text();
-        console.log('📤 업로드 응답:', uploadText.substring(0, 500));
-        
-        let uploadResult;
-        try {
-            uploadResult = JSON.parse(uploadText);
-        } catch (e) {
-            return { success: false, error: '업로드 응답 파싱 실패: ' + uploadText.substring(0, 100) };
-        }
-        
-        if (!uploadResult.success) {
-            console.log('❌ 업로드 실패:', uploadResult);
-            return { success: false, error: '이미지 업로드 실패: ' + (uploadResult.error?.message || 'unknown') };
-        }
-        
-        const imageUrl = uploadResult.data.url;
-        console.log('✅ 이미지 업로드 완료:', imageUrl);
-        
-        // 3. 타오바오 이미지 검색 API 호출
-        const result = await searchTaobaoByImage(imageUrl);
-        return result;
-        
-    } catch (e) {
-        console.error('❌ 업로드/검색 오류:', e);
-        return { success: false, error: e.message };
-    }
-}
 
 // ⭐ 타오바오 쿠키 자동 전송 함수
 async function sendTaobaoCookies() {
@@ -360,13 +390,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'collectTaobaoCookies') {
         console.log('🍪 Content Script에서 쿠키 수집 요청 받음');
         
-        // Background Script에서 직접 쿠키 수집
-        chrome.cookies.getAll({domain: '.taobao.com'}, async function(cookies) {
-            if (chrome.runtime.lastError) {
-                console.error('❌ 쿠키 수집 오류:', chrome.runtime.lastError);
-                sendResponse({success: false, error: chrome.runtime.lastError.message});
-                return;
+        // 여러 도메인에서 쿠키 수집
+        (async () => {
+            const domains = ['.taobao.com', 'taobao.com', '.tmall.com', 'www.taobao.com'];
+            let allCookies = [];
+            
+            for (const domain of domains) {
+                try {
+                    const c = await chrome.cookies.getAll({ domain });
+                    allCookies = allCookies.concat(c);
+                } catch (e) {}
             }
+            
+            // 중복 제거
+            const cookieMap = {};
+            allCookies.forEach(c => { cookieMap[c.name] = c; });
+            const cookies = Object.values(cookieMap);
             
             console.log(`📊 수집된 쿠키 개수: ${cookies.length}`);
             
@@ -416,7 +455,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 console.error('❌ 서버 전송 오류:', error);
                 sendResponse({success: false, error: error.message});
             }
-        });
+        })();
         
         return true; // 비동기 응답
     }
