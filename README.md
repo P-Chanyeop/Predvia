@@ -7,7 +7,7 @@
 ![C#](https://img.shields.io/badge/C%23-12.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Build](https://img.shields.io/badge/Build-Success-brightgreen)
-![Release](https://img.shields.io/badge/Release-v2.06-orange)
+![Release](https://img.shields.io/badge/Release-v2.07-orange)
 
 ## 📋 프로젝트 개요
 
@@ -245,7 +245,24 @@ dotnet run --project Gumaedaehang.csproj
 - [x] **Avalonia 호환성** - 모든 지원되지 않는 속성 제거 및 대체
 - [x] **Self-contained 배포** - .NET 런타임 내장, 별도 설치 불필요
 
-### 🔄 최신 업데이트 (v2.06 - 로그인 인증 오류 해결 및 Excel 내보내기 기능 완성)
+### 🔄 최신 업데이트 (v2.07 - Excel 내보내기 JSON 기반 개선 및 상품명 저장/로드 시스템)
+- [x] **📊 Excel 내보내기 JSON 기반으로 완전 개선**: UI 대신 JSON 파일 기준으로 데이터 처리
+  - **JSON 파일 기준 선택 체크**: UI 체크박스로 선택된 상품 ID를 JSON에서 필터링
+  - **타오바오 페어링 체크**: JSON의 TaobaoProducts 필드 기준으로 페어링 여부 확인
+  - **UI 최신 상품명 반영**: 내보내기 전 _productElements에서 최신 상품명 가져와서 사용
+  - **내보내기 완료 메시지 박스**: Excel 저장 완료 후 팝업으로 결과 알림
+  - **내보내기 후 자동 삭제**: JSON 파일 업데이트 및 UI에서 삭제 처리
+- [x] **💾 상품명 저장/로드 시스템 완성**: 사용자가 입력한 상품명 영구 저장
+  - **저장 시 UI 값 반영**: SaveProductCardsToJson에서 NameInputBox.Text를 JSON에 저장
+  - **로드 시 상품명 표시**: AddProductImageCard에서 productName을 TextBox에 설정
+  - **초기 바이트 계산**: 로드된 상품명의 바이트 수 즉시 표시
+- [x] **🏷️ 키워드 박스 UI 최적화**: 단어 잘림 문제 해결
+  - **키워드 박스 너비**: 1150px 고정
+  - **maxRowWidth**: 1100px로 설정하여 오른쪽 여유 공간 확보
+  - **tagWidth 계산 개선**: 한글 글자당 12px + 패딩 30px로 정확한 너비 계산
+  - **단어 잘림 방지**: 넘칠 것 같으면 다음 줄로 자동 이동
+
+### 🔄 이전 업데이트 (v2.06 - 로그인 인증 오류 해결 및 Excel 내보내기 기능 완성)
 - [x] **🔐 로그인 인증 오류 완전 해결**: MethodAccessException 오류 수정 및 안정성 강화
   - **ExportExcelButton_Click 접근 제한자 수정**: private → protected로 변경하여 ProductDataPage 상속 문제 해결
   - **ApiKeyAuthWindow 오류 로깅 강화**: Console.WriteLine으로 전체 오류 메시지 및 스택 트레이스 출력

@@ -786,8 +786,8 @@ namespace Gumaedaehang
                 // ⭐ 중복 체크 제거 - 상품 추가 크롤링 지원
                 // 중복 상품도 허용하여 화면 전환 시 데이터가 사라지지 않도록 함
 
-                // ⭐ 카드 순서 기반 ID 생성 (1부터 시작) - 추가 전에 미리 계산
-                var cardId = container.Children.OfType<StackPanel>().Count() + 1;
+                // ⭐ 카드 순서 기반 ID 생성 (1부터 시작) - _productElements 기준
+                var cardId = _productElements.Count + 1;
                 LogWindow.AddLogStatic($"🆔 새 카드 ID 생성: {cardId}");
 
                 // 전체 상품 컨테이너
@@ -900,19 +900,22 @@ namespace Gumaedaehang
 
                 var nameInputText = new TextBox 
                 { 
-                    Text = "", 
+                    Text = productName ?? "", // ⭐ JSON에서 로드된 상품명 표시
                     FontSize = 14,
                     FontFamily = new FontFamily("Malgun Gothic"),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0)
                 };
+                
+                // ⭐ 초기 바이트 계산
+                var initialByteCount = CalculateByteCount(productName ?? "");
                 var byteCountText = new TextBlock 
                 { 
-                    Text = "0/0 byte", 
+                    Text = $"{initialByteCount}/50 byte", 
                     FontSize = 12, 
                     FontFamily = new FontFamily("Malgun Gothic"),
-                    Foreground = new SolidColorBrush(Colors.Gray),
+                    Foreground = initialByteCount > 50 ? Brushes.Red : new SolidColorBrush(Colors.Gray),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
 
@@ -1650,13 +1653,13 @@ namespace Gumaedaehang
             
             if (_productElements.TryGetValue(productId, out var product))
             {
-                AddKeywordFromInput(productId);
-                Debug.WriteLine($"상품 {productId} 키워드 추가 버튼 클릭됨");
+                // ⭐ 키워드 먼저 가져오고 나서 입력창 비우기
+                var keyword = product.KeywordInputBox?.Text?.Trim();
                 
-                // 키워드 입력 박스에서 키워드 가져와서 네이버 가격비교 검색
-                if (product.KeywordInputBox?.Text?.Trim() is { Length: > 0 } keyword)
+                if (!string.IsNullOrEmpty(keyword))
                 {
-                    LogWindow.AddLogStatic($"🔍 입력된 키워드: {keyword} (크롤링 비활성화)");
+                    product.KeywordInputBox!.Text = ""; // 입력창 비우기
+                    LogWindow.AddLogStatic($"🔍 입력된 키워드: {keyword}");
                     await SearchNaverPriceComparison(keyword);
                 }
                 else
@@ -3471,30 +3474,116 @@ namespace Gumaedaehang
             {
                 LogWindow.AddLogStatic($"🔍 네이버 가격비교 검색 시작: {keyword}");
                 
-                // ⭐ 키워드 타이머 재시작 (기존 타이머 중단 후 새로 시작)
+                // ⭐ 키워드 타이머 중단 (API 직접 호출이므로 불필요)
                 if (_keywordCheckTimer != null)
                 {
                     _keywordCheckTimer.Stop();
                     _keywordCheckTimer = null;
                 }
-                StartKeywordCheckTimer();
                 
-                // URL 인코딩
-                var encodedKeyword = Uri.EscapeDataString(keyword);
-                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=overseas";
+                // ⭐ API 직접 호출 방식으로 변경
+                var keywords = await FetchNaverShoppingKeywords(keyword);
                 
-                LogWindow.AddLogStatic($"🌐 검색 URL: {searchUrl}");
-                
-                // Chrome 확장프로그램 서비스 초기화
-                _extensionService ??= new ChromeExtensionService();
-                
-                // Chrome 확장프로그램을 통해 새 탭에서 검색 실행
-                await _extensionService.OpenNaverPriceComparison(searchUrl);
-                LogWindow.AddLogStatic("✅ 네이버 가격비교 페이지가 새 탭에서 열렸습니다.");
+                if (keywords.Count > 0)
+                {
+                    LogWindow.AddLogStatic($"✅ {keywords.Count}개 키워드 추출 완료");
+                    
+                    // ⭐ 키워드 태그 바로 표시
+                    await Dispatcher.UIThread.InvokeAsync(() => {
+                        CreateKeywordTags(keywords, _keywordSourceProductId);
+                    });
+                }
+                else
+                {
+                    LogWindow.AddLogStatic("⚠️ 키워드를 찾을 수 없습니다.");
+                }
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 네이버 가격비교 검색 오류: {ex.Message}");
+            }
+        }
+        
+        // ⭐ 네이버 쇼핑 공식 API 호출
+        private async Task<List<string>> FetchNaverShoppingKeywords(string keyword)
+        {
+            var keywords = new HashSet<string>();
+            
+            try
+            {
+                using var client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(15);
+                
+                // ⭐ 네이버 공식 API 인증 헤더
+                client.DefaultRequestHeaders.Add("X-Naver-Client-Id", "Zz3SveXPGR6zk23yhvMc");
+                client.DefaultRequestHeaders.Add("X-Naver-Client-Secret", "obIzHCgU2g");
+                
+                // 네이버 쇼핑 검색 API 호출
+                var encodedKeyword = Uri.EscapeDataString(keyword);
+                var apiUrl = $"https://openapi.naver.com/v1/search/shop.json?query={encodedKeyword}&display=100&sort=sim";
+                
+                LogWindow.AddLogStatic($"📡 네이버 공식 API 요청: {keyword}");
+                
+                var response = await client.GetStringAsync(apiUrl);
+                
+                // JSON 파싱
+                using var doc = JsonDocument.Parse(response);
+                var root = doc.RootElement;
+                
+                if (root.TryGetProperty("items", out var items))
+                {
+                    foreach (var item in items.EnumerateArray())
+                    {
+                        if (item.TryGetProperty("title", out var title))
+                        {
+                            var name = title.GetString();
+                            if (!string.IsNullOrEmpty(name))
+                            {
+                                // HTML 태그 제거
+                                name = System.Text.RegularExpressions.Regex.Replace(name, "<.*?>", "");
+                                
+                                // 상품명을 단어별로 분리
+                                var words = name.Split(new[] { ' ', ',', '/', '(', ')', '[', ']', '+', '-', '·' }, 
+                                    StringSplitOptions.RemoveEmptyEntries);
+                                
+                                foreach (var word in words)
+                                {
+                                    var cleanWord = word.Trim();
+                                    // 한글만 추출 (2글자 이상)
+                                    if (cleanWord.Length >= 2 && cleanWord.Any(c => c >= 0xAC00 && c <= 0xD7AF))
+                                    {
+                                        keywords.Add(cleanWord);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                LogWindow.AddLogStatic($"✅ API 응답 파싱 완료: {keywords.Count}개 키워드");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ API 호출 오류: {ex.Message}");
+            }
+            
+            return keywords.ToList();
+        }
+        
+        // 서버에 키워드 전송
+        private async Task SendKeywordsToServer(List<string> keywords)
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(new { keywords });
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                
+                using var client = new HttpClient();
+                await client.PostAsync("http://localhost:8080/api/smartstore/keywords", content);
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 전송 오류: {ex.Message}");
             }
         }
         
@@ -3996,8 +4085,10 @@ namespace Gumaedaehang
                     BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46")), // 주황색 테두리
                     BorderThickness = new Thickness(2),
                     CornerRadius = new CornerRadius(8),
-                    Padding = new Thickness(15, 10),
-                    Height = 170, // 4줄 적절한 높이로 조정
+                    Padding = new Thickness(10, 10),
+                    Height = 170,
+                    Width = 1150, // ⭐ 너비 1150px 고정
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
                     Background = new SolidColorBrush(Colors.Transparent)
                 };
 
@@ -4022,7 +4113,7 @@ namespace Gumaedaehang
                 };
 
                 double currentRowWidth = 0;
-                const double maxRowWidth = 750; // 스크롤바 공간 고려하여 조금 줄임
+                const double maxRowWidth = 1100; // ⭐ 1150px - 패딩20px - 스크롤바30px
 
                 // 키워드 태그 생성 (전체)
                 foreach (var keyword in keywords)
@@ -4046,8 +4137,8 @@ namespace Gumaedaehang
                     // 키워드 태그 클릭 이벤트 추가
                     keywordTag.PointerPressed += (s, e) => OnKeywordTagClicked(keyword, targetProductId);
 
-                    // 예상 태그 너비 계산 (대략적)
-                    double tagWidth = keyword.Length * 8 + 30; // 글자당 8px + 패딩
+                    // 예상 태그 너비 계산 (한글 기준 - FontSize 11, 여유있게)
+                    double tagWidth = keyword.Length * 12 + 30; // 한글 글자당 12px + 패딩30
 
                     // 현재 행에 추가할 수 있는지 확인
                     if (currentRowWidth + tagWidth > maxRowWidth && currentRow.Children.Count > 0)
@@ -5180,17 +5271,21 @@ namespace Gumaedaehang
                 {
                     return;
                 }
+                
+                LogWindow.AddLogStatic($"📂 JSON 파일에서 {productCards.Count}개 상품 로드 시작");
 
                 // ⭐ 로딩 오버레이 표시
                 ShowLoadingOverlay($"상품 데이터 로드 중... (0/{productCards.Count})");
 
-                // ⭐ 기존 카드 초기화
+                // ⭐ 기존 카드 완전 초기화 (중요!)
                 var container = this.FindControl<StackPanel>("RealDataContainer");
                 if (container != null)
                 {
-                    LogWindow.AddLogStatic($"🧹 기존 카드 초기화: {container.Children.Count}개 → 0개");
+                    LogWindow.AddLogStatic($"🧹 기존 UI 카드 초기화: {container.Children.Count}개 → 0개");
                     container.Children.Clear();
                 }
+                
+                // ⭐ _productElements 완전 초기화 (중요!)
                 LogWindow.AddLogStatic($"🧹 _productElements 초기화: {_productElements.Count}개 → 0개");
                 _productElements.Clear();
 
@@ -5264,28 +5359,64 @@ namespace Gumaedaehang
         {
             try
             {
-                // 저장된 JSON 파일에서 타오바오 페어링 확인
+                var mainWindow = (MainWindow?)TopLevel.GetTopLevel(this);
+                
+                // ⭐ 선택된 상품 ID 가져오기 (UI에서)
+                var selectedProductIds = _productElements.Values
+                    .Where(p => p.CheckBox?.IsChecked == true)
+                    .Select(p => $"{p.StoreId}_{p.RealProductId}")
+                    .ToHashSet();
+                
+                if (selectedProductIds.Count == 0)
+                {
+                    LogWindow.AddLogStatic("⚠️ 선택된 상품이 없습니다. 내보낼 상품을 선택해주세요.");
+                    await ShowMessageBox(mainWindow, "선택된 상품이 없습니다.\n내보낼 상품을 선택해주세요.");
+                    return;
+                }
+                
+                // ⭐ JSON 파일에서 선택된 상품 데이터 가져오기
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 var jsonFilePath = System.IO.Path.Combine(appDataPath, "Predvia", "product_cards.json");
                 
-                int pairedCount = 0;
-                if (File.Exists(jsonFilePath))
+                if (!File.Exists(jsonFilePath))
                 {
-                    var json = File.ReadAllText(jsonFilePath);
-                    var savedCards = JsonSerializer.Deserialize<List<ProductCardData>>(json);
-                    if (savedCards != null)
+                    LogWindow.AddLogStatic("❌ 저장된 상품 데이터가 없습니다.");
+                    await ShowMessageBox(mainWindow, "저장된 상품 데이터가 없습니다.\n먼저 저장해주세요.");
+                    return;
+                }
+                
+                var json = File.ReadAllText(jsonFilePath);
+                var allCards = JsonSerializer.Deserialize<List<ProductCardData>>(json) ?? new List<ProductCardData>();
+                
+                // ⭐ 선택된 상품만 필터링 (JSON 기준)
+                var selectedCards = allCards
+                    .Where(c => selectedProductIds.Contains($"{c.StoreId}_{c.RealProductId}"))
+                    .ToList();
+                
+                // ⭐ UI에서 최신 상품명 가져와서 반영
+                foreach (var card in selectedCards)
+                {
+                    var key = $"{card.StoreId}_{card.RealProductId}";
+                    var uiElement = _productElements.Values.FirstOrDefault(p => $"{p.StoreId}_{p.RealProductId}" == key);
+                    if (uiElement?.NameInputBox != null)
                     {
-                        pairedCount = savedCards.Count(c => c.IsTaobaoPaired || (c.TaobaoProducts != null && c.TaobaoProducts.Count > 0));
+                        card.ProductName = uiElement.NameInputBox.Text ?? "";
                     }
                 }
-
-                if (pairedCount == 0)
+                
+                // ⭐ 타오바오 페어링 안 된 상품 체크 (JSON 기준)
+                var notPairedCards = selectedCards
+                    .Where(c => c.TaobaoProducts == null || c.TaobaoProducts.Count == 0)
+                    .ToList();
+                
+                if (notPairedCards.Count > 0)
                 {
-                    LogWindow.AddLogStatic("⚠️ 타오바오 페어링된 상품이 없습니다. 먼저 타오바오 페어링을 진행해주세요.");
+                    LogWindow.AddLogStatic($"⚠️ 선택된 {selectedCards.Count}개 중 타오바오 페어링 안 된 상품: {notPairedCards.Count}개");
+                    await ShowMessageBox(mainWindow, $"선택된 {selectedCards.Count}개 상품 중\n타오바오 페어링이 안 된 상품이 {notPairedCards.Count}개 있습니다.\n먼저 페어링을 진행해주세요.");
                     return;
                 }
 
-                LogWindow.AddLogStatic($"📊 Excel 내보내기 시작... (타오바오 페어링 상품: {pairedCount}개)");
+                LogWindow.AddLogStatic($"📊 Excel 내보내기 시작... (선택된 상품: {selectedCards.Count}개)");
                 
                 // 현재 날짜+시간으로 파일명 자동 생성
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
@@ -5302,7 +5433,6 @@ namespace Gumaedaehang
                     }
                 };
 
-                var mainWindow = (MainWindow?)TopLevel.GetTopLevel(this);
                 if (mainWindow == null)
                 {
                     LogWindow.AddLogStatic("❌ MainWindow를 찾을 수 없습니다.");
@@ -5316,7 +5446,13 @@ namespace Gumaedaehang
                     return;
                 }
 
-                await ExportToExcel(result);
+                await ExportToExcelFromJson(result, selectedCards);
+                
+                // ⭐ 내보내기 완료 후 선택된 상품 삭제
+                await DeleteExportedProductsFromJson(selectedCards, selectedProductIds);
+                
+                // ⭐ 완료 메시지 박스 표시
+                await ShowMessageBox(mainWindow, $"Excel 내보내기 완료!\n{selectedCards.Count}개 상품이 저장되었습니다.");
                 LogWindow.AddLogStatic($"✅ Excel 파일 저장 완료: {result}");
             }
             catch (Exception ex)
@@ -5325,41 +5461,74 @@ namespace Gumaedaehang
                 LogWindow.AddLogStatic($"스택: {ex.StackTrace}");
             }
         }
-
-        // 📊 Excel 파일 생성 메서드
-        private async Task ExportToExcel(string filePath)
+        
+        // ⭐ 내보낸 상품 삭제 (JSON 기반)
+        private async Task DeleteExportedProductsFromJson(List<ProductCardData> cards, HashSet<string> selectedProductIds)
         {
-            // 저장된 JSON 파일에서 데이터 읽기
-            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var jsonFilePath = System.IO.Path.Combine(appDataPath, "Predvia", "product_cards.json");
-            
-            if (!File.Exists(jsonFilePath))
+            try
             {
-                LogWindow.AddLogStatic("❌ 저장된 상품 데이터가 없습니다. 먼저 저장해주세요.");
-                return;
+                LogWindow.AddLogStatic($"🗑️ 내보낸 {cards.Count}개 상품 삭제 중...");
+                
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
+                
+                foreach (var card in cards)
+                {
+                    var storeId = card.StoreId;
+                    var productId = card.RealProductId;
+                    
+                    // 이미지 파일 삭제
+                    var imagePath = System.IO.Path.Combine(predviaPath, "Images", $"{storeId}_{productId}_main.jpg");
+                    if (File.Exists(imagePath)) File.Delete(imagePath);
+                    
+                    // 상품명 파일 삭제
+                    var namePath = System.IO.Path.Combine(predviaPath, "ProductData", $"{storeId}_{productId}_name.txt");
+                    if (File.Exists(namePath)) File.Delete(namePath);
+                    
+                    // 리뷰 파일 삭제
+                    var reviewPath = System.IO.Path.Combine(predviaPath, "Reviews", $"{storeId}_{productId}_reviews.json");
+                    if (File.Exists(reviewPath)) File.Delete(reviewPath);
+                    
+                    // 카테고리 파일 삭제
+                    var categoryPath = System.IO.Path.Combine(predviaPath, "Categories", $"{storeId}_{productId}_categories.json");
+                    if (File.Exists(categoryPath)) File.Delete(categoryPath);
+                }
+                
+                // ⭐ JSON 파일 업데이트 (내보낸 상품 제외)
+                var jsonFilePath = System.IO.Path.Combine(predviaPath, "product_cards.json");
+                var json = File.ReadAllText(jsonFilePath);
+                var allCards = JsonSerializer.Deserialize<List<ProductCardData>>(json) ?? new List<ProductCardData>();
+                var remainingCards = allCards.Where(c => !selectedProductIds.Contains($"{c.StoreId}_{c.RealProductId}")).ToList();
+                
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(jsonFilePath, JsonSerializer.Serialize(remainingCards, options));
+                
+                // ⭐ UI에서도 삭제
+                var container = this.FindControl<StackPanel>("RealDataContainer");
+                var toRemove = _productElements.Values
+                    .Where(p => selectedProductIds.Contains($"{p.StoreId}_{p.RealProductId}"))
+                    .ToList();
+                
+                foreach (var product in toRemove)
+                {
+                    if (product.Container != null)
+                        container?.Children.Remove(product.Container);
+                    _productElements.Remove(product.ProductId);
+                }
+                
+                LogWindow.AddLogStatic($"✅ {cards.Count}개 상품 삭제 완료");
             }
-            
-            var json = File.ReadAllText(jsonFilePath);
-            var savedCards = JsonSerializer.Deserialize<List<ProductCardData>>(json);
-            
-            if (savedCards == null)
+            catch (Exception ex)
             {
-                LogWindow.AddLogStatic("❌ 상품 데이터 파싱 실패");
-                return;
+                LogWindow.AddLogStatic($"❌ 상품 삭제 오류: {ex.Message}");
             }
-            
-            // 타오바오 페어링된 상품만 필터링
-            var pairedCards = savedCards.Where(c => c.TaobaoProducts != null && c.TaobaoProducts.Count > 0).ToList();
-            
-            if (pairedCards.Count == 0)
-            {
-                LogWindow.AddLogStatic("⚠️ 타오바오 페어링된 상품이 없습니다.");
-                return;
-            }
-            
-            LogWindow.AddLogStatic($"📊 {pairedCards.Count}개 상품 Excel 내보내기 중...");
+        }
+        
+        // 📊 Excel 파일 생성 메서드 (JSON 기반)
+        private async Task ExportToExcelFromJson(string filePath, List<ProductCardData> selectedCards)
+        {
+            LogWindow.AddLogStatic($"📊 {selectedCards.Count}개 상품 Excel 내보내기 중...");
 
-            // 백그라운드 스레드에서 Excel 생성
             await Task.Run(() =>
             {
                 using var workbook = new XLWorkbook();
@@ -5384,10 +5553,10 @@ namespace Gumaedaehang
                 // 데이터 행 (3행부터)
                 int row = 3;
                 
-                foreach (var card in pairedCards)
+                foreach (var card in selectedCards)
                 {
-                    // 선택된 타오바오 상품 가져오기 (인덱스 범위 체크)
-                    var selectedIndex = Math.Min(card.SelectedTaobaoIndex, card.TaobaoProducts.Count - 1);
+                    // 선택된 타오바오 상품 가져오기
+                    var selectedIndex = Math.Min(card.SelectedTaobaoIndex, card.TaobaoProducts!.Count - 1);
                     selectedIndex = Math.Max(0, selectedIndex);
                     var selectedTaobao = card.TaobaoProducts[selectedIndex];
                     
@@ -5397,13 +5566,13 @@ namespace Gumaedaehang
                     
                     var categoryInfo = GetCategoryInfo(card.StoreId, card.RealProductId);
                     var productName = card.ProductName ?? "";
-                    var byteCount = CalculateByteCount(productName); // ⭐ UI와 동일한 계산 방식 사용
+                    var byteCount = CalculateByteCount(productName);
 
                     worksheet.Cell(row, 1).Value = categoryInfo;
                     worksheet.Cell(row, 2).Value = productName;
                     worksheet.Cell(row, 3).Value = byteCount;
-                    worksheet.Cell(row, 4).Value = card.ShippingCost; // ⭐ 저장된 배대지 비용
-                    worksheet.Cell(row, 5).Value = taobaoUrl; // ⭐ 선택된 타오바오 URL
+                    worksheet.Cell(row, 4).Value = card.ShippingCost;
+                    worksheet.Cell(row, 5).Value = taobaoUrl;
                     worksheet.Cell(row, 6).Value = "";
                     worksheet.Cell(row, 7).Value = 0;
                     worksheet.Cell(row, 8).Value = "";
@@ -5413,6 +5582,51 @@ namespace Gumaedaehang
 
                 workbook.SaveAs(filePath);
             });
+        }
+        
+        // ⭐ 메시지 박스 표시
+        private async Task ShowMessageBox(Window? parent, string message)
+        {
+            var msgBox = new Window
+            {
+                Title = "알림",
+                Width = 350,
+                Height = 150,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = false
+            };
+            
+            var panel = new StackPanel
+            {
+                Margin = new Thickness(20),
+                Spacing = 20,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+            };
+            
+            panel.Children.Add(new TextBlock
+            {
+                Text = message,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+            });
+            
+            var okButton = new Button
+            {
+                Content = "확인",
+                Width = 80,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                Background = new SolidColorBrush(Color.Parse("#E67E22")),
+                Foreground = Brushes.White
+            };
+            okButton.Click += (s, e) => msgBox.Close();
+            panel.Children.Add(okButton);
+            
+            msgBox.Content = panel;
+            
+            if (parent != null)
+                await msgBox.ShowDialog(parent);
+            else
+                msgBox.Show();
         }
 
         // 상품명 파일에서 가져오기
