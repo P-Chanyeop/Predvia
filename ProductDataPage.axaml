@@ -141,6 +141,21 @@
                 <!-- 실제 데이터 컨테이너 - C# 코드에서 동적으로 상품 카드들이 추가됩니다 -->
             </StackPanel>
 
+            <!-- ⭐ 페이지네이션 UI (하단) -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="15" Margin="0,20,0,30">
+                <Button x:Name="PrevPageButton" Content="◀ 이전" FontSize="14"
+                        Background="#E67E22" Foreground="White"
+                        Padding="15,8" CornerRadius="6"
+                        Click="PrevPage_Click"/>
+                <TextBlock x:Name="PageInfoText" Text="1 / 1 페이지 (총 0개)" 
+                           FontSize="14" VerticalAlignment="Center"
+                           Foreground="#333333"/>
+                <Button x:Name="NextPageButton" Content="다음 ▶" FontSize="14"
+                        Background="#E67E22" Foreground="White"
+                        Padding="15,8" CornerRadius="6"
+                        Click="NextPage_Click"/>
+            </StackPanel>
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>

@@ -102,6 +102,12 @@ namespace Gumaedaehang
         // 상품별 UI 요소들을 관리하는 딕셔너리
         protected Dictionary<int, ProductUIElements> _productElements = new Dictionary<int, ProductUIElements>();
         
+        // ⭐ 페이지네이션 변수
+        private List<ProductCardData> _allProductCards = new(); // 전체 상품 데이터
+        private int _currentPage = 1;
+        private const int _itemsPerPage = 10;
+        private TextBlock? _pageInfoText;
+        
         // 카테고리 데이터 캐시
         private Dictionary<string, CategoryData> _categoryDataCache = new Dictionary<string, CategoryData>();
         
@@ -5425,7 +5431,7 @@ namespace Gumaedaehang
             return localPath;
         }
 
-        // ⭐ JSON에서 상품 카드 데이터 로드
+        // ⭐ JSON에서 상품 카드 데이터 로드 (페이지네이션)
         private async void LoadProductCardsFromJson()
         {
             try
@@ -5440,62 +5446,17 @@ namespace Gumaedaehang
                 }
 
                 var json = File.ReadAllText(jsonFilePath);
-                var productCards = JsonSerializer.Deserialize<List<ProductCardData>>(json);
+                _allProductCards = JsonSerializer.Deserialize<List<ProductCardData>>(json) ?? new();
 
-                if (productCards == null || productCards.Count == 0)
+                if (_allProductCards.Count == 0)
                 {
                     return;
                 }
                 
-                LogWindow.AddLogStatic($"📂 JSON 파일에서 {productCards.Count}개 상품 로드 시작");
-
-                // ⭐ 로딩 오버레이 표시
-                ShowLoadingOverlay($"상품 데이터 로드 중... (0/{productCards.Count})");
-
-                // ⭐ 기존 카드 완전 초기화 (중요!)
-                var container = this.FindControl<StackPanel>("RealDataContainer");
-                if (container != null)
-                {
-                    LogWindow.AddLogStatic($"🧹 기존 UI 카드 초기화: {container.Children.Count}개 → 0개");
-                    container.Children.Clear();
-                }
+                LogWindow.AddLogStatic($"📂 JSON 파일에서 {_allProductCards.Count}개 상품 로드");
                 
-                // ⭐ _productElements 완전 초기화 (중요!)
-                LogWindow.AddLogStatic($"🧹 _productElements 초기화: {_productElements.Count}개 → 0개");
-                _productElements.Clear();
-
-                // ⭐ 비동기 배치 로드
-                int count = 0;
-                foreach (var card in productCards)
-                {
-                    if (card.StoreId != null && card.RealProductId != null)
-                    {
-                        AddProductImageCard(card.StoreId, card.RealProductId, card.ImageUrl ?? "", card.ProductName);
-                        count++;
-                        
-                        // ⭐ 타오바오 매칭 데이터 복원
-                        if (card.TaobaoProducts != null && card.TaobaoProducts.Count > 0)
-                        {
-                            // 선택된 인덱스도 복원
-                            if (_productElements.TryGetValue(count, out var elem))
-                            {
-                                elem.SelectedTaobaoIndex = card.SelectedTaobaoIndex;
-                            }
-                            UpdateTaobaoProductBoxes(count, card.TaobaoProducts);
-                        }
-                        
-                        // 10개마다 UI 업데이트 + 진행률 표시
-                        if (count % 10 == 0)
-                        {
-                            UpdateLoadingOverlay($"상품 데이터 로드 중... ({count}/{productCards.Count})");
-                            await Task.Delay(1); // UI 스레드 양보
-                        }
-                    }
-                }
-
-                // ⭐ 로딩 오버레이 숨기기
-                HideLoadingOverlay();
-                LogWindow.AddLogStatic($"✅ 상품 데이터 로드 완료: {productCards.Count}개 상품");
+                _currentPage = 1;
+                await LoadCurrentPage();
                 
                 // ⭐ 전체선택 체크박스 이벤트 연결
                 if (_selectAllCheckBox == null)
@@ -5506,13 +5467,88 @@ namespace Gumaedaehang
                 {
                     _selectAllCheckBox.Click -= SelectAllCheckBox_Click;
                     _selectAllCheckBox.Click += SelectAllCheckBox_Click;
-                    LogWindow.AddLogStatic($"✅ 전체선택 체크박스 이벤트 연결됨");
                 }
             }
             catch (Exception ex)
             {
                 HideLoadingOverlay();
                 LogWindow.AddLogStatic($"❌ 상품 데이터 로드 실패: {ex.Message}");
+            }
+        }
+        
+        // ⭐ 현재 페이지 로드
+        private async Task LoadCurrentPage()
+        {
+            var container = this.FindControl<StackPanel>("RealDataContainer");
+            if (container == null) return;
+            
+            // 기존 카드 초기화
+            container.Children.Clear();
+            _productElements.Clear();
+            
+            // 현재 페이지 데이터 가져오기
+            var totalPages = (int)Math.Ceiling((double)_allProductCards.Count / _itemsPerPage);
+            var pageCards = _allProductCards
+                .Skip((_currentPage - 1) * _itemsPerPage)
+                .Take(_itemsPerPage)
+                .ToList();
+            
+            LogWindow.AddLogStatic($"📄 페이지 {_currentPage}/{totalPages} 로드 중... ({pageCards.Count}개)");
+            
+            int count = 0;
+            foreach (var card in pageCards)
+            {
+                if (card.StoreId != null && card.RealProductId != null)
+                {
+                    AddProductImageCard(card.StoreId, card.RealProductId, card.ImageUrl ?? "", card.ProductName);
+                    count++;
+                    
+                    // 타오바오 매칭 데이터 복원
+                    if (card.TaobaoProducts != null && card.TaobaoProducts.Count > 0)
+                    {
+                        if (_productElements.TryGetValue(count, out var elem))
+                        {
+                            elem.SelectedTaobaoIndex = card.SelectedTaobaoIndex;
+                        }
+                        UpdateTaobaoProductBoxes(count, card.TaobaoProducts);
+                    }
+                }
+            }
+            
+            // 페이지 정보 업데이트
+            UpdatePageInfo();
+            LogWindow.AddLogStatic($"✅ 페이지 {_currentPage}/{totalPages} 로드 완료");
+        }
+        
+        // ⭐ 페이지 정보 업데이트
+        private void UpdatePageInfo()
+        {
+            var totalPages = Math.Max(1, (int)Math.Ceiling((double)_allProductCards.Count / _itemsPerPage));
+            _pageInfoText = this.FindControl<TextBlock>("PageInfoText");
+            if (_pageInfoText != null)
+            {
+                _pageInfoText.Text = $"{_currentPage} / {totalPages} 페이지 (총 {_allProductCards.Count}개)";
+            }
+        }
+        
+        // ⭐ 이전 페이지
+        protected async void PrevPage_Click(object? sender, RoutedEventArgs e)
+        {
+            if (_currentPage > 1)
+            {
+                _currentPage--;
+                await LoadCurrentPage();
+            }
+        }
+        
+        // ⭐ 다음 페이지
+        protected async void NextPage_Click(object? sender, RoutedEventArgs e)
+        {
+            var totalPages = (int)Math.Ceiling((double)_allProductCards.Count / _itemsPerPage);
+            if (_currentPage < totalPages)
+            {
+                _currentPage++;
+                await LoadCurrentPage();
             }
         }
 
