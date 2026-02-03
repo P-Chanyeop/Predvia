@@ -95,7 +95,7 @@ namespace Gumaedaehang
         
         // 키워드 태그 자동 생성을 위한 타이머
         private DispatcherTimer? _keywordCheckTimer;
-        private int _keywordSourceProductId = -1; // 키워드를 생성한 상품 ID 추적
+        private string _keywordSourceProductKey = ""; // 키워드를 생성한 상품 키 (storeId_productId)
         private Dictionary<int, List<string>> _productKeywords = new(); // 상품별 키워드 저장
         private ChromeExtensionService? _extensionService;
         
@@ -1642,8 +1642,12 @@ namespace Gumaedaehang
         {
             LogWindow.AddLogStatic($"🔥 키워드 추가 버튼 클릭됨 - 상품 ID: {productId}");
             
-            // ⭐ 키워드 생성한 상품 ID 저장
-            _keywordSourceProductId = productId;
+            // ⭐ 키워드 생성한 상품 키 저장 (storeId_productId)
+            if (_productElements.TryGetValue(productId, out var productElem))
+            {
+                _keywordSourceProductKey = $"{productElem.StoreId}_{productElem.RealProductId}";
+                LogWindow.AddLogStatic($"🔑 키워드 소스 키 저장: {_keywordSourceProductKey}");
+            }
             
             // ⭐ 추가 버튼은 크롤링 플래그 리셋
             await ResetCrawlingAllowed();
@@ -3488,9 +3492,9 @@ namespace Gumaedaehang
                 {
                     LogWindow.AddLogStatic($"✅ {keywords.Count}개 키워드 추출 완료");
                     
-                    // ⭐ 키워드 태그 바로 표시
+                    // ⭐ 키워드 태그 바로 표시 (productKey 기반)
                     await Dispatcher.UIThread.InvokeAsync(() => {
-                        CreateKeywordTags(keywords, _keywordSourceProductId);
+                        CreateKeywordTagsByKey(keywords, _keywordSourceProductKey);
                     });
                 }
                 else
@@ -3886,8 +3890,14 @@ namespace Gumaedaehang
         {
             try
             {
-                var currentProductId = _keywordSourceProductId;
-                var keywords = await GetLatestKeywordsFromServer(currentProductId);
+                var currentProductKey = _keywordSourceProductKey;
+                if (string.IsNullOrEmpty(currentProductKey)) return;
+                
+                // productKey에서 productId 추출 (기존 API 호환)
+                var product = _productElements.Values.FirstOrDefault(p => $"{p.StoreId}_{p.RealProductId}" == currentProductKey);
+                if (product == null) return;
+                
+                var keywords = await GetLatestKeywordsFromServer(product.ProductId);
                 
                 if (keywords != null && keywords.Count > 0)
                 {
@@ -3895,7 +3905,7 @@ namespace Gumaedaehang
                     
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        CreateKeywordTags(keywords, currentProductId);
+                        CreateKeywordTagsByKey(keywords, currentProductKey);
                     });
                     
                     LogWindow.AddLogStatic("✅ 키워드 태그 자동 생성 완료");
@@ -3925,12 +3935,26 @@ namespace Gumaedaehang
         {
             try
             {
-                // ⭐ 현재 상품 ID를 로컬 변수로 캡처 (전역 변수가 변경되어도 안전)
-                var currentProductId = _keywordSourceProductId;
-                LogWindow.AddLogStatic($"🏷️ SourcingPage - 키워드 태그 생성 시작 (상품 ID: {currentProductId})");
+                // ⭐ 현재 상품 키를 로컬 변수로 캡처
+                var currentProductKey = _keywordSourceProductKey;
+                if (string.IsNullOrEmpty(currentProductKey))
+                {
+                    LogWindow.AddLogStatic("⚠️ 키워드 소스 상품 키가 없습니다.");
+                    return;
+                }
                 
-                // ⭐ 실제 서버에서 키워드 받아오기 (상품 ID 전달)
-                var keywords = await GetLatestKeywordsFromServer(currentProductId);
+                // productKey에서 productId 추출 (기존 API 호환)
+                var product = _productElements.Values.FirstOrDefault(p => $"{p.StoreId}_{p.RealProductId}" == currentProductKey);
+                if (product == null)
+                {
+                    LogWindow.AddLogStatic($"⚠️ 키 {currentProductKey}에 해당하는 상품을 찾을 수 없습니다.");
+                    return;
+                }
+                
+                LogWindow.AddLogStatic($"🏷️ SourcingPage - 키워드 태그 생성 시작 (키: {currentProductKey})");
+                
+                // ⭐ 실제 서버에서 키워드 받아오기
+                var keywords = await GetLatestKeywordsFromServer(product.ProductId);
                 
                 if (keywords != null)
                 {
@@ -3940,19 +3964,19 @@ namespace Gumaedaehang
                     }
                     else
                     {
-                        LogWindow.AddLogStatic($"🏷️ 서버에서 빈 키워드 수신 (상품 ID: {currentProductId})");
+                        LogWindow.AddLogStatic($"🏷️ 서버에서 빈 키워드 수신 (키: {currentProductKey})");
                     }
                     
                     // ⭐ 상품별로 키워드 저장
-                    _productKeywords[currentProductId] = keywords;
+                    _productKeywords[product.ProductId] = keywords;
                     
                     // ⭐ 키워드가 있든 없든 무조건 UI 업데이트 (기존 태그 제거 포함)
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        CreateKeywordTags(keywords, currentProductId);
+                        CreateKeywordTagsByKey(keywords, currentProductKey);
                     });
                     
-                    LogWindow.AddLogStatic($"✅ 키워드 태그 UI 업데이트 완료 (상품 ID: {currentProductId}, 키워드 {keywords.Count}개)");
+                    LogWindow.AddLogStatic($"✅ 키워드 태그 UI 업데이트 완료 (키: {currentProductKey}, 키워드 {keywords.Count}개)");
                 }
                 else
                 {
@@ -4006,6 +4030,157 @@ namespace Gumaedaehang
                 LogWindow.AddLogStatic($"❌ 서버에서 키워드 받아오기 오류: {ex.Message}");
                 Debug.WriteLine($"서버에서 키워드 받아오기 오류: {ex.Message}");
                 return null;
+            }
+        }
+
+        // ⭐ 키워드 태그 UI 생성 (productKey 기반 - 삭제 후에도 정확한 카드 찾기)
+        private void CreateKeywordTagsByKey(List<string> keywords, string targetProductKey)
+        {
+            try
+            {
+                LogWindow.AddLogStatic($"🏷️ {keywords.Count}개 키워드 태그 생성 시작 (키: {targetProductKey})");
+                
+                if (string.IsNullOrEmpty(targetProductKey))
+                {
+                    LogWindow.AddLogStatic("❌ 대상 상품 키가 없습니다.");
+                    return;
+                }
+                
+                // ⭐ RealDataContainer에서 Tag로 상품 카드 찾기
+                var container = this.FindControl<StackPanel>("RealDataContainer");
+                if (container == null)
+                {
+                    LogWindow.AddLogStatic("❌ RealDataContainer를 찾을 수 없습니다.");
+                    return;
+                }
+
+                // Tag가 targetProductKey와 일치하는 카드 찾기
+                var targetProductCard = container.Children.OfType<StackPanel>()
+                    .FirstOrDefault(sp => sp.Tag?.ToString() == targetProductKey);
+
+                if (targetProductCard == null)
+                {
+                    LogWindow.AddLogStatic($"❌ 키 {targetProductKey}에 해당하는 카드를 찾을 수 없습니다.");
+                    return;
+                }
+                
+                LogWindow.AddLogStatic($"🎯 키 {targetProductKey}에 해당하는 카드 발견");
+
+                // ⭐ 기존 키워드 패널 완전 제거
+                var existingKeywordPanel = targetProductCard.Children.OfType<StackPanel>()
+                    .FirstOrDefault(sp => sp.Name == "KeywordTagPanel");
+                if (existingKeywordPanel != null)
+                {
+                    targetProductCard.Children.Remove(existingKeywordPanel);
+                }
+
+                if (keywords == null || keywords.Count == 0) return;
+
+                // ⭐ 키워드 태그 패널 생성
+                var keywordPanel = new StackPanel
+                {
+                    Name = "KeywordTagPanel",
+                    Orientation = Orientation.Vertical,
+                    Margin = new Thickness(0, 15, 0, 15),
+                    Spacing = 10
+                };
+
+                var keywordBorder = new Border
+                {
+                    BorderBrush = new SolidColorBrush(Color.Parse("#FF8A46")),
+                    BorderThickness = new Thickness(2),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(10, 10),
+                    Height = 170,
+                    Width = 1150,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                    Background = new SolidColorBrush(Colors.Transparent)
+                };
+
+                var keywordScrollViewer = new ScrollViewer
+                {
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+                };
+
+                var keywordWrapPanel = new StackPanel { Orientation = Orientation.Vertical, Spacing = 5 };
+                var currentRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+                double currentRowWidth = 0;
+                const double maxRowWidth = 1100;
+
+                foreach (var keyword in keywords)
+                {
+                    var keywordTag = new Border
+                    {
+                        Background = new SolidColorBrush(Color.Parse("#E67E22")),
+                        CornerRadius = new CornerRadius(12),
+                        Padding = new Thickness(10, 5),
+                        Cursor = new Cursor(StandardCursorType.Hand),
+                        Child = new TextBlock
+                        {
+                            Text = keyword,
+                            Foreground = Brushes.White,
+                            FontSize = 11,
+                            FontWeight = FontWeight.Medium,
+                            FontFamily = new FontFamily("Malgun Gothic")
+                        }
+                    };
+
+                    keywordTag.PointerPressed += (s, e) => OnKeywordTagClickedByKey(keyword, targetProductKey);
+
+                    double tagWidth = keyword.Length * 12 + 30;
+                    if (currentRowWidth + tagWidth > maxRowWidth && currentRow.Children.Count > 0)
+                    {
+                        keywordWrapPanel.Children.Add(currentRow);
+                        currentRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+                        currentRowWidth = 0;
+                    }
+
+                    currentRow.Children.Add(keywordTag);
+                    currentRowWidth += tagWidth;
+                }
+
+                if (currentRow.Children.Count > 0)
+                    keywordWrapPanel.Children.Add(currentRow);
+
+                keywordScrollViewer.Content = keywordWrapPanel;
+                keywordBorder.Child = keywordScrollViewer;
+                keywordPanel.Children.Add(keywordBorder);
+
+                // 리뷰 Border 앞에 삽입
+                var insertIndex = -1;
+                if (targetProductCard.Children.Count > 2 && targetProductCard.Children[2] is Border)
+                    insertIndex = 2;
+
+                if (insertIndex >= 0)
+                    targetProductCard.Children.Insert(insertIndex, keywordPanel);
+                else
+                    targetProductCard.Children.Add(keywordPanel);
+
+                LogWindow.AddLogStatic($"✅ 키워드 태그 {keywords.Count}개 UI 생성 완료 (키: {targetProductKey})");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 태그 생성 오류: {ex.Message}");
+            }
+        }
+        
+        // ⭐ 키워드 태그 클릭 이벤트 (productKey 기반)
+        private void OnKeywordTagClickedByKey(string keyword, string productKey)
+        {
+            try
+            {
+                var product = _productElements.Values.FirstOrDefault(p => $"{p.StoreId}_{p.RealProductId}" == productKey);
+                if (product?.NameInputBox != null)
+                {
+                    var currentText = product.NameInputBox.Text ?? "";
+                    product.NameInputBox.Text = string.IsNullOrEmpty(currentText) ? keyword : $"{currentText} {keyword}";
+                    LogWindow.AddLogStatic($"🏷️ 키워드 '{keyword}' 추가됨 (키: {productKey})");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 키워드 태그 클릭 오류: {ex.Message}");
             }
         }
 
