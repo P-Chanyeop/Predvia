@@ -959,11 +959,7 @@ namespace Gumaedaehang
                     }
                 };
                 
-                // 상품명 입력박스에도 기본값 설정
-                if (!string.IsNullOrEmpty(productName))
-                {
-                    nameInputText.Text = productName;
-                }
+                // ⭐ 상품명 입력칸은 비워둠 - 사용자가 키워드 조합해서 입력
 
                 // 키워드 태그들 (더미데이터 제거됨)
                 var keywordPanel = new WrapPanel();
@@ -984,8 +980,8 @@ namespace Gumaedaehang
                 };
                 var addButton = new Button 
                 { 
-                    Content = "추가", 
-                    Width = 50, 
+                    Content = "🔍 키워드 검색", 
+                    Width = 110, 
                     Height = 30,
                     FontSize = 12,
                     FontFamily = new FontFamily("Malgun Gothic"),
@@ -1015,12 +1011,12 @@ namespace Gumaedaehang
                     Height = 30,
                     FontSize = 12,
                     FontFamily = new FontFamily("Malgun Gothic"),
-                    Watermark = "키워드 입력"
+                    Watermark = "직접 입력"
                 };
                 var attachButton = new Button 
                 { 
-                    Content = "첨부", 
-                    Width = 50, 
+                    Content = "➕ 상품명에 추가", 
+                    Width = 120, 
                     Height = 30,
                     FontSize = 12,
                     FontFamily = new FontFamily("Malgun Gothic"),
@@ -1270,11 +1266,12 @@ namespace Gumaedaehang
                         FontSize = 10,
                         FontFamily = new FontFamily("Malgun Gothic"),
                         Width = 100,
-                        Height = 22,
+                        Height = 26,
                         Background = new SolidColorBrush(Color.Parse("#E67E22")),
                         Foreground = new SolidColorBrush(Colors.White),
                         HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                         HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center,
                         IsVisible = false, // 처음엔 숨김, 페어링 후 표시
                         Name = $"TaobaoOpenUrl_{cardId}_{currentIndex}"
                     };
@@ -5400,7 +5397,7 @@ namespace Gumaedaehang
                     
                     var categoryInfo = GetCategoryInfo(card.StoreId, card.RealProductId);
                     var productName = card.ProductName ?? "";
-                    var byteCount = Encoding.UTF8.GetByteCount(productName);
+                    var byteCount = CalculateByteCount(productName); // ⭐ UI와 동일한 계산 방식 사용
 
                     worksheet.Cell(row, 1).Value = categoryInfo;
                     worksheet.Cell(row, 2).Value = productName;
