@@ -209,8 +209,8 @@ namespace Gumaedaehang
                 // 초기 상태 설정
                 UpdateViewVisibility();
                 
-                // 크롤링된 데이터 자동 로드 (비동기)
-                _ = Task.Run(() => LoadCrawledData());
+                // ⭐ 자동 로드 제거 - 각 페이지 접속 시에만 로드
+                // _ = Task.Run(() => LoadCrawledData());
                 
                 // 테스트 로그 추가
                 LogWindow.AddLogStatic("🔥 SourcingPage 초기화 완료 - 버튼 테스트 준비됨");
@@ -848,7 +848,8 @@ namespace Gumaedaehang
                 { 
                     Stretch = Stretch.Uniform, 
                     Margin = new Thickness(10),
-                    ImagePath = imageUrl
+                    // ⭐ imageUrl이 없거나 파일이 없으면 동적으로 경로 생성
+                    ImagePath = GetValidImagePath(imageUrl, storeId, productId)
                 };
                 imageBorder.Child = image;
 
@@ -1002,7 +1003,7 @@ namespace Gumaedaehang
                 keywordInputPanel.Children.Add(keywordInput);
                 keywordInputPanel.Children.Add(addButton);
 
-                // 상품명 직접 입력 + 첨부 버튼
+                // 상품명 직접 입력 + 첨부 버튼 + 배대지 비용
                 var nameDirectInputPanel = new StackPanel 
                 { 
                     Orientation = Orientation.Horizontal, 
@@ -1028,6 +1029,32 @@ namespace Gumaedaehang
                     HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
                 };
                 
+                // 배대지 비용 라벨 + 입력칸
+                var shippingLabel = new TextBlock
+                {
+                    Text = "배대지:",
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    Margin = new Thickness(15, 0, 0, 0)
+                };
+                var shippingInput = new TextBox
+                {
+                    Width = 70,
+                    Height = 30,
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Watermark = "0",
+                    Name = $"ShippingCost_{cardId}"
+                };
+                var shippingUnit = new TextBlock
+                {
+                    Text = "원",
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+                
                 // 첨부 버튼 이벤트 연결
                 attachButton.Click += (s, e) => {
                     LogWindow.AddLogStatic($"📎 첨부 버튼 클릭 감지됨! CardId: {cardId}");
@@ -1036,6 +1063,9 @@ namespace Gumaedaehang
                 
                 nameDirectInputPanel.Children.Add(nameDirectInput);
                 nameDirectInputPanel.Children.Add(attachButton);
+                nameDirectInputPanel.Children.Add(shippingLabel);
+                nameDirectInputPanel.Children.Add(shippingInput);
+                nameDirectInputPanel.Children.Add(shippingUnit);
 
                 // 정보 패널에 모든 요소 추가
                 infoPanel.Children.Add(nameLabel);
@@ -1178,6 +1208,7 @@ namespace Gumaedaehang
                 for (int i = 0; i < 5; i++)
                 {
                     var productBox = new StackPanel { Spacing = 10 };
+                    var currentIndex = i; // 클로저용 변수
                     
                     // 타오바오 상품 이미지 박스 (클릭 가능)
                     var logoBorder = new Border
@@ -1187,7 +1218,9 @@ namespace Gumaedaehang
                         Background = new SolidColorBrush(Color.Parse("#F5F5F5")),
                         CornerRadius = new CornerRadius(8),
                         Cursor = new Cursor(StandardCursorType.Hand),
-                        Tag = "",  // 타오바오 URL 저장용
+                        Tag = $"{cardId}_{currentIndex}_url_",  // cardId_index_url_ 형식
+                        BorderBrush = new SolidColorBrush(Color.Parse("#CCCCCC")),
+                        BorderThickness = new Thickness(1),
                         Child = new Grid
                         {
                             Children =
@@ -1206,9 +1239,10 @@ namespace Gumaedaehang
                                 // 타오바오 상품 이미지 (처음엔 숨김)
                                 new Image
                                 {
-                                    Width = 160,
-                                    Height = 120,
-                                    Stretch = Avalonia.Media.Stretch.UniformToFill,
+                                    Width = 150,
+                                    Height = 110,
+                                    Stretch = Avalonia.Media.Stretch.Uniform,
+                                    Margin = new Thickness(5),
                                     IsVisible = false,
                                     Name = $"TaobaoImage_{cardId}_{i}"
                                 }
@@ -1229,8 +1263,28 @@ namespace Gumaedaehang
                         Name = $"TaobaoInfo_{cardId}_{i}"
                     };
                     
+                    // 상품 페이지 열기 버튼
+                    var openUrlButton = new Button
+                    {
+                        Content = "상품 페이지 열기",
+                        FontSize = 10,
+                        FontFamily = new FontFamily("Malgun Gothic"),
+                        Width = 100,
+                        Height = 22,
+                        Background = new SolidColorBrush(Color.Parse("#E67E22")),
+                        Foreground = new SolidColorBrush(Colors.White),
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        IsVisible = false, // 처음엔 숨김, 페어링 후 표시
+                        Name = $"TaobaoOpenUrl_{cardId}_{currentIndex}"
+                    };
+                    var capturedCardId = cardId;
+                    var capturedIndex = currentIndex;
+                    openUrlButton.Click += (s, e) => OpenTaobaoProductUrl(capturedCardId, capturedIndex);
+                    
                     productBox.Children.Add(logoBorder);
                     productBox.Children.Add(infoText);
+                    productBox.Children.Add(openUrlButton);
                     productBoxPanel.Children.Add(productBox);
                 }
 
@@ -1244,6 +1298,7 @@ namespace Gumaedaehang
                 container.Children.Add(productContainer);
 
                 // ProductUIElements 생성 및 저장
+                var shippingInputBox = this.FindControl<TextBox>($"ShippingCost_{cardId}");
                 var productElement = new ProductUIElements
                 {
                     ProductId = cardId,
@@ -1255,6 +1310,7 @@ namespace Gumaedaehang
                     ByteCountTextBlock = byteCountText,
                     KeywordPanel = keywordPanel,
                     KeywordInputBox = keywordInput,
+                    ShippingCostInput = shippingInput, // ⭐ 배대지 비용 입력박스
                     AddKeywordButton = addButton,
                     DeleteButton = deleteButton, // 삭제 버튼 참조 추가
                     HoldButton = holdButton, // 보류 버튼 참조 추가
@@ -1888,6 +1944,25 @@ namespace Gumaedaehang
             if (!_productElements.TryGetValue(productId, out var product)) return;
             if (product.TaobaoProductsPanel == null) return;
             
+            // ⭐ 타오바오 데이터를 TaobaoProductData 리스트로 변환하여 저장
+            var taobaoList = new List<TaobaoProductData>();
+            foreach (var item in products.EnumerateArray())
+            {
+                var data = new TaobaoProductData
+                {
+                    Nid = item.TryGetProperty("nid", out var n) ? n.GetString() ?? "" : "",
+                    Title = item.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "",
+                    Price = item.TryGetProperty("price", out var p) ? p.GetString() ?? "" : "",
+                    ImageUrl = item.TryGetProperty("img", out var img) ? img.GetString() ?? "" : "",
+                    ProductUrl = item.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "",
+                    Sales = item.TryGetProperty("sales", out var s) ? s.GetString() ?? "" : ""
+                };
+                taobaoList.Add(data);
+            }
+            product.TaobaoProducts = taobaoList;
+            product.IsTaobaoPaired = taobaoList.Count > 0;
+            LogWindow.AddLogStatic($"💾 상품 {productId}에 타오바오 데이터 {taobaoList.Count}개 저장됨");
+            
             int count = 0;
             foreach (var item in products.EnumerateArray())
             {
@@ -1900,6 +1975,7 @@ namespace Gumaedaehang
                 
                 var logoBorder = productBox.Children[0] as Border;
                 var infoText = productBox.Children[1] as TextBlock;
+                var openUrlButton = productBox.Children.Count > 2 ? productBox.Children[2] as Button : null;
                 if (logoBorder == null) { count++; continue; }
                 
                 // JSON 필드명: nid, img, price, url, sales (서버 TaobaoProduct 클래스 기준)
@@ -1914,7 +1990,7 @@ namespace Gumaedaehang
                 // URL 설정 (타오바오 링크)
                 if (string.IsNullOrEmpty(productUrl) && !string.IsNullOrEmpty(nid))
                     productUrl = $"https://item.taobao.com/item.htm?id={nid}";
-                logoBorder.Tag = productUrl;
+                logoBorder.Tag = $"{productId}_{count}_url_{productUrl}"; // cardId_index_url_URL 형식
                 
                 // 이미지 로드 (로컬 저장)
                 if (!string.IsNullOrEmpty(imageUrl) && logoBorder.Child is Grid grid)
@@ -1952,6 +2028,12 @@ namespace Gumaedaehang
                     
                     infoText.Text = priceStr + salesStr;
                     infoText.Foreground = Avalonia.Media.Brushes.Red;
+                }
+                
+                // 상품 페이지 열기 버튼 표시
+                if (openUrlButton != null)
+                {
+                    openUrlButton.IsVisible = true;
                 }
                 
                 count++;
@@ -4310,124 +4392,84 @@ namespace Gumaedaehang
                 if (_productElements.TryGetValue(cardId, out var productElement))
                 {
                     productElement.TaobaoProducts = products;
+                    productElement.IsTaobaoPaired = products.Count > 0;
                     LogWindow.AddLogStatic($"💾 상품 {cardId}에 타오바오 데이터 {products.Count}개 저장");
                 }
+                else
+                {
+                    return;
+                }
 
-                LogWindow.AddLogStatic($"🔍 타오바오 패널 찾기 시작: TaobaoProductPanel_{cardId}");
-                
-                // RealDataContainer 찾기
-                var container = this.FindControl<StackPanel>("RealDataContainer");
-                if (container == null)
-                {
-                    LogWindow.AddLogStatic("❌ RealDataContainer를 찾을 수 없습니다");
-                    return;
-                }
-                
-                // 모든 StackPanel 찾기
-                var allPanels = container.FindAll<StackPanel>();
-                LogWindow.AddLogStatic($"🔍 전체 StackPanel 개수: {allPanels.Count()}");
-                
-                // 이름이 있는 패널들 로그
-                var namedPanels = allPanels.Where(p => !string.IsNullOrEmpty(p.Name)).ToList();
-                LogWindow.AddLogStatic($"🔍 이름 있는 패널 개수: {namedPanels.Count}");
-                foreach (var np in namedPanels.Take(10))
-                {
-                    LogWindow.AddLogStatic($"  - {np.Name}");
-                }
-                
-                // 타오바오 상품 패널 찾기
-                var panel = allPanels.FirstOrDefault(p => p.Name == $"TaobaoProductPanel_{cardId}");
-                
-                if (panel == null)
-                {
-                    LogWindow.AddLogStatic($"⚠️ 타오바오 상품 패널을 찾을 수 없습니다: {cardId}");
-                    return;
-                }
-                
-                LogWindow.AddLogStatic($"✅ 타오바오 패널 발견: {panel.Name}");
+                if (productElement.TaobaoProductsPanel == null) return;
                 
                 // 최대 5개 상품 표시
                 for (int i = 0; i < Math.Min(5, products.Count); i++)
                 {
                     var product = products[i];
                     
-                    // 이미지 찾기
-                    var image = container.FindAll<Image>()
-                        .FirstOrDefault(img => img.Name == $"TaobaoImage_{cardId}_{i}");
+                    // 기존 productBoxPanel의 자식 StackPanel 가져오기
+                    if (i >= productElement.TaobaoProductsPanel.Children.Count) break;
+                    var productBox = productElement.TaobaoProductsPanel.Children[i] as StackPanel;
+                    if (productBox == null || productBox.Children.Count < 2) continue;
                     
-                    // 플레이스홀더 텍스트 찾기
-                    var placeholder = container.FindAll<TextBlock>()
-                        .FirstOrDefault(tb => tb.Name == $"PlaceholderText_{cardId}_{i}");
+                    var logoBorder = productBox.Children[0] as Border;
+                    var infoText = productBox.Children[1] as TextBlock;
+                    var openUrlButton = productBox.Children.Count > 2 ? productBox.Children[2] as Button : null;
+                    if (logoBorder == null) continue;
                     
-                    // 정보 텍스트 찾기
-                    var infoText = container.FindAll<TextBlock>()
-                        .FirstOrDefault(tb => tb.Name == $"TaobaoInfo_{cardId}_{i}");
+                    // URL 설정
+                    var productUrl = product.ProductUrl;
+                    if (string.IsNullOrEmpty(productUrl) && !string.IsNullOrEmpty(product.Nid))
+                        productUrl = $"https://item.taobao.com/item.htm?id={product.Nid}";
+                    logoBorder.Tag = $"{cardId}_{i}_url_{productUrl}";
                     
-                    // Border 찾기 (URL 저장용)
-                    var border = image?.Parent?.Parent as Border;
+                    // ⭐ 클릭 이벤트 등록 (중복 방지)
+                    logoBorder.PointerPressed -= OnTaobaoProductClick;
+                    logoBorder.PointerPressed += OnTaobaoProductClick;
                     
-                    if (image != null && !string.IsNullOrEmpty(product.ImageUrl))
+                    // 이미지 로드
+                    if (!string.IsNullOrEmpty(product.ImageUrl) && logoBorder.Child is Grid grid)
                     {
-                        // ⭐ 로컬 다운로드 방식으로 고화질 이미지 로드
-                        _ = Task.Run(async () =>
+                        foreach (var child in grid.Children)
                         {
-                            try
+                            if (child is TextBlock placeholder) placeholder.IsVisible = false;
+                            if (child is Avalonia.Controls.Image taobaoImg)
                             {
-                                // 로컬에 다운로드
-                                var localFilePath = await DownloadTaobaoImageToLocal(product.ImageUrl, cardId, i);
-
-                                if (!string.IsNullOrEmpty(localFilePath) && File.Exists(localFilePath))
-                                {
-                                    // UI 스레드에서 이미지 표시
-                                    await Dispatcher.UIThread.InvokeAsync(() =>
-                                    {
-                                        var bitmap = new Avalonia.Media.Imaging.Bitmap(localFilePath);
-                                        image.Source = bitmap;
-                                        image.IsVisible = true;
-
-                                        // 플레이스홀더 숨기기
-                                        if (placeholder != null)
-                                        {
-                                            placeholder.IsVisible = false;
-                                        }
-
-                                        LogWindow.AddLogStatic($"✅ 타오바오 이미지 표시 완료: {System.IO.Path.GetFileName(localFilePath)}");
-                                    });
-                                }
+                                taobaoImg.IsVisible = true;
+                                LoadTaobaoImage(taobaoImg, product.ImageUrl, cardId, i);
                             }
-                            catch (Exception imgEx)
-                            {
-                                LogWindow.AddLogStatic($"⚠️ 타오바오 이미지 로드 실패 ({product.ImageUrl}): {imgEx.Message}");
-                            }
-                        });
+                        }
                     }
                     
-                    // ⭐ 가격 + 리뷰 표시 (깔끔한 형식)
+                    // 가격 + 판매량 표시
                     if (infoText != null)
                     {
-                        var parts = new List<string>();
-
-                        // 가격 (필수)
-                        if (!string.IsNullOrEmpty(product.Price))
+                        var priceStr = "";
+                        if (!string.IsNullOrEmpty(product.Price) && product.Price != "0")
                         {
-                            parts.Add($"¥{product.Price}");
+                            var priceNum = product.Price.Replace("¥", "").Trim();
+                            priceStr = $"{priceNum} 위안";
                         }
-
-                        // 리뷰 개수
-                        if (!string.IsNullOrEmpty(product.Reviews) && product.Reviews != "0")
+                        
+                        var salesStr = "";
+                        if (!string.IsNullOrEmpty(product.Sales) && product.Sales != "0")
                         {
-                            parts.Add($"{product.Reviews}개");
+                            salesStr = $" | 판매량 {product.Sales}";
                         }
-
-                        infoText.Text = parts.Count > 0 ? string.Join(" | ", parts) : "정보 없음";
+                        
+                        infoText.Text = priceStr + salesStr;
+                        infoText.Foreground = Avalonia.Media.Brushes.Red;
                     }
                     
-                    // URL 저장
-                    if (border != null && !string.IsNullOrEmpty(product.ProductUrl))
+                    // ⭐ 상품 페이지 열기 버튼 표시
+                    if (openUrlButton != null)
                     {
-                        border.Tag = product.ProductUrl;
+                        openUrlButton.IsVisible = true;
                     }
                 }
+                
+                // ⭐ 선택된 인덱스 UI 업데이트
+                UpdateTaobaoSelectionUI(cardId, productElement.SelectedTaobaoIndex);
                 
                 LogWindow.AddLogStatic($"✅ 타오바오 상품 박스 업데이트 완료: {cardId}");
             }
@@ -4641,16 +4683,99 @@ namespace Gumaedaehang
             }
         }
         
-        // ⭐ 타오바오 상품 클릭 이벤트
+        // ⭐ 타오바오 상품 클릭 이벤트 - 선택 기능만 (URL 열기는 버튼으로)
         private void OnTaobaoProductClick(object? sender, Avalonia.Input.PointerPressedEventArgs e)
         {
             try
             {
-                if (sender is Border border && border.Tag is string url && !string.IsNullOrEmpty(url))
+                if (sender is Border border)
+                {
+                    // Tag에서 cardId와 index 추출 (형식: "cardId_index_url_URL")
+                    var tagParts = (border.Tag as string)?.Split(new[] { "_url_" }, 2, StringSplitOptions.None);
+                    if (tagParts == null || tagParts.Length < 1) return;
+                    
+                    var idParts = tagParts[0].Split('_');
+                    if (idParts.Length < 2) return;
+                    
+                    if (!int.TryParse(idParts[0], out int cardId)) return;
+                    if (!int.TryParse(idParts[1], out int index)) return;
+                    
+                    // 선택된 인덱스 저장
+                    if (_productElements.TryGetValue(cardId, out var product))
+                    {
+                        product.SelectedTaobaoIndex = index;
+                        LogWindow.AddLogStatic($"✅ 상품 {cardId}: 타오바오 상품 {index + 1}번 선택됨");
+                        
+                        // UI 업데이트 - 선택된 상품 테두리 강조
+                        UpdateTaobaoSelectionUI(cardId, index);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 타오바오 상품 선택 오류: {ex.Message}");
+            }
+        }
+        
+        // ⭐ 타오바오 선택 UI 업데이트
+        private void UpdateTaobaoSelectionUI(int cardId, int selectedIndex)
+        {
+            if (!_productElements.TryGetValue(cardId, out var product))
+            {
+                LogWindow.AddLogStatic($"⚠️ 선택 UI 업데이트 실패: cardId {cardId} 없음");
+                return;
+            }
+            if (product.TaobaoProductsPanel == null)
+            {
+                LogWindow.AddLogStatic($"⚠️ 선택 UI 업데이트 실패: TaobaoProductsPanel null");
+                return;
+            }
+            
+            int index = 0;
+            foreach (var child in product.TaobaoProductsPanel.Children)
+            {
+                if (child is StackPanel stackPanel && stackPanel.Children.Count > 0)
+                {
+                    var border = stackPanel.Children[0] as Border;
+                    if (border != null)
+                    {
+                        // 선택된 상품은 주황색 테두리 3px, 나머지는 회색 1px
+                        if (index == selectedIndex)
+                        {
+                            border.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E67E22"));
+                            border.BorderThickness = new Thickness(3);
+                            LogWindow.AddLogStatic($"🔶 상품 {cardId}: {index + 1}번 테두리 강조");
+                        }
+                        else
+                        {
+                            border.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC"));
+                            border.BorderThickness = new Thickness(1);
+                        }
+                    }
+                    index++;
+                }
+            }
+        }
+        
+        // ⭐ 타오바오 상품 URL 열기
+        private void OpenTaobaoProductUrl(int cardId, int index)
+        {
+            try
+            {
+                if (!_productElements.TryGetValue(cardId, out var product)) return;
+                if (product.TaobaoProducts == null || index >= product.TaobaoProducts.Count) return;
+                
+                var url = product.TaobaoProducts[index].ProductUrl;
+                if (string.IsNullOrEmpty(url))
+                {
+                    var nid = product.TaobaoProducts[index].Nid;
+                    if (!string.IsNullOrEmpty(nid))
+                        url = $"https://item.taobao.com/item.htm?id={nid}";
+                }
+                
+                if (!string.IsNullOrEmpty(url))
                 {
                     LogWindow.AddLogStatic($"🔗 타오바오 상품 페이지 열기: {url}");
-                    
-                    // 새 탭에서 타오바오 페이지 열기
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = url,
@@ -4660,7 +4785,7 @@ namespace Gumaedaehang
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 타오바오 페이지 열기 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ URL 열기 오류: {ex.Message}");
             }
         }
 
@@ -4900,7 +5025,7 @@ namespace Gumaedaehang
         }
 
         // ⭐ 상품 카드 데이터를 JSON으로 저장
-        private void SaveProductCardsToJson()
+        private async void SaveProductCardsToJson()
         {
             try
             {
@@ -4914,22 +5039,40 @@ namespace Gumaedaehang
 
                 var jsonFilePath = System.IO.Path.Combine(predviaPath, "product_cards.json");
 
-                // ProductUIElements를 ProductCardData로 변환
-                var productCards = _productElements.Values
-                    .Where(p => p.StoreId != null && p.RealProductId != null)
-                    .Select(p => new ProductCardData
+                // 기존 JSON 로드 (순서 유지)
+                var productCards = new List<ProductCardData>();
+                if (File.Exists(jsonFilePath))
+                {
+                    var existingJson = File.ReadAllText(jsonFilePath);
+                    productCards = JsonSerializer.Deserialize<List<ProductCardData>>(existingJson) ?? new List<ProductCardData>();
+                }
+
+                // 현재 UI 데이터를 딕셔너리로
+                var uiData = new Dictionary<string, ProductUIElements>();
+                foreach (var p in _productElements.Values.Where(p => p.StoreId != null && p.RealProductId != null))
+                {
+                    uiData[$"{p.StoreId}_{p.RealProductId}"] = p;
+                }
+
+                // 기존 순서 유지하면서 업데이트
+                foreach (var card in productCards)
+                {
+                    var key = $"{card.StoreId}_{card.RealProductId}";
+                    if (uiData.TryGetValue(key, out var p))
                     {
-                        ProductId = p.ProductId,
-                        StoreId = p.StoreId,
-                        RealProductId = p.RealProductId,
-                        ImageUrl = GetProductImageUrl(p.ProductId),
-                        ProductName = p.NameInputBox?.Text ?? "",
-                        ProductNameKeywords = p.ProductNameKeywords ?? new List<string>(),
-                        SelectedKeywords = p.SelectedKeywords ?? new List<string>(),
-                        IsTaobaoPaired = p.IsTaobaoPaired,
-                        TaobaoProducts = p.TaobaoProducts ?? new List<TaobaoProductData>()
-                    })
-                    .ToList();
+                        int shippingCost = 0;
+                        if (p.ShippingCostInput != null && !string.IsNullOrEmpty(p.ShippingCostInput.Text))
+                        {
+                            int.TryParse(p.ShippingCostInput.Text.Replace(",", ""), out shippingCost);
+                        }
+                        
+                        card.ProductName = p.NameInputBox?.Text ?? card.ProductName;
+                        card.IsTaobaoPaired = p.IsTaobaoPaired || card.IsTaobaoPaired;
+                        card.TaobaoProducts = p.TaobaoProducts?.Count > 0 ? p.TaobaoProducts : card.TaobaoProducts;
+                        card.ShippingCost = shippingCost > 0 ? shippingCost : card.ShippingCost;
+                        card.SelectedTaobaoIndex = p.SelectedTaobaoIndex;
+                    }
+                }
 
                 var options = new JsonSerializerOptions
                 {
@@ -4941,6 +5084,33 @@ namespace Gumaedaehang
                 File.WriteAllText(jsonFilePath, json);
 
                 LogWindow.AddLogStatic($"💾 상품 데이터 저장 완료: {productCards.Count}개 상품 ({jsonFilePath})");
+                
+                // ⭐ 저장 완료 피드백
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    var msgBox = new Window
+                    {
+                        Title = "저장 완료",
+                        Width = 300,
+                        Height = 120,
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                        CanResize = false,
+                        Content = new StackPanel
+                        {
+                            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                            Children =
+                            {
+                                new TextBlock { Text = $"✅ {productCards.Count}개 상품 저장 완료!", FontSize = 16, Margin = new Thickness(0, 0, 0, 15) },
+                                new Button { Content = "확인", Width = 80, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center }
+                            }
+                        }
+                    };
+                    ((msgBox.Content as StackPanel)?.Children[1] as Button)!.Click += (s, e) => msgBox.Close();
+                    msgBox.Show();
+                    await Task.Delay(2000);
+                    if (msgBox.IsVisible) msgBox.Close();
+                });
             }
             catch (Exception ex)
             {
@@ -4972,6 +5142,25 @@ namespace Gumaedaehang
             catch { }
             return null;
         }
+        
+        // ⭐ 유효한 이미지 경로 반환 (동적 생성)
+        private string GetValidImagePath(string? imageUrl, string storeId, string productId)
+        {
+            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var imagesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Images");
+            var localPath = System.IO.Path.Combine(imagesPath, $"{storeId}_{productId}_main.jpg");
+            
+            // 로컬 파일이 있으면 사용
+            if (File.Exists(localPath))
+                return localPath;
+            
+            // imageUrl이 유효하고 파일이 있으면 사용
+            if (!string.IsNullOrEmpty(imageUrl) && File.Exists(imageUrl))
+                return imageUrl;
+            
+            // 없으면 로컬 경로 반환 (LazyImage에서 처리)
+            return localPath;
+        }
 
         // ⭐ JSON에서 상품 카드 데이터 로드
         private async void LoadProductCardsFromJson()
@@ -5002,8 +5191,10 @@ namespace Gumaedaehang
                 var container = this.FindControl<StackPanel>("RealDataContainer");
                 if (container != null)
                 {
+                    LogWindow.AddLogStatic($"🧹 기존 카드 초기화: {container.Children.Count}개 → 0개");
                     container.Children.Clear();
                 }
+                LogWindow.AddLogStatic($"🧹 _productElements 초기화: {_productElements.Count}개 → 0개");
                 _productElements.Clear();
 
                 // ⭐ 비동기 배치 로드
@@ -5018,7 +5209,12 @@ namespace Gumaedaehang
                         // ⭐ 타오바오 매칭 데이터 복원
                         if (card.TaobaoProducts != null && card.TaobaoProducts.Count > 0)
                         {
-                            UpdateTaobaoProductBoxes(card.ProductId, card.TaobaoProducts);
+                            // 선택된 인덱스도 복원
+                            if (_productElements.TryGetValue(count, out var elem))
+                            {
+                                elem.SelectedTaobaoIndex = card.SelectedTaobaoIndex;
+                            }
+                            UpdateTaobaoProductBoxes(count, card.TaobaoProducts);
                         }
                         
                         // 10개마다 UI 업데이트 + 진행률 표시
@@ -5071,21 +5267,18 @@ namespace Gumaedaehang
         {
             try
             {
-                // 타오바오 페어링된 상품 개수 확인
-                var container = this.FindControl<StackPanel>("RealDataContainer");
-                if (container == null) return;
-
+                // 저장된 JSON 파일에서 타오바오 페어링 확인
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var jsonFilePath = System.IO.Path.Combine(appDataPath, "Predvia", "product_cards.json");
+                
                 int pairedCount = 0;
-                foreach (var productCard in container.Children.OfType<StackPanel>())
+                if (File.Exists(jsonFilePath))
                 {
-                    if (productCard.Tag is string tagStr && tagStr.Contains("_"))
+                    var json = File.ReadAllText(jsonFilePath);
+                    var savedCards = JsonSerializer.Deserialize<List<ProductCardData>>(json);
+                    if (savedCards != null)
                     {
-                        var parts = tagStr.Split('_');
-                        if (parts.Length >= 2)
-                        {
-                            var taobaoProducts = GetTaobaoProductsFromFile(parts[0], parts[1]);
-                            if (taobaoProducts.Count > 0) pairedCount++;
-                        }
+                        pairedCount = savedCards.Count(c => c.IsTaobaoPaired || (c.TaobaoProducts != null && c.TaobaoProducts.Count > 0));
                     }
                 }
 
@@ -5139,41 +5332,35 @@ namespace Gumaedaehang
         // 📊 Excel 파일 생성 메서드
         private async Task ExportToExcel(string filePath)
         {
-            // UI 스레드에서 데이터 수집
-            var container = this.FindControl<StackPanel>("RealDataContainer");
-            if (container == null)
+            // 저장된 JSON 파일에서 데이터 읽기
+            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var jsonFilePath = System.IO.Path.Combine(appDataPath, "Predvia", "product_cards.json");
+            
+            if (!File.Exists(jsonFilePath))
             {
-                LogWindow.AddLogStatic("❌ RealDataContainer를 찾을 수 없습니다.");
+                LogWindow.AddLogStatic("❌ 저장된 상품 데이터가 없습니다. 먼저 저장해주세요.");
                 return;
             }
-
-            var productCards = container.Children.OfType<StackPanel>().ToList();
-            var productDataList = new List<(string storeId, string productId, string taobaoUrl)>();
-
-            foreach (var productCard in productCards)
+            
+            var json = File.ReadAllText(jsonFilePath);
+            var savedCards = JsonSerializer.Deserialize<List<ProductCardData>>(json);
+            
+            if (savedCards == null)
             {
-                if (productCard.Tag is string tagStr && tagStr.Contains("_"))
-                {
-                    var parts = tagStr.Split('_');
-                    if (parts.Length >= 2)
-                    {
-                        var taobaoProducts = GetTaobaoProductsFromFile(parts[0], parts[1]);
-                        if (taobaoProducts.Count > 0)
-                        {
-                            // 첫 번째 타오바오 상품 링크 사용
-                            var firstProduct = taobaoProducts[0];
-                            var taobaoUrl = $"https://item.taobao.com/item.htm?id={firstProduct.Nid}";
-                            productDataList.Add((parts[0], parts[1], taobaoUrl));
-                        }
-                    }
-                }
+                LogWindow.AddLogStatic("❌ 상품 데이터 파싱 실패");
+                return;
             }
-
-            if (productDataList.Count == 0)
+            
+            // 타오바오 페어링된 상품만 필터링
+            var pairedCards = savedCards.Where(c => c.TaobaoProducts != null && c.TaobaoProducts.Count > 0).ToList();
+            
+            if (pairedCards.Count == 0)
             {
                 LogWindow.AddLogStatic("⚠️ 타오바오 페어링된 상품이 없습니다.");
                 return;
             }
+            
+            LogWindow.AddLogStatic($"📊 {pairedCards.Count}개 상품 Excel 내보내기 중...");
 
             // 백그라운드 스레드에서 Excel 생성
             await Task.Run(() =>
@@ -5200,17 +5387,26 @@ namespace Gumaedaehang
                 // 데이터 행 (3행부터)
                 int row = 3;
                 
-                foreach (var (storeId, productId, taobaoUrl) in productDataList)
+                foreach (var card in pairedCards)
                 {
-                    var categoryInfo = GetCategoryInfo(storeId, productId);
-                    var productName = GetProductNameFromFile(storeId, productId);
+                    // 선택된 타오바오 상품 가져오기 (인덱스 범위 체크)
+                    var selectedIndex = Math.Min(card.SelectedTaobaoIndex, card.TaobaoProducts.Count - 1);
+                    selectedIndex = Math.Max(0, selectedIndex);
+                    var selectedTaobao = card.TaobaoProducts[selectedIndex];
+                    
+                    var taobaoUrl = !string.IsNullOrEmpty(selectedTaobao.ProductUrl) 
+                        ? selectedTaobao.ProductUrl 
+                        : $"https://item.taobao.com/item.htm?id={selectedTaobao.Nid}";
+                    
+                    var categoryInfo = GetCategoryInfo(card.StoreId, card.RealProductId);
+                    var productName = card.ProductName ?? "";
                     var byteCount = Encoding.UTF8.GetByteCount(productName);
 
                     worksheet.Cell(row, 1).Value = categoryInfo;
                     worksheet.Cell(row, 2).Value = productName;
                     worksheet.Cell(row, 3).Value = byteCount;
-                    worksheet.Cell(row, 4).Value = 0;
-                    worksheet.Cell(row, 5).Value = taobaoUrl;
+                    worksheet.Cell(row, 4).Value = card.ShippingCost; // ⭐ 저장된 배대지 비용
+                    worksheet.Cell(row, 5).Value = taobaoUrl; // ⭐ 선택된 타오바오 URL
                     worksheet.Cell(row, 6).Value = "";
                     worksheet.Cell(row, 7).Value = 0;
                     worksheet.Cell(row, 8).Value = "";
@@ -5302,6 +5498,12 @@ namespace Gumaedaehang
 
         [JsonPropertyName("taobaoProducts")]
         public List<TaobaoProductData> TaobaoProducts { get; set; } = new();
+        
+        [JsonPropertyName("shippingCost")]
+        public int ShippingCost { get; set; } = 0; // 배대지 비용
+        
+        [JsonPropertyName("selectedTaobaoIndex")]
+        public int SelectedTaobaoIndex { get; set; } = 0; // 선택된 타오바오 상품 인덱스
     }
 
     // 상품별 UI 요소들을 관리하는 클래스
@@ -5319,6 +5521,7 @@ namespace Gumaedaehang
         public TextBlock? ByteCountTextBlock { get; set; }
         public WrapPanel? KeywordPanel { get; set; }
         public TextBox? KeywordInputBox { get; set; }
+        public TextBox? ShippingCostInput { get; set; } // ⭐ 배대지 비용 입력박스
         public Button? AddKeywordButton { get; set; }
         public Button? DeleteButton { get; set; }
         public Button? HoldButton { get; set; }
@@ -5329,6 +5532,7 @@ namespace Gumaedaehang
         public List<string> SelectedKeywords { get; set; } = new List<string>();
         public bool IsTaobaoPaired { get; set; } = false;
         public List<TaobaoProductData> TaobaoProducts { get; set; } = new(); // ⭐ 타오바오 상품 데이터 저장
+        public int SelectedTaobaoIndex { get; set; } = 0; // ⭐ 선택된 타오바오 상품 인덱스 (기본 0번)
     }
 }
 

@@ -8,6 +8,7 @@ namespace Gumaedaehang
     public partial class ProductDataPage : SourcingPage
     {
         private CheckBox? _pdSelectAllCheckBox;
+        private Button? _pdSaveButton;
         
         public ProductDataPage() : base()
         {
@@ -18,6 +19,13 @@ namespace Gumaedaehang
             if (_pdSelectAllCheckBox != null)
             {
                 _pdSelectAllCheckBox.Click += PDSelectAllCheckBox_Click;
+            }
+            
+            // 저장 버튼 이벤트 연결
+            _pdSaveButton = this.FindControl<Button>("SaveDataButton");
+            if (_pdSaveButton != null)
+            {
+                _pdSaveButton.Click += PDSaveButton_Click;
             }
 
             // ⭐ UI 렌더링 후 JSON 데이터 로드
@@ -33,6 +41,15 @@ namespace Gumaedaehang
                     if (_pdSelectAllCheckBox != null)
                     {
                         _pdSelectAllCheckBox.Click += PDSelectAllCheckBox_Click;
+                    }
+                }
+                
+                if (_pdSaveButton == null)
+                {
+                    _pdSaveButton = this.FindControl<Button>("SaveDataButton");
+                    if (_pdSaveButton != null)
+                    {
+                        _pdSaveButton.Click += PDSaveButton_Click;
                     }
                 }
             }, DispatcherPriority.Background);
@@ -60,6 +77,12 @@ namespace Gumaedaehang
             }
             
             LogWindow.AddLogStatic($"✅ [상품데이터] {count}개 체크박스 {(isChecked ? "선택" : "해제")} 완료");
+        }
+        
+        private void PDSaveButton_Click(object? sender, RoutedEventArgs e)
+        {
+            LogWindow.AddLogStatic("💾 [상품데이터] 저장 버튼 클릭");
+            SaveProductCardsToJsonPublic();
         }
     }
 }
