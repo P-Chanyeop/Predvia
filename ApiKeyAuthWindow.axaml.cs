@@ -5,6 +5,10 @@ using Avalonia.Markup.Xaml;
 using Gumaedaehang.Services;
 using System;
 using System.Threading.Tasks;
+using System.Net.Http;
+using System.Text.Json;
+using System.Net.NetworkInformation;
+using System.Linq;
 
 namespace Gumaedaehang
 {
@@ -16,9 +20,8 @@ namespace Gumaedaehang
         private Button? _themeToggleButton;
         private TextBlock? _themeToggleText;
         
-        // API 키 인증 클라이언트
-        private readonly ApiKeyAuthClient _apiKeyAuthClient;
         private bool _isAuthenticating = false;
+        private const long PRODUCT_ID = 13; // Predvia 상품 ID
 
         public ApiKeyAuthWindow()
         {
@@ -27,7 +30,6 @@ namespace Gumaedaehang
             this.AttachDevTools();
 #endif
 
-            // 주 모니터 전체화면 설정
             var screen = Screens.Primary;
             if (screen != null)
             {
@@ -35,31 +37,22 @@ namespace Gumaedaehang
                 WindowState = WindowState.Maximized;
             }
 
-            // API 키 인증 클라이언트 초기화
-            _apiKeyAuthClient = new ApiKeyAuthClient();
-            
-            // UI 요소 참조 가져오기
             _apiKeyTextBox = this.FindControl<TextBox>("apiKeyTextBox");
             _authenticateButton = this.FindControl<Button>("authenticateButton");
             _errorMessage = this.FindControl<TextBlock>("errorMessage");
             _themeToggleButton = this.FindControl<Button>("themeToggleButton");
             _themeToggleText = this.FindControl<TextBlock>("themeToggleText");
             
-            // 이벤트 핸들러 등록
             if (_authenticateButton != null)
                 _authenticateButton.Click += async (s, e) => await AuthenticateButton_Click(s, e);
                 
             if (_themeToggleButton != null)
                 _themeToggleButton.Click += ThemeToggleButton_Click;
                 
-            // 엔터키 이벤트 등록
             if (_apiKeyTextBox != null)
                 _apiKeyTextBox.KeyDown += ApiKeyTextBox_KeyDown;
                 
-            // 현재 테마에 맞게 버튼 텍스트 업데이트
             UpdateThemeToggleText();
-            
-            // 테마 변경 이벤트 구독
             ThemeManager.Instance.ThemeChanged += (sender, theme) => UpdateThemeToggleText();
         }
 
@@ -76,6 +69,19 @@ namespace Gumaedaehang
             }
         }
         
+        private string GetMacAddress()
+        {
+            var networkInterface = NetworkInterface.GetAllNetworkInterfaces()
+                .FirstOrDefault(nic => nic.OperationalStatus == OperationalStatus.Up &&
+                                       nic.NetworkInterfaceType != NetworkInterfaceType.Loopback);
+            if (networkInterface == null)
+                return "Unknown";
+
+            return string.Join(":", networkInterface.GetPhysicalAddress()
+                .GetAddressBytes()
+                .Select(b => b.ToString("X2")));
+        }
+        
         private async Task AuthenticateButton_Click(object? sender, RoutedEventArgs e)
         {
             if (_apiKeyTextBox == null || _authenticateButton == null || _errorMessage == null)
@@ -83,7 +89,6 @@ namespace Gumaedaehang
                 
             string apiKey = _apiKeyTextBox.Text ?? string.Empty;
             
-            // 입력 유효성 검사
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 _errorMessage.Text = "API 키를 입력해주세요.";
@@ -91,7 +96,6 @@ namespace Gumaedaehang
                 return;
             }
             
-            // 중복 인증 방지
             if (_isAuthenticating)
                 return;
                 
@@ -101,29 +105,63 @@ namespace Gumaedaehang
             
             try
             {
-                // API 키 인증 호출 (테스트 모드)
-                var response = await _apiKeyAuthClient.AuthenticateWithApiKeyTestModeAsync(apiKey);
+                // ⭐ 관리자 키 확인 - API 인증 건너뛰기
+                if (AuthManager.IsAdminKey(apiKey))
+                {
+                    AuthManager.Instance.Login("관리자", apiKey, 9999);
+                    var adminWindow = new MainWindow();
+                    adminWindow.Show();
+                    this.Close();
+                    return;
+                }
                 
-                // 인증 성공 처리
-                AuthManager.Instance.Login(response.CompanyName, apiKey);
+                using var client = new HttpClient();
                 
-                // 메인 창으로 이동
+                // 1. API 키 인증
+                string authUrl = $"http://13.209.199.124:8080/api/subscription/hash-key-auth/temp?id={PRODUCT_ID}&hashKey={apiKey}";
+                var authResponse = await client.GetAsync(authUrl);
+                
+                if (!authResponse.IsSuccessStatusCode)
+                {
+                    _errorMessage.Text = "API 인증에 실패하였습니다.";
+                    _errorMessage.IsVisible = true;
+                    return;
+                }
+                
+                string authJson = await authResponse.Content.ReadAsStringAsync();
+                var authDoc = JsonDocument.Parse(authJson);
+                
+                // 2. MAC 주소 검증
+                string macAddress = GetMacAddress();
+                string macUrl = $"http://13.209.199.124:8080/api/subscription/verify-mac/temp?id={PRODUCT_ID}&hashKey={apiKey}&macAddress={macAddress}";
+                var macResponse = await client.PostAsync(macUrl, null);
+                
+                string macJson = await macResponse.Content.ReadAsStringAsync();
+                var macDoc = JsonDocument.Parse(macJson);
+                
+                if (macDoc.RootElement.GetProperty("result").GetString() == "fail")
+                {
+                    _errorMessage.Text = "MAC 주소 인증에 실패하였습니다.";
+                    _errorMessage.IsVisible = true;
+                    return;
+                }
+                
+                // 3. 사용자 정보 추출
+                string nickname = authDoc.RootElement.GetProperty("name").GetString() ?? "사용자";
+                int remainingDays = authDoc.RootElement.GetProperty("remainingDays").GetInt32();
+                
+                // 4. AuthManager에 저장
+                AuthManager.Instance.Login(nickname, apiKey, remainingDays);
+                
+                // 5. 메인 창으로 이동
                 var mainWindow = new MainWindow();
                 mainWindow.Show();
                 this.Close();
             }
-            catch (ApiException ex)
-            {
-                // 인증 실패 처리
-                _errorMessage.Text = ex.ErrorDetails;
-                _errorMessage.IsVisible = true;
-            }
             catch (Exception ex)
             {
-                // 전체 오류 정보 콘솔 출력
-                Console.WriteLine($"[오류] {ex.GetType().FullName}: {ex.Message}");
-                Console.WriteLine($"스택: {ex.StackTrace}");
-                _errorMessage.Text = $"오류: {ex.Message}";
+                Console.WriteLine($"[오류] {ex.Message}");
+                _errorMessage.Text = $"연결 오류: {ex.Message}";
                 _errorMessage.IsVisible = true;
             }
             finally
@@ -135,7 +173,6 @@ namespace Gumaedaehang
         
         private void ThemeToggleButton_Click(object? sender, RoutedEventArgs e)
         {
-            // 테마 전환
             ThemeManager.Instance.ToggleTheme();
         }
         

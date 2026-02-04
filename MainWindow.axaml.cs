@@ -10,6 +10,8 @@ using Gumaedaehang.Services;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace Gumaedaehang
 {
@@ -192,6 +194,19 @@ namespace Gumaedaehang
             if (userWelcomeText != null && AuthManager.Instance.IsAuthenticated)
                 userWelcomeText.Text = $"{AuthManager.Instance.Username} 님 어서오세요.";
             
+            // 잔여 일수 업데이트
+            var remainingDaysText = this.FindControl<TextBlock>("RemainingDaysText");
+            if (remainingDaysText != null && AuthManager.Instance.IsAuthenticated)
+                remainingDaysText.Text = $"{AuthManager.Instance.RemainingDays} 일";
+            
+            // ⭐ 작업로그 버튼 - 관리자만 표시
+            var logButton = this.FindControl<Button>("LogButton");
+            if (logButton != null)
+                logButton.IsVisible = AuthManager.Instance.IsAdmin;
+            
+            // 엑셀 다운로드 횟수 조회
+            _ = RefreshExcelDownloadCount();
+            
             // 현재 테마에 맞게 버튼 텍스트 업데이트
             if (themeToggleText != null)
                 themeToggleText.Text = ThemeManager.Instance.IsDarkTheme ? "라이트모드" : "다크모드";
@@ -354,18 +369,20 @@ namespace Gumaedaehang
             _logWindow.Activate();
         }        
         // 탭 전환 메서드들
-        public void SourcingTab_Click(object? sender, RoutedEventArgs e)
+        public async void SourcingTab_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("SourcingTab_Click called");
             ShowContent(_sourcingContent);
             UpdateTabStyles(_sourcingTab);
+            await RefreshExcelDownloadCount();
         }
 
-        public void ProductDataTab_Click(object? sender, RoutedEventArgs e)
+        public async void ProductDataTab_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("ProductDataTab_Click called");
             ShowContent(_productDataContent);
             UpdateTabStyles(_productDataTab);
+            await RefreshExcelDownloadCount();
 
             // ⭐ 탭 클릭할 때마다 JSON 로드
             if (_productDataContent?.Content is ProductDataPage productDataPage)
@@ -374,25 +391,28 @@ namespace Gumaedaehang
             }
         }
 
-        public void MarketCheckTab_Click(object? sender, RoutedEventArgs e)
+        public async void MarketCheckTab_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("MarketCheckTab_Click called");
             ShowContent(_marketCheckContent);
             UpdateTabStyles(_marketCheckTab);
+            await RefreshExcelDownloadCount();
         }
         
-        public void MainProductTab_Click(object? sender, RoutedEventArgs e)
+        public async void MainProductTab_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("MainProductTab_Click called");
             ShowContent(_mainProductContent);
             UpdateTabStyles(_mainProductTab);
+            await RefreshExcelDownloadCount();
         }
         
-        public void SettingsTab_Click(object? sender, RoutedEventArgs e)
+        public async void SettingsTab_Click(object? sender, RoutedEventArgs e)
         {
             Debug.WriteLine("SettingsTab_Click called");
             ShowContent(_settingsContent);
             UpdateTabStyles(_settingsTab);
+            await RefreshExcelDownloadCount();
         }
         
         // 콘텐츠 표시 메서드
@@ -669,6 +689,50 @@ namespace Gumaedaehang
         {
             var overlay = this.FindControl<Grid>("LoadingOverlay");
             if (overlay != null) overlay.IsVisible = false;
+        }
+        
+        // ⭐ 엑셀 다운로드 남은 횟수 조회 (관리자는 건너뛰기)
+        public async Task RefreshExcelDownloadCount()
+        {
+            try
+            {
+                if (!AuthManager.Instance.IsAuthenticated || string.IsNullOrEmpty(AuthManager.Instance.Token))
+                    return;
+                
+                // 관리자는 무제한
+                if (AuthManager.Instance.IsAdmin)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        var countText = this.FindControl<TextBlock>("ExcelDownloadCountText");
+                        if (countText != null)
+                            countText.Text = "무제한";
+                    });
+                    return;
+                }
+                
+                using var client = new HttpClient();
+                string url = $"http://13.209.199.124:8080/api/excel/remaining-downloads?apiKey={AuthManager.Instance.Token}";
+                var response = await client.GetAsync(url);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    string json = await response.Content.ReadAsStringAsync();
+                    var doc = JsonDocument.Parse(json);
+                    int remaining = doc.RootElement.GetProperty("remainingDownloads").GetInt32();
+                    
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        var countText = this.FindControl<TextBlock>("ExcelDownloadCountText");
+                        if (countText != null)
+                            countText.Text = $"{remaining}/100";
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"엑셀 다운로드 횟수 조회 실패: {ex.Message}");
+            }
         }
     }
 }

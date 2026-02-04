@@ -5627,6 +5627,32 @@ namespace Gumaedaehang
                     return;
                 }
 
+                // ⭐ 엑셀 다운로드 API 호출 (관리자는 건너뛰기)
+                if (!AuthManager.Instance.IsAdmin)
+                {
+                    int downloadCount = selectedCards.Count;
+                    using var httpClient = new HttpClient();
+                    
+                    string apiUrl = $"http://13.209.199.124:8080/api/excel/request-download?apiKey={AuthManager.Instance.Token}&count={downloadCount}";
+                    var apiResponse = await httpClient.PostAsync(apiUrl, null);
+                    string apiJson = await apiResponse.Content.ReadAsStringAsync();
+                    var apiDoc = JsonDocument.Parse(apiJson);
+                    
+                    bool success = apiDoc.RootElement.GetProperty("success").GetBoolean();
+                    if (!success)
+                    {
+                        string message = apiDoc.RootElement.GetProperty("message").GetString() ?? "다운로드 권한이 없습니다.";
+                        LogWindow.AddLogStatic($"❌ 엑셀 다운로드 실패: {message}");
+                        await ShowMessageBox(mainWindow, message);
+                        
+                        if (mainWindow != null)
+                            await mainWindow.RefreshExcelDownloadCount();
+                        return;
+                    }
+                    
+                    LogWindow.AddLogStatic($"✅ 엑셀 다운로드 권한 확인 완료 ({downloadCount}개 차감)");
+                };
+
                 LogWindow.AddLogStatic($"📊 Excel 내보내기 시작... (선택된 상품: {selectedCards.Count}개)");
                 
                 // 현재 날짜+시간으로 파일명 자동 생성
@@ -5665,6 +5691,10 @@ namespace Gumaedaehang
                 // ⭐ 완료 메시지 박스 표시
                 await ShowMessageBox(mainWindow, $"Excel 내보내기 완료!\n{selectedCards.Count}개 상품이 저장되었습니다.");
                 LogWindow.AddLogStatic($"✅ Excel 파일 저장 완료: {result}");
+                
+                // ⭐ MainWindow의 횟수 갱신
+                if (mainWindow != null)
+                    await mainWindow.RefreshExcelDownloadCount();
             }
             catch (Exception ex)
             {

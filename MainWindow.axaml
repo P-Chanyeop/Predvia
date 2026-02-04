@@ -60,11 +60,11 @@
                                    Foreground="{DynamicResource ForegroundBrush}"/>
                     </StackPanel>
                 </Button>                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                    <TextBlock Text="진여 일수:" 
+                    <TextBlock Text="잔여 일수:" 
                                FontSize="16" 
                                Foreground="{DynamicResource ForegroundBrush}"
                                VerticalAlignment="Center"/>
-                    <TextBlock Text="7 일" 
+                    <TextBlock x:Name="RemainingDaysText" Text="- 일" 
                                FontSize="16" 
                                Foreground="#F47B20"
                                FontWeight="Bold"
@@ -76,7 +76,7 @@
                                FontSize="16" 
                                Foreground="{DynamicResource ForegroundBrush}"
                                VerticalAlignment="Center"/>
-                    <TextBlock Text="20/100" 
+                    <TextBlock x:Name="ExcelDownloadCountText" Text="-/-" 
                                FontSize="16" 
                                Foreground="#F47B20"
                                FontWeight="Bold"
