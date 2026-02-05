@@ -134,6 +134,17 @@
                         VerticalAlignment="Center"
                         FontWeight="Bold"
                         Click="ExportExcelButton_Click"/>
+                
+                <!-- 타오바오 검색 방식 스위치 -->
+                <Border Background="#F5F5F5" CornerRadius="8" Padding="10,5" Margin="20,0,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="타오바오 검색:" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
+                        <ToggleSwitch x:Name="TaobaoSearchModeSwitch" 
+                                      OnContent="로그인" OffContent="비로그인"
+                                      IsChecked="True"
+                                      FontSize="12"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <!-- 실제 상품 데이터가 여기에 동적으로 추가됩니다 -->

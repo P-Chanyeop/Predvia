@@ -332,10 +332,11 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/taobao/proxy-search", HandleTaobaoProxySearch); // ⭐ 프록시 기반 이미지 검색 (서버 측)
                 _app.MapGet("/api/taobao/get-search-image", HandleGetSearchImage); // ⭐ 검색 이미지 데이터 조회 (content script용)
                 _app.MapPost("/api/taobao/image-search-result", HandleImageSearchResult); // ⭐ 이미지 검색 결과 수신 (content script용)
+                _app.MapPost("/api/google-lens/search", HandleGoogleLensSearch); // ⭐ 구글렌즈 타오바오 검색
                 _app.MapPost("/api/imgur/upload", HandleImgurUpload); // ⭐ 이미지 업로드
                 _app.MapGet("/temp-image/{fileName}", (HttpContext ctx, string fileName) => HandleTempImage(ctx, fileName)); // ⭐ 임시 이미지 서빙
                 
-                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (29개)");
+                LogWindow.AddLogStatic("✅ API 엔드포인트 등록 완료 (30개)");
 
                 // ⭐ 서버 변수 초기화
                 lock (_counterLock)
@@ -2232,6 +2233,233 @@ namespace Gumaedaehang.Services
             {
                 return Task.FromResult(Results.BadRequest(new { error = ex.Message }));
             }
+        }
+        
+        // ⭐ 구글렌즈 타오바오 검색 핸들러
+        private async Task<IResult> HandleGoogleLensSearch(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var body = await reader.ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<GoogleLensSearchRequest>(body);
+                
+                if (data == null || string.IsNullOrEmpty(data.ImageBase64))
+                {
+                    return Results.BadRequest(new { error = "이미지 데이터 필요" });
+                }
+                
+                LogWindow.AddLogStatic($"🔍 [1688 검색] 상품 {data.ProductId} 검색 시작");
+                
+                var imageBytes = Convert.FromBase64String(data.ImageBase64);
+                
+                // 1688 이미지 검색 (비로그인)
+                var products = await Search1688ByImage(imageBytes);
+                
+                LogWindow.AddLogStatic($"✅ 1688 검색 완료: {products.Count}개 상품 발견");
+                
+                var responseJson = JsonSerializer.Serialize(new { success = true, products = products });
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync(responseJson);
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 1688 검색 오류: {ex.Message}");
+                var errorJson = JsonSerializer.Serialize(new { success = false, error = ex.Message });
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync(errorJson);
+                return Results.Ok();
+            }
+        }
+        
+        // ⭐ 1688 이미지 검색 (비로그인) -> 알리바바 API로 변경
+        private async Task<List<TaobaoProduct>> Search1688ByImage(byte[] imageBytes)
+        {
+            var products = new List<TaobaoProduct>();
+            
+            try
+            {
+                // 프록시 사용
+                var proxy = GetRandomProxy();
+                using var handler = new HttpClientHandler();
+                if (proxy != null)
+                {
+                    handler.Proxy = new System.Net.WebProxy(proxy);
+                    handler.UseProxy = true;
+                    LogWindow.AddLogStatic($"🔄 알리바바 프록시: {proxy}");
+                }
+                
+                using var client = new HttpClient(handler);
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+                client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.5");
+                
+                // 1. Sign 가져오기
+                var signUrl = "https://open-s.alibaba.com/openservice/ossUploadSecretKeyDataService?appKey=a5m1ismomeptugvfmkkjnwwqnwyrhpb1&appName=magellan";
+                var signResponse = await client.GetAsync(signUrl);
+                var signJson = await signResponse.Content.ReadAsStringAsync();
+                
+                LogWindow.AddLogStatic($"📝 Sign 응답: {signJson.Substring(0, Math.Min(200, signJson.Length))}...");
+                
+                var signData = JsonSerializer.Deserialize<JsonElement>(signJson);
+                if (!signData.TryGetProperty("data", out var data))
+                {
+                    LogWindow.AddLogStatic("❌ Sign 데이터 없음");
+                    return products;
+                }
+                
+                var host = data.GetProperty("host").GetString() ?? "";
+                var signature = data.GetProperty("signature").GetString() ?? "";
+                var policy = data.GetProperty("policy").GetString() ?? "";
+                var accessId = data.GetProperty("accessid").GetString() ?? "";
+                var imagePath = data.GetProperty("imagePath").GetString() ?? "";
+                
+                // 2. 이미지 키 생성
+                var random = new Random();
+                var randomStr = new string(Enumerable.Range(0, 10).Select(_ => "abcdefghijklmnopqrstuvwxyz"[random.Next(26)]).ToArray());
+                var imageKey = $"{imagePath}/{randomStr}{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+                
+                LogWindow.AddLogStatic($"🔑 이미지 키: {imageKey}");
+                
+                // 3. OSS 업로드 (프록시 없이 - OSS는 직접 연결)
+                using var uploadClient = new HttpClient();
+                var boundary = $"----WebKitFormBoundary{Guid.NewGuid():N}".Substring(0, 40);
+                
+                var sb = new System.Text.StringBuilder();
+                var fileName = $"{randomStr}.jpg";
+                
+                var fields = new Dictionary<string, string>
+                {
+                    { "name", fileName },
+                    { "key", imageKey },
+                    { "policy", policy },
+                    { "OSSAccessKeyId", accessId },
+                    { "success_action_status", "200" },
+                    { "callback", "" },
+                    { "signature", signature }
+                };
+                
+                foreach (var field in fields)
+                {
+                    sb.Append($"--{boundary}\r\n");
+                    sb.Append($"Content-Disposition: form-data; name=\"{field.Key}\"\r\n\r\n");
+                    sb.Append($"{field.Value}\r\n");
+                }
+                
+                sb.Append($"--{boundary}\r\n");
+                sb.Append($"Content-Disposition: form-data; name=\"file\"; filename=\"{fileName}\"\r\n");
+                sb.Append("Content-Type: application/octet-stream\r\n\r\n");
+                
+                var headerBytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+                var footerBytes = System.Text.Encoding.UTF8.GetBytes($"\r\n--{boundary}--\r\n");
+                
+                var bodyBytes = new byte[headerBytes.Length + imageBytes.Length + footerBytes.Length];
+                Buffer.BlockCopy(headerBytes, 0, bodyBytes, 0, headerBytes.Length);
+                Buffer.BlockCopy(imageBytes, 0, bodyBytes, headerBytes.Length, imageBytes.Length);
+                Buffer.BlockCopy(footerBytes, 0, bodyBytes, headerBytes.Length + imageBytes.Length, footerBytes.Length);
+                
+                var uploadContent = new ByteArrayContent(bodyBytes);
+                uploadContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("multipart/form-data");
+                uploadContent.Headers.ContentType.Parameters.Add(new System.Net.Http.Headers.NameValueHeaderValue("boundary", boundary));
+                
+                var uploadResponse = await uploadClient.PostAsync(host, uploadContent);
+                LogWindow.AddLogStatic($"📤 업로드: {uploadResponse.StatusCode}");
+                
+                if (uploadResponse.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    LogWindow.AddLogStatic("❌ 이미지 업로드 실패");
+                    return products;
+                }
+                
+                // 4. 이미지 검색 (프록시 사용)
+                var searchUrl = $"https://www.alibaba.com/picture/search.htm?imageType=oss&escapeQp=true&imageAddress=/{imageKey}&sourceFrom=imageupload";
+                LogWindow.AddLogStatic($"🔍 검색 URL: {searchUrl}");
+                
+                client.DefaultRequestHeaders.Add("Referer", "https://www.alibaba.com/");
+                var searchResponse = await client.GetAsync(searchUrl);
+                var searchHtml = await searchResponse.Content.ReadAsStringAsync();
+                
+                LogWindow.AddLogStatic($"📄 검색 HTML 길이: {searchHtml.Length}");
+                
+                // HTML 일부 로그 (디버깅용)
+                if (searchHtml.Contains("product-detail"))
+                    LogWindow.AddLogStatic("✅ product-detail 포함");
+                if (searchHtml.Contains("offer"))
+                    LogWindow.AddLogStatic("✅ offer 포함");
+                    
+                // 5. HTML에서 상품 추출
+                // 알리바바 offer 링크 패턴 (더 일반적)
+                var patterns = new[]
+                {
+                    @"//www\.alibaba\.com/product-detail/[^""'\s<>]+",
+                    @"//[a-z]+\.alibaba\.com/product/\d+\.html",
+                    @"href=""([^""]*alibaba\.com[^""]*product[^""]*)"
+                };
+                
+                var uniqueUrls = new HashSet<string>();
+                
+                // 1. 상품 이미지 추출 (//s.alicdn.com/@sc04/kf/ 또는 //s.alicdn.com/@sc01/kf/ 패턴)
+                var imgPattern = new System.Text.RegularExpressions.Regex(
+                    @"<img[^>]*src=""(//s\.alicdn\.com/@sc\d+/kf/[^""]+)""",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                var imageUrls = imgPattern.Matches(searchHtml)
+                    .Cast<System.Text.RegularExpressions.Match>()
+                    .Select(m => "https:" + m.Groups[1].Value)
+                    .Distinct().ToList();
+                
+                LogWindow.AddLogStatic($"🖼️ 상품 이미지 {imageUrls.Count}개 발견");
+                
+                // 2. 상품 링크 추출
+                var linkPattern = new System.Text.RegularExpressions.Regex(
+                    @"//www\.alibaba\.com/product-detail/[^""'\s<>]+",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                var linkMatches = linkPattern.Matches(searchHtml);
+                
+                int imgIndex = 0;
+                foreach (System.Text.RegularExpressions.Match match in linkMatches)
+                {
+                    var productUrl = "https:" + match.Value.Split('"')[0].Split('\'')[0];
+                    if (uniqueUrls.Add(productUrl))
+                    {
+                        var idMatch = System.Text.RegularExpressions.Regex.Match(productUrl, @"(\d{10,})");
+                        var imageUrl = imgIndex < imageUrls.Count ? imageUrls[imgIndex++] : "";
+                        
+                        products.Add(new TaobaoProduct
+                        {
+                            ProductId = idMatch.Success ? idMatch.Groups[1].Value : Guid.NewGuid().ToString("N").Substring(0, 8),
+                            Title = "알리바바 상품",
+                            ProductUrl = productUrl,
+                            ImageUrl = imageUrl,
+                            Price = "",
+                            Sales = ""
+                        });
+                        LogWindow.AddLogStatic($"🔗 상품: {productUrl.Substring(0, Math.Min(50, productUrl.Length))}, 이미지: {(string.IsNullOrEmpty(imageUrl) ? "없음" : "있음")}");
+                        if (products.Count >= 5) break;
+                    }
+                }
+                
+                // 상품 못 찾으면 검색 URL 반환
+                if (products.Count == 0)
+                {
+                    products.Add(new TaobaoProduct
+                    {
+                        ProductId = imageKey,
+                        Title = "알리바바 검색 결과 보기 (클릭)",
+                        ProductUrl = searchUrl,
+                        ImageUrl = "",
+                        Price = "",
+                        Sales = ""
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 알리바바 검색 오류: {ex.Message}");
+            }
+            
+            return products;
         }
         
         // ⭐ 타오바오 로그인 핸들러
@@ -6263,6 +6491,16 @@ public class ProductCategoryData
         
         [JsonPropertyName("productId")]
         public int ProductId { get; set; }
+    }
+    
+    // ⭐ 구글렌즈 검색 요청 모델
+    public class GoogleLensSearchRequest
+    {
+        [JsonPropertyName("productId")]
+        public int ProductId { get; set; }
+        
+        [JsonPropertyName("imageBase64")]
+        public string ImageBase64 { get; set; } = string.Empty;
     }
     
     // 🔄 소싱 페이지에서 직접 로딩창 숨김

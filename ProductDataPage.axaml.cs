@@ -9,6 +9,7 @@ namespace Gumaedaehang
     {
         private CheckBox? _pdSelectAllCheckBox;
         private Button? _pdSaveButton;
+        private ToggleSwitch? _pdTaobaoSearchModeSwitch;
         
         public ProductDataPage() : base()
         {
@@ -27,6 +28,10 @@ namespace Gumaedaehang
             {
                 _pdSaveButton.Click += PDSaveButton_Click;
             }
+            
+            // 타오바오 검색 모드 스위치
+            _pdTaobaoSearchModeSwitch = this.FindControl<ToggleSwitch>("TaobaoSearchModeSwitch");
+            _taobaoSearchModeSwitch = _pdTaobaoSearchModeSwitch; // 부모 클래스 변수에도 할당
 
             // ⭐ UI 렌더링 후 JSON 데이터 로드
             Dispatcher.UIThread.Post(() =>

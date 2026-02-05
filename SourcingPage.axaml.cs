@@ -83,6 +83,7 @@ namespace Gumaedaehang
         private CheckBox? _selectAllCheckBox;
         private Button? _deleteSelectedButton;
         private Button? _saveDataButton;
+        protected ToggleSwitch? _taobaoSearchModeSwitch; // 타오바오 검색 방식 스위치
         private bool _hasData = false;
         
         // ⭐ 로딩 오버레이 UI 요소
@@ -1310,6 +1311,7 @@ namespace Gumaedaehang
                     ProductId = cardId,
                     StoreId = storeId,
                     RealProductId = productId,
+                    ImagePath = imageUrl, // 실제 이미지 파일 경로 저장 (imageUrl이 실제로는 파일 경로)
                     Container = productContainer, // 컨테이너 참조 추가
                     CheckBox = checkBox, // 체크박스 참조 추가 - 메서드 시작 부분의 checkBox 변수
                     NameInputBox = nameInputText,
@@ -1821,8 +1823,113 @@ namespace Gumaedaehang
             Debug.WriteLine($"상품 {productId} 상품 보류 버튼 클릭됨");
         }
         
-        // 타오바오 페어링 버튼 클릭 이벤트 (프록시 기반 서버 측 검색)
+        // 타오바오 페어링 버튼 클릭 이벤트
         private async void TaobaoPairingButton_Click(int productId)
+        {
+            // 스위치 상태에 따라 검색 방식 분기
+            bool useLoginMode = _taobaoSearchModeSwitch?.IsChecked ?? true;
+            
+            if (useLoginMode)
+            {
+                await TaobaoPairingButton_LoginMode(productId);
+            }
+            else
+            {
+                await TaobaoPairingButton_GoogleLensMode(productId);
+            }
+        }
+        
+        // 구글렌즈 방식 (비로그인)
+        private async Task TaobaoPairingButton_GoogleLensMode(int productId)
+        {
+            LogWindow.AddLogStatic($"🔍 [구글렌즈 검색] 상품 ID: {productId}");
+            
+            if (!_productElements.TryGetValue(productId, out var product)) return;
+            
+            try
+            {
+                // 버튼 비활성화
+                if (product.TaobaoPairingButton != null)
+                {
+                    product.TaobaoPairingButton.IsEnabled = false;
+                    product.TaobaoPairingButton.Content = "검색 중...";
+                }
+                
+                // 이미지 파일 경로 - storeId_realProductId_main.jpg 패턴으로 찾기
+                var imagesPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "Images");
+                var imagePath = System.IO.Path.Combine(imagesPath, $"{product.StoreId}_{product.RealProductId}_main.jpg");
+                
+                LogWindow.AddLogStatic($"📷 이미지 경로: {imagePath}");
+                
+                if (!File.Exists(imagePath))
+                {
+                    LogWindow.AddLogStatic($"❌ 이미지 파일 없음: {product.StoreId}_{product.RealProductId}_main.jpg");
+                    return;
+                }
+                
+                // 이미지를 Base64로 변환
+                var imageBytes = await File.ReadAllBytesAsync(imagePath);
+                var base64Image = Convert.ToBase64String(imageBytes);
+                
+                // 서버에 구글렌즈 검색 요청
+                using var client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(60);
+                
+                var response = await client.PostAsync("http://localhost:8080/api/google-lens/search",
+                    new StringContent(JsonSerializer.Serialize(new { productId, imageBase64 = base64Image }), 
+                    System.Text.Encoding.UTF8, "application/json"));
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    LogWindow.AddLogStatic($"📥 응답: {json.Substring(0, Math.Min(200, json.Length))}");
+                    
+                    if (string.IsNullOrWhiteSpace(json))
+                    {
+                        LogWindow.AddLogStatic("❌ 빈 응답");
+                        return;
+                    }
+                    
+                    var result = JsonSerializer.Deserialize<JsonElement>(json);
+                    
+                    if (result.TryGetProperty("success", out var success) && success.GetBoolean())
+                    {
+                        if (result.TryGetProperty("products", out var products))
+                        {
+                            LogWindow.AddLogStatic($"✅ 구글렌즈 검색 완료: {products.GetArrayLength()}개 상품");
+                            await Dispatcher.UIThread.InvokeAsync(() => DisplayTaobaoProducts(productId, products));
+                        }
+                    }
+                    else
+                    {
+                        var error = result.TryGetProperty("error", out var e) ? e.GetString() : "알 수 없는 오류";
+                        LogWindow.AddLogStatic($"❌ 검색 실패: {error}");
+                    }
+                }
+                else
+                {
+                    LogWindow.AddLogStatic($"❌ HTTP 오류: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 구글렌즈 검색 오류: {ex.Message}");
+            }
+            finally
+            {
+                if (product.TaobaoPairingButton != null)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        product.TaobaoPairingButton.IsEnabled = true;
+                        product.TaobaoPairingButton.Content = "타오바오 페어링";
+                    });
+                }
+            }
+        }
+        
+        // 로그인 방식 (기존 API)
+        private async Task TaobaoPairingButton_LoginMode(int productId)
         {
             LogWindow.AddLogStatic($"🔥 [타오바오 페어링] 상품 ID: {productId}");
             
@@ -5964,6 +6071,7 @@ namespace Gumaedaehang
         public int ProductId { get; set; }
         public string? StoreId { get; set; } // 실제 스토어 ID
         public string? RealProductId { get; set; } // 실제 상품 ID
+        public string? ImagePath { get; set; } // 실제 이미지 파일 경로
         public StackPanel? Container { get; set; } // 상품 카드 컨테이너
         public CheckBox? CheckBox { get; set; }
         public Ellipse? CategoryStatusIndicator { get; set; }
