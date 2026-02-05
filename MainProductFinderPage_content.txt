@@ -1,0 +1,1680 @@
+
+  <UserControl.Styles>
+    <!-- 라이트모드 스타일 -->
+    <Style Selector="UserControl">
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <!-- 다크모드 스타일 -->
+    <Style Selector="UserControl.dark-theme">
+      <Setter Property="Background" Value="#1E1E1E"/>
+    </Style>
+
+    <!-- 상품 카드 스타일 - 라이트모드 (테두리 제거, 왼쪽 정렬) -->
+    <Style Selector="Border.product-card">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="0"/>
+      <Setter Property="Margin" Value="0,20,0,0"/>
+      <Setter Property="Padding" Value="20"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+
+    <!-- 상품 카드 스타일 - 다크모드 (테두리 제거, 크기 조정) -->
+    <Style Selector="UserControl.dark-theme Border.product-card">
+      <Setter Property="Background" Value="#1E1E1E"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <!-- 🔍 검색 페이지 오버레이 스타일 - 라이트모드 -->
+    <Style Selector="Grid#SearchPageOverlay Border">
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <Style Selector="Grid#SearchPageOverlay Border Border">
+      <Setter Property="Background" Value="#F8F9FA"/>
+      <Setter Property="BorderBrush" Value="#E0E6ED"/>
+    </Style>
+    
+    <Style Selector="Grid#SearchPageOverlay TextBlock">
+      <Setter Property="Foreground" Value="#2D3748"/>
+    </Style>
+    
+    <Style Selector="Grid#SearchPageOverlay TextBox">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#2D3748"/>
+      <Setter Property="BorderBrush" Value="#E2E8F0"/>
+    </Style>
+    
+    <Style Selector="Grid#SearchPageOverlay ComboBox">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#2D3748"/>
+      <Setter Property="BorderBrush" Value="#E2E8F0"/>
+    </Style>
+
+    <!-- 🔍 검색 페이지 오버레이 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Grid#SearchPageOverlay Border">
+      <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Grid#SearchPageOverlay Border Border">
+      <Setter Property="Background" Value="#3A3A3A"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Grid#SearchPageOverlay TextBlock">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Grid#SearchPageOverlay TextBox">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Grid#SearchPageOverlay ComboBox">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Grid#SearchPageOverlay CheckBox">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- 검색 페이지 헤더 스타일 -->
+    <Style Selector="Border.search-header">
+      <Setter Property="Background" Value="#E67E22"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Border.search-header">
+      <Setter Property="Background" Value="#FFDAC4"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Border.search-header TextBlock">
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+    
+    <Style Selector="UserControl.dark-theme Border.search-header Button">
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+
+    <!-- 상품명 텍스트 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.product-title">
+      <Setter Property="FontSize" Value="18"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="Margin" Value="0,0,0,20"/>
+    </Style>
+
+    <!-- 상품명 텍스트 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBlock.product-title">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- 정보 패널 스타일 - 라이트모드 (버튼과 정렬 맞춤) -->
+    <Style Selector="Border.info-panel">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="#E67E22"/>
+      <Setter Property="BorderThickness" Value="2"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="20"/>
+      <Setter Property="Margin" Value="0,0,20,0"/>
+      <Setter Property="MinWidth" Value="800"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <!-- 정보 패널 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Border.info-panel">
+      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="BorderBrush" Value="#444444"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <!-- 정보 라벨 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.info-label">
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+
+    <!-- 정보 라벨 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBlock.info-label">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- 정보 값 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.info-value">
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#DF6C29"/>
+      <Setter Property="Margin" Value="0,0,0,15"/>
+    </Style>
+
+    <!-- 정보 값 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBlock.info-value">
+      <Setter Property="Foreground" Value="#FFDAC4"/>
+    </Style>
+
+    <!-- 버튼 스타일 - 라이트모드 (주황색으로 변경) -->
+    <Style Selector="Button.action-button">
+      <Setter Property="Background" Value="#E67E22"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="16,12"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Margin" Value="0,0,12,0"/>
+      <Setter Property="MinWidth" Value="160"/>
+      <Setter Property="Height" Value="42"/>
+    </Style>
+
+    <!-- 버튼 호버 스타일 - 라이트모드 -->
+    <Style Selector="Button.action-button:pointerover">
+      <Setter Property="Background" Value="#D85A1A"/>
+    </Style>
+
+    <!-- 버튼 클릭 스타일 - 라이트모드 -->
+    <Style Selector="Button.action-button:pressed">
+      <Setter Property="Background" Value="#C54E12"/>
+    </Style>
+
+    <!-- 버튼 스타일 - 다크모드 (연한 주황색으로 수정) -->
+    <Style Selector="UserControl.dark-theme Button.action-button">
+      <Setter Property="Background" Value="#FFDAC4"/>
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+
+    <!-- 버튼 호버 스타일 - 다크모드 (연한 주황색으로 수정) -->
+    <Style Selector="UserControl.dark-theme Button.action-button:pointerover">
+      <Setter Property="Background" Value="#FFD0A6"/>
+    </Style>
+
+    <!-- 버튼 클릭 스타일 - 다크모드 (연한 주황색으로 수정) -->
+    <Style Selector="UserControl.dark-theme Button.action-button:pressed">
+      <Setter Property="Background" Value="#FFC088"/>
+    </Style>
+
+    <!-- 상품 이미지 스타일 (크기 대폭 증가) -->
+    <Style Selector="Border.product-image">
+      <Setter Property="Width" Value="320"/>
+      <Setter Property="Height" Value="240"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+
+    <!-- 이미지 플레이스홀더 스타일 - 라이트모드 -->
+    <Style Selector="Border.image-placeholder">
+      <Setter Property="Background" Value="#F0F0F0"/>
+      <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+
+    <!-- 이미지 플레이스홀더 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Border.image-placeholder">
+      <Setter Property="Background" Value="#4A4A4A"/>
+    </Style>
+
+    <!-- 플레이스홀더 텍스트 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.placeholder-text">
+      <Setter Property="Foreground" Value="#999999"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- 플레이스홀더 텍스트 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBlock.placeholder-text">
+      <Setter Property="Foreground" Value="#CCCCCC"/>
+    </Style>
+
+    <!-- 사이드바 스타일 - 라이트모드 -->
+    <Style Selector="Border.sidebar">
+      <Setter Property="Background" Value="#F8F8F8"/>
+      <Setter Property="BorderBrush" Value="#E0E0E0"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="Padding" Value="20"/>
+      <Setter Property="Margin" Value="20,0,0,0"/>
+      <Setter Property="Width" Value="300"/>
+    </Style>
+
+    <!-- 사이드바 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Border.sidebar">
+      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+      <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+
+    <!-- 사이드바 제목 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.sidebar-title">
+      <Setter Property="FontSize" Value="16"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="Margin" Value="0,0,0,15"/>
+    </Style>
+
+    <!-- 사이드바 제목 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBlock.sidebar-title">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- 사이드바 버튼 스타일 - 라이트모드 -->
+    <Style Selector="Button.sidebar-button">
+      <Setter Property="Background" Value="#DF6C29"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="15,10"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="HorizontalAlignment" Value="Right"/>
+      <Setter Property="MinWidth" Value="60"/>
+    </Style>
+
+    <!-- 사이드바 버튼 호버 스타일 - 라이트모드 -->
+    <Style Selector="Button.sidebar-button:pointerover">
+      <Setter Property="Background" Value="#C85A1F"/>
+    </Style>
+
+    <!-- 사이드바 버튼 클릭 스타일 - 라이트모드 -->
+    <Style Selector="Button.sidebar-button:pressed">
+      <Setter Property="Background" Value="#B54A15"/>
+    </Style>
+
+    <!-- 사이드바 버튼 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Button.sidebar-button">
+      <Setter Property="Background" Value="#FFDAC4"/>
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+
+    <!-- 사이드바 버튼 호버 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Button.sidebar-button:pointerover">
+      <Setter Property="Background" Value="#FFD0A6"/>
+    </Style>
+
+    <!-- 사이드바 버튼 클릭 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Button.sidebar-button:pressed">
+      <Setter Property="Background" Value="#FFC088"/>
+    </Style>
+
+    <!-- 사이드바 설명 텍스트 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.sidebar-description">
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Foreground" Value="#666666"/>
+      <Setter Property="Margin" Value="0,20,0,0"/>
+    </Style>
+
+    <!-- 토글 사이드바 스타일 - 라이트모드 -->
+    <Style Selector="Border.toggle-sidebar">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="#E67E22"/>
+    </Style>
+
+    <!-- 토글 사이드바 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme Border.toggle-sidebar">
+      <Setter Property="Background" Value="#2D2D2D"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <!-- 사이드바 제목 텍스트 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.sidebar-title-text">
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+
+    <!-- 사이드바 제목 텍스트 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBlock.sidebar-title-text">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- 사이드바 설명 텍스트 스타일 - 라이트모드 -->
+    <Style Selector="TextBlock.sidebar-desc-text">
+      <Setter Property="Foreground" Value="#444444"/>
+    </Style>
+
+    <!-- 사이드바 설명 텍스트 스타일 - 다크모드 -->
+    <Style Selector="UserControl.dark-theme TextBlock.sidebar-desc-text">
+      <Setter Property="Foreground" Value="#CCCCCC"/>
+    </Style>
+
+    <!-- 다크모드 텍스트 스타일 -->
+    <Style Selector="UserControl.dark-theme TextBlock">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme TextBlock.description">
+      <Setter Property="Foreground" Value="#CCCCCC"/>
+    </Style>
+
+    <!-- 오버레이 다크모드 스타일 -->
+    <Style Selector="UserControl.dark-theme Border.overlay-section">
+      <Setter Property="Background" Value="#3A3A3A"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Border.overlay-preview">
+      <Setter Property="Background" Value="#333333"/>
+      <Setter Property="BorderBrush" Value="#666666"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme TextBox">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme ComboBox">
+      <Setter Property="Background" Value="#4A4A4A"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="#FFDAC4"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme RadioButton">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme CheckBox">
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Button.primary-button">
+      <Setter Property="Background" Value="#FFDAC4"/>
+      <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Button.secondary-button">
+      <Setter Property="Background" Value="#666666"/>
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="UserControl.dark-theme Button.close-button">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#FFDAC4"/>
+    </Style>
+
+  </UserControl.Styles>
+
+  <Grid>
+    <!-- 메인 컨텐츠 영역 -->
+    <ScrollViewer>
+      <StackPanel Margin="20,20,40,20" HorizontalAlignment="Left">
+        
+        <!-- 첫 번째 상품 -->
+        <Border Classes="product-card">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 상품 이미지 -->
+            <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" Classes="product-image" VerticalAlignment="Top">
+              <Border Classes="image-placeholder">
+                <TextBlock Classes="placeholder-text" Text="상품 이미지"/>
+              </Border>
+            </Border>
+
+            <!-- 상품 정보 영역 -->
+            <StackPanel Grid.Column="1" Grid.Row="0" Margin="20,0,0,0">
+              
+              <!-- 상품명 -->
+              <TextBlock Classes="product-title" Text="상품명: 초코 바나나 시럽 핸드폰 나이크"/>
+
+              <!-- 정보 패널 -->
+              <Border Classes="info-panel">
+                <StackPanel>
+                  <TextBlock Classes="info-label" Text="누적판매수:"/>
+                  <TextBlock Classes="info-value" Text="2"/>
+                  
+                  <TextBlock Classes="info-label" Text="동일 키워드 상품 최대 리뷰(해외직구몰 기준):"/>
+                  <TextBlock Classes="info-value" Text="3개"/>
+                  
+                  <TextBlock Classes="info-label" Text="카테고리 제조사:"/>
+                  <TextBlock Classes="info-value" Text="기구"/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <!-- 버튼 영역 (하단 가로 배치) -->
+            <StackPanel Grid.Column="1" Grid.Row="1" 
+                       Orientation="Horizontal" 
+                       HorizontalAlignment="Left"
+                       Margin="20,15,0,0">
+              <Button Classes="action-button" Content="상세페이지 만들기 (BETA)" Click="OnDetailPageButtonClick"/>
+              <Button Classes="action-button" Content="썸네일 만들기 (BETA)" Click="OnThumbnailButtonClick"/>
+              <Button Classes="action-button" Content="타오바오 링크 재배어링 하기" Click="OnTaobaoLinkButtonClick"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- 두 번째 상품 -->
+        <Border Classes="product-card">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 상품 이미지 -->
+            <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" Classes="product-image" VerticalAlignment="Top">
+              <Border Classes="image-placeholder">
+                <TextBlock Classes="placeholder-text" Text="상품 이미지"/>
+              </Border>
+            </Border>
+
+            <!-- 상품 정보 영역 -->
+            <StackPanel Grid.Column="1" Grid.Row="0" Margin="20,0,0,0">
+              
+              <!-- 상품명 -->
+              <TextBlock Classes="product-title" Text="상품명: 초코 바나나 시럽 핸드폰 나이크"/>
+
+              <!-- 정보 패널 -->
+              <Border Classes="info-panel">
+                <StackPanel>
+                  <TextBlock Classes="info-label" Text="누적판매수:"/>
+                  <TextBlock Classes="info-value" Text="2"/>
+                  
+                  <TextBlock Classes="info-label" Text="동일 키워드 상품 최대 리뷰(해외직구몰 기준):"/>
+                  <TextBlock Classes="info-value" Text="3개"/>
+                  
+                  <TextBlock Classes="info-label" Text="카테고리 제조사:"/>
+                  <TextBlock Classes="info-value" Text="기구"/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <!-- 버튼 영역 (하단 가로 배치) -->
+            <StackPanel Grid.Column="1" Grid.Row="1" 
+                       Orientation="Horizontal" 
+                       HorizontalAlignment="Left"
+                       Margin="20,15,0,0">
+              <Button Classes="action-button" Content="상세페이지 만들기 (BETA)" Click="OnDetailPageButtonClick"/>
+              <Button Classes="action-button" Content="썸네일 만들기 (BETA)" Click="OnThumbnailButtonClick"/>
+              <Button Classes="action-button" Content="타오바오 링크 재배어링 하기" Click="OnTaobaoLinkButtonClick"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- 세 번째 상품 -->
+        <Border Classes="product-card">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 상품 이미지 -->
+            <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" Classes="product-image" VerticalAlignment="Top">
+              <Border Classes="image-placeholder">
+                <TextBlock Classes="placeholder-text" Text="상품 이미지"/>
+              </Border>
+            </Border>
+
+            <!-- 상품 정보 영역 -->
+            <StackPanel Grid.Column="1" Grid.Row="0" Margin="20,0,0,0">
+              
+              <!-- 상품명 -->
+              <TextBlock Classes="product-title" Text="상품명: 초코 바나나 시럽 핸드폰 나이크"/>
+
+              <!-- 정보 패널 -->
+              <Border Classes="info-panel">
+                <StackPanel>
+                  <TextBlock Classes="info-label" Text="누적판매수:"/>
+                  <TextBlock Classes="info-value" Text="2"/>
+                  
+                  <TextBlock Classes="info-label" Text="동일 키워드 상품 최대 리뷰(해외직구몰 기준):"/>
+                  <TextBlock Classes="info-value" Text="3개"/>
+                  
+                  <TextBlock Classes="info-label" Text="카테고리 제조사:"/>
+                  <TextBlock Classes="info-value" Text="기구"/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <!-- 버튼 영역 (하단 가로 배치) -->
+            <StackPanel Grid.Column="1" Grid.Row="1" 
+                       Orientation="Horizontal" 
+                       HorizontalAlignment="Left"
+                       Margin="20,15,0,0">
+              <Button Classes="action-button" Content="상세페이지 만들기 (BETA)" Click="OnDetailPageButtonClick"/>
+              <Button Classes="action-button" Content="썸네일 만들기 (BETA)" Click="OnThumbnailButtonClick"/>
+              <Button Classes="action-button" Content="타오바오 링크 재배어링 하기" Click="OnTaobaoLinkButtonClick"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- 사이드바 토글 버튼 -->
+    <Button x:Name="SidebarToggleButton"
+            Width="20" 
+            Height="100"
+            Background="#DF6C29"
+            BorderThickness="0"
+            CornerRadius="12,0,0,12"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            Margin="0,0,0,0"
+            Click="ToggleSidebar"
+            ZIndex="10">
+      <!-- 왼쪽 화살표 아이콘 -->
+      <Path Data="M 7,42 L 3,45 L 7,48" 
+            Stroke="White"
+            StrokeThickness="2"
+            Fill="Transparent"/>
+    </Button>
+    
+    <!-- 사이드바 패널 -->
+    <Grid x:Name="SidebarContainer"
+          HorizontalAlignment="Right"
+          VerticalAlignment="Center"
+          IsVisible="False"
+          ZIndex="20"
+          Margin="0,0,20,0">
+      
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      
+      <!-- 사이드바 닫기 버튼 -->
+      <Button x:Name="SidebarCloseButton"
+              Grid.Column="0"
+              Width="20"
+              Height="100"
+              Background="#DF6C29"
+              BorderThickness="0"
+              CornerRadius="12,0,0,12"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Center"
+              Click="CloseSidebar"
+              Margin="0,0,2,0">
+        <!-- 오른쪽 화살표 아이콘 -->
+        <Path Data="M 3,42 L 7,45 L 3,48" 
+              Stroke="White"
+              StrokeThickness="2"
+              Fill="Transparent"/>
+      </Button>
+      
+      <!-- 메인 사이드바 (14.png와 100% 일치) -->
+      <Border Grid.Column="1"
+              Classes="toggle-sidebar"
+              BorderThickness="2"
+              CornerRadius="12"
+              Padding="25"
+              Width="350"
+              Height="180">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          
+          <!-- 상단 헤더 -->
+          <Grid Grid.Row="0" Margin="0,0,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBlock Grid.Column="0" 
+                       Classes="sidebar-title-text"
+                       Text="내마켓에서 메인상품찾기"
+                       FontSize="17"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center"/>
+            
+            <Button Grid.Column="1" 
+                    Content="찾기"
+                    Background="#E67E22"
+                    Foreground="White"
+                    BorderThickness="0"
+                    CornerRadius="8"
+                    Padding="15,8"
+                    FontSize="14"
+                    FontWeight="Bold"
+                    MinWidth="60"
+                    Click="OnSearchButtonClick"/>
+          </Grid>
+
+          <!-- 하단 설명 (박스 아래쪽에 배치) -->
+          <TextBlock Grid.Row="2"
+                     Classes="sidebar-desc-text"
+                     Text="새로운 메인상품 만들기"
+                     FontSize="17"
+                     FontWeight="Bold"
+                     VerticalAlignment="Bottom"/>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- 상세페이지 만들기 오버레이 -->
+    <Grid x:Name="DetailPageOverlay" 
+          ZIndex="1000" 
+          IsVisible="False"
+          Background="#F5F5F5">
+      <Grid Margin="40">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 헤더 -->
+        <Grid Grid.Row="0" Margin="0,0,0,30">
+          <TextBlock Text="상세페이지 만들기 (BETA)"
+                     FontSize="36"
+                     FontWeight="Bold"
+                     Foreground="#E67E22"
+                     HorizontalAlignment="Center"/>
+          <Button Content="✕"
+                  Classes="close-button"
+                  FontSize="28"
+                  FontWeight="Bold"
+                  Background="Transparent"
+                  Foreground="#E67E22"
+                  BorderThickness="0"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Top"
+                  Click="CloseDetailPageOverlay"
+                  Padding="15"/>
+        </Grid>
+
+        <!-- 메인 컨텐츠 -->
+        <ScrollViewer Grid.Row="1">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="20"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 왼쪽 패널 - 입력 섹션들 -->
+            <StackPanel Grid.Column="0" Spacing="30">
+              
+              <!-- 상품 정보 입력 섹션 -->
+              <Border Classes="overlay-section"
+                      Background="#FFF5E6" 
+                      BorderBrush="#E67E22" 
+                      BorderThickness="3" 
+                      CornerRadius="15" 
+                      Padding="30">
+                <StackPanel Spacing="25">
+                  <TextBlock Text="상품 정보 입력"
+                             FontSize="28"
+                             FontWeight="SemiBold"
+                             Foreground="#333333"/>
+                  
+                  <Grid>
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto"/>
+                      <RowDefinition Height="Auto"/>
+                      <RowDefinition Height="Auto"/>
+                      <RowDefinition Height="Auto"/>
+                      <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,20">
+                      <TextBlock Text="상품명:" FontSize="20" Foreground="#333333"/>
+                      <TextBox x:Name="ProductNameTextBox" FontSize="18" Padding="15" Background="#FFDAC4" BorderBrush="#E67E22" BorderThickness="2" CornerRadius="10"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Spacing="8" Margin="0,0,0,20">
+                      <TextBlock Text="가격:" FontSize="20" Foreground="#333333"/>
+                      <TextBox x:Name="PriceTextBox" FontSize="18" Padding="15" Background="#FFDAC4" BorderBrush="#E67E22" BorderThickness="2" CornerRadius="10"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Spacing="8" Margin="0,0,0,20">
+                      <TextBlock Text="카테고리:" FontSize="20" Foreground="#333333"/>
+                      <ComboBox x:Name="CategoryComboBox" FontSize="18" Padding="15" Background="#FFDAC4" BorderBrush="#E67E22" BorderThickness="2" CornerRadius="10">
+                        <ComboBoxItem Content="전자제품"/>
+                        <ComboBoxItem Content="의류"/>
+                        <ComboBoxItem Content="생활용품"/>
+                        <ComboBoxItem Content="스포츠"/>
+                        <ComboBoxItem Content="기타"/>
+                      </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="3" Spacing="8" Margin="0,0,0,20">
+                      <TextBlock Text="키워드:" FontSize="20" Foreground="#333333"/>
+                      <TextBox x:Name="KeywordsTextBox" FontSize="18" Padding="15" Background="#FFDAC4" BorderBrush="#E67E22" BorderThickness="2" CornerRadius="10"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="4" Spacing="8">
+                      <TextBlock Text="상품 설명:" FontSize="20" Foreground="#333333"/>
+                      <TextBox x:Name="DescriptionTextBox" FontSize="18" Padding="15" Height="150" Background="#FFDAC4" BorderBrush="#E67E22" BorderThickness="2" CornerRadius="10"/>
+                    </StackPanel>
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <!-- 템플릿 선택 섹션 -->
+              <Border Classes="overlay-section"
+                      Background="#FFF5E6" 
+                      BorderBrush="#E67E22" 
+                      BorderThickness="3" 
+                      CornerRadius="15" 
+                      Padding="30">
+                <StackPanel Spacing="25">
+                  <TextBlock Text="페이지 템플릿 선택"
+                             FontSize="28"
+                             FontWeight="SemiBold"
+                             Foreground="#333333"/>
+                  
+                  <StackPanel Orientation="Horizontal" Spacing="30">
+                    <RadioButton x:Name="BasicTemplateRadio" Content="기본 템플릿" FontSize="20" Foreground="#333333" IsChecked="True"/>
+                    <RadioButton x:Name="PremiumTemplateRadio" Content="프리미엄 템플릿" FontSize="20" Foreground="#333333"/>
+                    <RadioButton x:Name="CustomTemplateRadio" Content="커스텀 템플릿" FontSize="20" Foreground="#333333"/>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+
+            <!-- 오른쪽 패널 - 미리보기 -->
+            <StackPanel Grid.Column="2" Spacing="30">
+              
+              <!-- 미리보기 섹션 -->
+              <Border Classes="overlay-preview"
+                      Background="#F8F8F8" 
+                      BorderBrush="#E0E0E0" 
+                      BorderThickness="3" 
+                      CornerRadius="15" 
+                      Padding="30"
+                      MinHeight="500">
+                <StackPanel Spacing="20">
+                  <TextBlock Text="실시간 미리보기"
+                             FontSize="28"
+                             FontWeight="SemiBold"
+                             Foreground="#333333"
+                             HorizontalAlignment="Center"/>
+                  <Border Background="White"
+                          BorderBrush="#E0E0E0"
+                          BorderThickness="2"
+                          CornerRadius="10"
+                          Padding="20"
+                          MinHeight="400">
+                    <TextBlock Text="상품 정보를 입력하면 여기에 실시간으로 미리보기가 표시됩니다."
+                               FontSize="18"
+                               Foreground="#666666"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                  </Border>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+
+          </Grid>
+        </ScrollViewer>
+
+        <!-- 하단 버튼 영역 -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Center" 
+                    Spacing="25"
+                    Margin="0,30,0,0">
+          <Button Classes="primary-button"
+                  Content="미리보기 생성"
+                  FontSize="20"
+                  FontWeight="SemiBold"
+                  Padding="30,15"
+                  MinWidth="180"
+                  Background="#E67E22"
+                  Foreground="White"
+                  BorderThickness="0"
+                  CornerRadius="12"
+                  Click="GeneratePreview"/>
+          <Button Classes="primary-button"
+                  Content="상세페이지 생성"
+                  FontSize="20"
+                  FontWeight="SemiBold"
+                  Padding="30,15"
+                  MinWidth="180"
+                  Background="#E67E22"
+                  Foreground="White"
+                  BorderThickness="0"
+                  CornerRadius="12"
+                  Click="GenerateDetailPage"/>
+          <Button Classes="secondary-button"
+                  Content="취소"
+                  FontSize="20"
+                  FontWeight="SemiBold"
+                  Padding="30,15"
+                  MinWidth="120"
+                  Background="#CCCCCC"
+                  Foreground="#333333"
+                  BorderThickness="0"
+                  CornerRadius="12"
+                  Click="CloseDetailPageOverlay"/>
+        </StackPanel>
+
+      </Grid>
+    </Grid>
+
+    <!-- 썸네일 만들기 오버레이 -->
+    <Grid x:Name="ThumbnailOverlay" 
+          ZIndex="1000" 
+          IsVisible="False"
+          Background="#F5F5F5">
+      <Grid Margin="40">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 헤더 -->
+        <Grid Grid.Row="0" Margin="0,0,0,30">
+          <TextBlock Text="썸네일 만들기 (BETA)"
+                     FontSize="36"
+                     FontWeight="Bold"
+                     Foreground="#E67E22"
+                     HorizontalAlignment="Center"/>
+          <Button Content="✕"
+                  Classes="close-button"
+                  FontSize="28"
+                  FontWeight="Bold"
+                  Background="Transparent"
+                  Foreground="#E67E22"
+                  BorderThickness="0"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Top"
+                  Click="CloseThumbnailOverlay"
+                  Padding="15"/>
+        </Grid>
+
+        <!-- 메인 컨텐츠 -->
+        <ScrollViewer Grid.Row="1">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="20"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 왼쪽 패널 - 설정 섹션들 -->
+            <StackPanel Grid.Column="0" Spacing="30">
+              
+              <!-- 이미지 업로드 섹션 -->
+              <Border Classes="overlay-section"
+                      Background="#FFF5E6" 
+                      BorderBrush="#E67E22" 
+                      BorderThickness="3" 
+                      CornerRadius="15" 
+                      Padding="30">
+                <StackPanel Spacing="25">
+                  <TextBlock Text="원본 이미지 업로드"
+                             FontSize="28"
+                             FontWeight="SemiBold"
+                             Foreground="#333333"/>
+                  
+                  <Border Background="#F0F0F0"
+                          BorderBrush="#E0E0E0"
+                          BorderThickness="3"
+                          CornerRadius="15"
+                          Padding="50"
+                          MinHeight="250">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+                      <TextBlock Text="📁"
+                                 FontSize="64"
+                                 HorizontalAlignment="Center"/>
+                      <TextBlock Text="이미지를 드래그하거나 클릭하여 업로드"
+                                 FontSize="20"
+                                 Foreground="#666666"
+                                 HorizontalAlignment="Center"/>
+                      <Button Content="파일 선택"
+                              FontSize="18"
+                              Padding="20,12"
+                              Background="#E67E22"
+                              Foreground="White"
+                              BorderThickness="0"
+                              CornerRadius="10"
+                              Click="SelectImageFile"/>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Border>
+
+              <!-- 썸네일 설정 섹션 -->
+              <Border Classes="overlay-section"
+                      Background="#FFF5E6" 
+                      BorderBrush="#E67E22" 
+                      BorderThickness="3" 
+                      CornerRadius="15" 
+                      Padding="30">
+                <StackPanel Spacing="25">
+                  <TextBlock Text="썸네일 설정"
+                             FontSize="28"
+                             FontWeight="SemiBold"
+                             Foreground="#333333"/>
+                  
+                  <StackPanel Spacing="25">
+                    
+                    <StackPanel Spacing="10">
+                      <TextBlock Text="크기:" FontSize="20" Foreground="#333333"/>
+                      <ComboBox x:Name="ThumbnailSizeComboBox" FontSize="18" Padding="15" Background="#FFDAC4" BorderBrush="#E67E22" BorderThickness="2" CornerRadius="10">
+                        <ComboBoxItem Content="300x300 (정사각형)"/>
+                        <ComboBoxItem Content="400x300 (4:3 비율)"/>
+                        <ComboBoxItem Content="500x300 (16:10 비율)"/>
+                        <ComboBoxItem Content="커스텀"/>
+                      </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Spacing="10">
+                      <TextBlock Text="품질:" FontSize="20" Foreground="#333333"/>
+                      <Slider x:Name="QualitySlider" Minimum="50" Maximum="100" Value="85" Height="40"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="10">
+                      <TextBlock Text="배경색:" FontSize="20" Foreground="#333333"/>
+                      <StackPanel Orientation="Horizontal" Spacing="20">
+                        <RadioButton x:Name="WhiteBackgroundRadio" Content="흰색" FontSize="18" Foreground="#333333" IsChecked="True"/>
+                        <RadioButton x:Name="TransparentBackgroundRadio" Content="투명" FontSize="18" Foreground="#333333"/>
+                        <RadioButton x:Name="CustomBackgroundRadio" Content="커스텀" FontSize="18" Foreground="#333333"/>
+                      </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Spacing="10">
+                      <TextBlock Text="효과:" FontSize="20" Foreground="#333333"/>
+                      <StackPanel Spacing="15">
+                        <CheckBox x:Name="ShadowEffectCheckBox" Content="그림자" FontSize="18" Foreground="#333333"/>
+                        <CheckBox x:Name="BorderEffectCheckBox" Content="테두리" FontSize="18" Foreground="#333333"/>
+                        <CheckBox x:Name="RoundedEffectCheckBox" Content="둥근 모서리" FontSize="18" Foreground="#333333"/>
+                      </StackPanel>
+                    </StackPanel>
+
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+
+            <!-- 오른쪽 패널 - 미리보기 -->
+            <StackPanel Grid.Column="2" Spacing="30">
+              
+              <!-- 미리보기 섹션 -->
+              <Border Classes="overlay-preview"
+                      Background="#F8F8F8" 
+                      BorderBrush="#E0E0E0" 
+                      BorderThickness="3" 
+                      CornerRadius="15" 
+                      Padding="30"
+                      MinHeight="500">
+                <StackPanel Spacing="20">
+                  <TextBlock Text="썸네일 미리보기"
+                             FontSize="28"
+                             FontWeight="SemiBold"
+                             Foreground="#333333"
+                             HorizontalAlignment="Center"/>
+                  <Border Background="White"
+                          BorderBrush="#E0E0E0"
+                          BorderThickness="2"
+                          CornerRadius="15"
+                          Width="400"
+                          Height="400"
+                          HorizontalAlignment="Center">
+                    <TextBlock Text="이미지를 업로드하면
+미리보기가 표시됩니다"
+                               FontSize="18"
+                               Foreground="#666666"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                  </Border>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+
+          </Grid>
+        </ScrollViewer>
+
+        <!-- 하단 버튼 영역 -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Center" 
+                    Spacing="25"
+                    Margin="0,30,0,0">
+          <Button Classes="primary-button"
+                  Content="미리보기 생성"
+                  FontSize="20"
+                  FontWeight="SemiBold"
+                  Padding="30,15"
+                  MinWidth="180"
+                  Background="#E67E22"
+                  Foreground="White"
+                  BorderThickness="0"
+                  CornerRadius="12"
+                  Click="GenerateThumbnailPreview"/>
+          <Button Classes="primary-button"
+                  Content="썸네일 생성"
+                  FontSize="20"
+                  FontWeight="SemiBold"
+                  Padding="30,15"
+                  MinWidth="180"
+                  Background="#E67E22"
+                  Foreground="White"
+                  BorderThickness="0"
+                  CornerRadius="12"
+                  Click="GenerateThumbnail"/>
+          <Button Classes="secondary-button"
+                  Content="취소"
+                  FontSize="20"
+                  FontWeight="SemiBold"
+                  Padding="30,15"
+                  MinWidth="120"
+                  Background="#CCCCCC"
+                  Foreground="#333333"
+                  BorderThickness="0"
+                  CornerRadius="12"
+                  Click="CloseThumbnailOverlay"/>
+        </StackPanel>
+
+      </Grid>
+    </Grid>
+
+    <!-- 타오바오 링크 재배어링 오버레이 -->
+    <Grid x:Name="TaobaoLinkOverlay" 
+          ZIndex="1000" 
+          IsVisible="False"
+          Background="#F5F5F5">
+      <Grid Margin="40">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 헤더 -->
+        <Grid Grid.Row="0" Margin="0,0,0,30">
+          <TextBlock Text="타오바오 링크 재배어링 하기"
+                     FontSize="36"
+                     FontWeight="Bold"
+                     Foreground="#E67E22"
+                     HorizontalAlignment="Center"/>
+          <Button Content="✕"
+                  Classes="close-button"
+                  FontSize="28"
+                  FontWeight="Bold"
+                  Background="Transparent"
+                  Foreground="#E67E22"
+                  BorderThickness="0"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Top"
+                  Click="CloseTaobaoLinkOverlay"
+                  Padding="15"/>
+        </Grid>
+
+        <!-- 메인 컨텐츠 -->
+        <ScrollViewer Grid.Row="1">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="20"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 왼쪽 패널 - 입력 및 설정 섹션들 -->
+            <StackPanel Grid.Column="0" Spacing="30">
+              
+              <!-- 링크 입력 섹션 -->
+              <Border Classes="overlay-section"
+                      Background="#FFF5E6" 
+                      BorderBrush="#E67E22" 
+                      BorderThickness="3" 
+                      CornerRadius="15" 
+                      Padding="30">
+                <StackPanel Spacing="25">
+                  <TextBlock Text="타오바오 링크 입력"
+                             FontSize="28"
+                             FontWeight="SemiBold"
+                             Foreground="#333333"/>
+                  
+                  <StackPanel Spacing="15">
+                    <TextBlock Text="원본 타오바오 링크를 입력하세요:"
+                               FontSize="20"
+                               Foreground="#333333"/>
+                    <TextBox x:Name="OriginalLinkTextBox" 
+                             FontSize="18" 
+                             Padding="20" 
+                             Height="60"
+                             Background="#FFDAC4" 
+                             BorderBrush="#E67E22" 
+                             BorderThickness="2" 
+                             CornerRadius="10"/>
+                    
+                    <TextBlock Text="배송 옵션:"
+                               FontSize="20"
+                               Foreground="#333333"
+                               Margin="0,25,0,0"/>
+                    <StackPanel Orientation="Horizontal" Spacing="25">
+                      <RadioButton x:Name="StandardShippingRadio" Content="일반 배송" FontSize="18" Foreground="#333333" IsChecked="True"/>
+                      <RadioButton x:Name="ExpressShippingRadio" Content="빠른 배송" FontSize="18" Foreground="#333333"/>
+                      <RadioButton x:Name="PremiumShippingRadio" Content="프리미엄 배송" FontSize="18" Foreground="#333333"/>
+                    </StackPanel>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <!-- 재배어링 설정 섹션 -->
+              <Border Classes="overlay-section"
+                      Background="#FFF5E6" 
+                      BorderBrush="#E67E22" 
+                      BorderThickness="3" 
+                      CornerRadius="15" 
+                      Padding="30">
+                <StackPanel Spacing="25">
+                  <TextBlock Text="재배어링 설정"
+                             FontSize="28"
+                             FontWeight="SemiBold"
+                             Foreground="#333333"/>
+                  
+                  <StackPanel Spacing="25">
+                    
+                    <StackPanel Spacing="10">
+                      <TextBlock Text="마진율 (%):" FontSize="20" Foreground="#333333"/>
+                      <StackPanel Orientation="Horizontal" Spacing="15">
+                        <Slider x:Name="MarginSlider" Minimum="10" Maximum="200" Value="50" Width="300" Height="40"/>
+                        <TextBlock x:Name="MarginValueText" Text="50%" FontSize="18" Foreground="#333333" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Spacing="10">
+                      <TextBlock Text="배송비 (원):" FontSize="20" Foreground="#333333"/>
+                      <TextBox x:Name="ShippingCostTextBox" FontSize="18" Padding="15" Background="#FFDAC4" BorderBrush="#E67E22" BorderThickness="2" CornerRadius="10" Text="3000"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="10">
+                      <TextBlock Text="처리 수수료 (원):" FontSize="20" Foreground="#333333"/>
+                      <TextBox x:Name="ProcessingFeeTextBox" FontSize="18" Padding="15" Background="#FFDAC4" BorderBrush="#E67E22" BorderThickness="2" CornerRadius="10" Text="1000"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="10">
+                      <TextBlock Text="예상 배송일:" FontSize="20" Foreground="#333333"/>
+                      <ComboBox x:Name="DeliveryDaysComboBox" FontSize="18" Padding="15" Background="#FFDAC4" BorderBrush="#E67E22" BorderThickness="2" CornerRadius="10">
+                        <ComboBoxItem Content="7-14일"/>
+                        <ComboBoxItem Content="14-21일"/>
+                        <ComboBoxItem Content="21-30일"/>
+                        <ComboBoxItem Content="30일 이상"/>
+                      </ComboBox>
+                    </StackPanel>
+
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+
+            <!-- 오른쪽 패널 - 결과 미리보기 -->
+            <StackPanel Grid.Column="2" Spacing="30">
+              
+              <!-- 결과 미리보기 섹션 -->
+              <Border Classes="overlay-preview"
+                      Background="#F8F8F8" 
+                      BorderBrush="#E0E0E0" 
+                      BorderThickness="3" 
+                      CornerRadius="15" 
+                      Padding="30"
+                      MinHeight="500">
+                <StackPanel Spacing="20">
+                  <TextBlock Text="재배어링 결과 미리보기"
+                             FontSize="28"
+                             FontWeight="SemiBold"
+                             Foreground="#333333"
+                             HorizontalAlignment="Center"/>
+                  
+                  <Border Background="White"
+                          BorderBrush="#E0E0E0"
+                          BorderThickness="2"
+                          CornerRadius="15"
+                          Padding="30"
+                          MinHeight="350">
+                    <StackPanel Spacing="20">
+                      <TextBlock x:Name="PreviewOriginalPrice" Text="원본 가격: -" FontSize="20" Foreground="#666666"/>
+                      <TextBlock x:Name="PreviewFinalPrice" Text="최종 판매가격: -" FontSize="22" FontWeight="SemiBold" Foreground="#E67E22"/>
+                      <TextBlock x:Name="PreviewProfit" Text="예상 수익: -" FontSize="18" Foreground="#666666"/>
+                      <Border Background="#F0F0F0" 
+                              BorderBrush="#E0E0E0" 
+                              BorderThickness="1" 
+                              CornerRadius="8" 
+                              Padding="15"
+                              Margin="0,20,0,0">
+                        <StackPanel Spacing="8">
+                          <TextBlock Text="새 링크:" FontSize="16" Foreground="#333333" FontWeight="SemiBold"/>
+                          <TextBlock x:Name="PreviewNewLink" Text="링크를 입력하면 생성됩니다" FontSize="14" Foreground="#999999"/>
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+
+          </Grid>
+        </ScrollViewer>
+
+        <!-- 하단 버튼 영역 -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Center" 
+                    Spacing="25"
+                    Margin="0,30,0,0">
+          <Button Classes="primary-button"
+                  Content="링크 분석"
+                  FontSize="20"
+                  FontWeight="SemiBold"
+                  Padding="30,15"
+                  MinWidth="150"
+                  Background="#E67E22"
+                  Foreground="White"
+                  BorderThickness="0"
+                  CornerRadius="12"
+                  Click="AnalyzeTaobaoLink"/>
+          <Button Classes="primary-button"
+                  Content="재배어링 생성"
+                  FontSize="20"
+                  FontWeight="SemiBold"
+                  Padding="30,15"
+                  MinWidth="180"
+                  Background="#E67E22"
+                  Foreground="White"
+                  BorderThickness="0"
+                  CornerRadius="12"
+                  Click="GenerateRebairedLink"/>
+          <Button Classes="secondary-button"
+                  Content="취소"
+                  FontSize="20"
+                  FontWeight="SemiBold"
+                  Padding="30,15"
+                  MinWidth="120"
+                  Background="#CCCCCC"
+                  Foreground="#333333"
+                  BorderThickness="0"
+                  CornerRadius="12"
+                  Click="CloseTaobaoLinkOverlay"/>
+        </StackPanel>
+
+      </Grid>
+    </Grid>
+
+    <!-- 🔍 메인상품 검색 페이지 오버레이 -->
+    <Grid x:Name="SearchPageOverlay"
+          Grid.ColumnSpan="3"
+          Background="#CC000000"
+          IsVisible="False"
+          ZIndex="2000">
+      
+      <!-- 메인 검색 페이지 컨테이너 -->
+      <Border Background="White"
+              CornerRadius="20"
+              Margin="50"
+              MaxWidth="1200"
+              MaxHeight="800"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          
+          <!-- 🎨 헤더 섹션 -->
+          <Border Grid.Row="0"
+                  Classes="search-header"
+                  Background="#E67E22"
+                  CornerRadius="20,20,0,0"
+                  Padding="40,30">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              
+              <!-- 제목 -->
+              <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock Text="🔍 내 마켓에서 메인상품 찾기"
+                           FontSize="32"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           Margin="0,0,0,8"/>
+                <TextBlock Text="기존 상품 중에서 메인상품으로 등록할 최적의 상품을 찾아보세요"
+                           FontSize="16"
+                           Foreground="#FFE4D1"/>
+              </StackPanel>
+              
+              <!-- 닫기 버튼 -->
+              <Button Grid.Column="1"
+                      Content="✕"
+                      Background="Transparent"
+                      Foreground="White"
+                      BorderThickness="0"
+                      FontSize="24"
+                      FontWeight="Bold"
+                      Padding="15"
+                      CornerRadius="50"
+                      Click="CloseSearchPageOverlay"/>
+            </Grid>
+          </Border>
+          
+          <!-- 🎯 메인 컨텐츠 영역 -->
+          <ScrollViewer Grid.Row="1" Padding="40">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="40"/>
+                <ColumnDefinition Width="2*"/>
+              </Grid.ColumnDefinitions>
+              
+              <!-- 🔍 왼쪽 검색 패널 -->
+              <StackPanel Grid.Column="0" Spacing="25">
+                
+                <!-- 검색 조건 카드 -->
+                <Border Background="#F8F9FA"
+                        BorderBrush="#E0E6ED"
+                        BorderThickness="2"
+                        CornerRadius="16"
+                        Padding="25">
+                  <StackPanel Spacing="20">
+                    <TextBlock Text="🎯 검색 조건"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="#2D3748"/>
+                    
+                    <!-- 키워드 검색 -->
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="상품 키워드"
+                                 FontSize="14"
+                                 FontWeight="SemiBold"
+                                 Foreground="#4A5568"/>
+                      <TextBox x:Name="SearchKeywordInput"
+                               FontSize="14"
+                               Padding="12"
+                               CornerRadius="8"
+                               BorderBrush="#E2E8F0"
+                               BorderThickness="2"/>
+                    </StackPanel>
+                    
+                    <!-- 카테고리 선택 -->
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="카테고리"
+                                 FontSize="14"
+                                 FontWeight="SemiBold"
+                                 Foreground="#4A5568"/>
+                      <ComboBox x:Name="CategorySelector"
+                                FontSize="14"
+                                Padding="12"
+                                CornerRadius="8"
+                                HorizontalAlignment="Stretch">
+                        <ComboBoxItem Content="전체 카테고리"/>
+                        <ComboBoxItem Content="전자제품"/>
+                        <ComboBoxItem Content="패션/의류"/>
+                        <ComboBoxItem Content="생활용품"/>
+                        <ComboBoxItem Content="스포츠/레저"/>
+                        <ComboBoxItem Content="뷰티/화장품"/>
+                        <ComboBoxItem Content="식품/건강"/>
+                      </ComboBox>
+                    </StackPanel>
+                    
+                    <!-- 가격 범위 -->
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="가격 범위"
+                                 FontSize="14"
+                                 FontWeight="SemiBold"
+                                 Foreground="#4A5568"/>
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*"/>
+                          <ColumnDefinition Width="30"/>
+                          <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 x:Name="MinPriceInput"
+                                 FontSize="14"
+                                 Padding="12"
+                                 CornerRadius="8"
+                                 BorderBrush="#E2E8F0"
+                                 BorderThickness="2"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="~"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="#718096"/>
+                        <TextBox Grid.Column="2"
+                                 x:Name="MaxPriceInput"
+                                 FontSize="14"
+                                 Padding="12"
+                                 CornerRadius="8"
+                                 BorderBrush="#E2E8F0"
+                                 BorderThickness="2"/>
+                      </Grid>
+                    </StackPanel>
+                    
+                    <!-- 판매량 조건 -->
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="최소 판매량"
+                                 FontSize="14"
+                                 FontWeight="SemiBold"
+                                 Foreground="#4A5568"/>
+                      <ComboBox x:Name="MinSalesSelector"
+                                FontSize="14"
+                                Padding="12"
+                                CornerRadius="8"
+                                HorizontalAlignment="Stretch">
+                        <ComboBoxItem Content="제한 없음"/>
+                        <ComboBoxItem Content="100개 이상"/>
+                        <ComboBoxItem Content="500개 이상"/>
+                        <ComboBoxItem Content="1,000개 이상"/>
+                        <ComboBoxItem Content="5,000개 이상"/>
+                        <ComboBoxItem Content="10,000개 이상"/>
+                      </ComboBox>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+                
+                <!-- 고급 필터 카드 -->
+                <Border Background="#F0F8FF"
+                        BorderBrush="#4A90E2"
+                        BorderThickness="2"
+                        CornerRadius="16"
+                        Padding="25">
+                  <StackPanel Spacing="15">
+                    <TextBlock Text="⚙️ 고급 필터"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="#2D3748"/>
+                    
+                    <CheckBox Content="리뷰 4.0점 이상만"
+                              FontSize="14"
+                              Foreground="#4A5568"/>
+                    <CheckBox Content="무료배송 상품만"
+                              FontSize="14"
+                              Foreground="#4A5568"/>
+                    <CheckBox Content="할인 중인 상품만"
+                              FontSize="14"
+                              Foreground="#4A5568"/>
+                    <CheckBox Content="신상품 우선"
+                              FontSize="14"
+                              Foreground="#4A5568"/>
+                  </StackPanel>
+                </Border>
+                
+                <!-- 검색 버튼 -->
+                <Button Content="🔍 상품 검색하기"
+                        Background="#E67E22"
+                        Foreground="White"
+                        FontSize="16"
+                        FontWeight="Bold"
+                        Padding="20,15"
+                        CornerRadius="12"
+                        BorderThickness="0"
+                        HorizontalAlignment="Stretch"
+                        Click="ExecuteProductSearch"/>
+                
+              </StackPanel>
+              
+              <!-- 🎯 오른쪽 결과 패널 -->
+              <StackPanel Grid.Column="2" Spacing="20">
+                
+                <!-- 검색 결과 헤더 -->
+                <Border Background="#F8F9FA"
+                        BorderBrush="#E0E6ED"
+                        BorderThickness="2"
+                        CornerRadius="16"
+                        Padding="20">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*"/>
+                      <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel Grid.Column="0">
+                      <TextBlock Text="📦 검색 결과"
+                                 FontSize="20"
+                                 FontWeight="Bold"
+                                 Foreground="#2D3748"/>
+                      <TextBlock x:Name="SearchResultCount"
+                                 Text="검색을 시작하려면 조건을 입력하고 검색 버튼을 클릭하세요"
+                                 FontSize="14"
+                                 Foreground="#718096"
+                                 Margin="0,5,0,0"/>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                      <ComboBox x:Name="SortSelector"
+                                FontSize="12"
+                                Padding="8"
+                                MinWidth="120">
+                        <ComboBoxItem Content="판매량 높은순"/>
+                        <ComboBoxItem Content="가격 낮은순"/>
+                        <ComboBoxItem Content="가격 높은순"/>
+                        <ComboBoxItem Content="리뷰 높은순"/>
+                        <ComboBoxItem Content="최신순"/>
+                      </ComboBox>
+                      <Button Content="🔄"
+                              Background="#4A90E2"
+                              Foreground="White"
+                              FontSize="12"
+                              Padding="8"
+                              CornerRadius="6"
+                              BorderThickness="0"
+                              Click="RefreshSearchResults"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+                
+                <!-- 검색 결과 리스트 -->
+                <ScrollViewer Height="450">
+                  <StackPanel x:Name="SearchResultsContainer" Spacing="15">
+                    
+                    <!-- 초기 안내 메시지 -->
+                    <Border Background="#F7FAFC"
+                            BorderBrush="#E2E8F0"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="30"
+                            HorizontalAlignment="Center">
+                      <StackPanel Spacing="15" HorizontalAlignment="Center">
+                        <TextBlock Text="🔍"
+                                   FontSize="48"
+                                   HorizontalAlignment="Center"
+                                   Foreground="#CBD5E0"/>
+                        <TextBlock Text="검색 조건을 설정하고"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   Foreground="#4A5568"/>
+                        <TextBlock Text="'상품 검색하기' 버튼을 클릭하세요"
+                                   FontSize="14"
+                                   HorizontalAlignment="Center"
+                                   Foreground="#718096"/>
+                      </StackPanel>
+                    </Border>
+                    
+                  </StackPanel>
+                </ScrollViewer>
+                
+              </StackPanel>
+              
+            </Grid>
+          </ScrollViewer>
+          
+          <!-- 🎨 하단 액션 바 -->
+          <Border Grid.Row="2"
+                  Background="#F8F9FA"
+                  BorderThickness="0,1,0,0"
+                  BorderBrush="#E0E6ED"
+                  Padding="40,20">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              
+              <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15">
+                <TextBlock Text="💡 팁:"
+                           FontSize="14"
+                           FontWeight="Bold"
+                           Foreground="#E67E22"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="키워드는 쉼표(,)로 구분하여 여러 개 입력할 수 있습니다"
+                           FontSize="14"
+                           Foreground="#718096"
+                           VerticalAlignment="Center"/>
+              </StackPanel>
+              
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="15">
+                <Button Content="📊 분석 보기"
+                        Background="#4A90E2"
+                        Foreground="White"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Padding="20,10"
+                        CornerRadius="8"
+                        BorderThickness="0"
+                        Click="ShowAnalysis"/>
+                <Button Content="📋 내보내기"
+                        Background="#48BB78"
+                        Foreground="White"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Padding="20,10"
+                        CornerRadius="8"
+                        BorderThickness="0"
+                        Click="ExportResults"/>
+                <Button Content="닫기"
+                        Background="#E53E3E"
+                        Foreground="White"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Padding="20,10"
+                        CornerRadius="8"
+                        BorderThickness="0"
+                        Click="CloseSearchPageOverlay"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+          
+        </Grid>
+      </Border>
+    </Grid>

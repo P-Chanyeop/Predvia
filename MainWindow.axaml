@@ -27,26 +27,11 @@
                 <ColumnDefinition Width="450"/>
             </Grid.ColumnDefinitions>
 
-            <!-- 왼쪽 다크모드 버튼과 정보 -->
+            <!-- 왼쪽 정보 -->
             <StackPanel Grid.Column="0" 
                       Orientation="Horizontal" 
                       VerticalAlignment="Center"
                       Spacing="20">
-                <Button Background="Transparent" 
-                        BorderThickness="0"
-                        VerticalAlignment="Center"
-                        x:Name="themeToggleButton">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Ellipse Width="24" Height="24" Fill="{DynamicResource DarkModeIconBrush}"/>
-                        <TextBlock x:Name="themeToggleText"
-                                   Text="다크모드" 
-                                   VerticalAlignment="Center" 
-                                   FontSize="16" 
-                                   Foreground="{DynamicResource ForegroundBrush}"/>
-                    </StackPanel>
-                </Button>
-                
-                
                 <Button Background="Transparent" 
                         BorderThickness="0"
                         VerticalAlignment="Center"

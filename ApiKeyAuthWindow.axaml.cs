@@ -17,8 +17,6 @@ namespace Gumaedaehang
         private TextBox? _apiKeyTextBox;
         private Button? _authenticateButton;
         private TextBlock? _errorMessage;
-        private Button? _themeToggleButton;
-        private TextBlock? _themeToggleText;
         
         private bool _isAuthenticating = false;
         private const long PRODUCT_ID = 13; // Predvia 상품 ID
@@ -40,20 +38,12 @@ namespace Gumaedaehang
             _apiKeyTextBox = this.FindControl<TextBox>("apiKeyTextBox");
             _authenticateButton = this.FindControl<Button>("authenticateButton");
             _errorMessage = this.FindControl<TextBlock>("errorMessage");
-            _themeToggleButton = this.FindControl<Button>("themeToggleButton");
-            _themeToggleText = this.FindControl<TextBlock>("themeToggleText");
             
             if (_authenticateButton != null)
                 _authenticateButton.Click += async (s, e) => await AuthenticateButton_Click(s, e);
                 
-            if (_themeToggleButton != null)
-                _themeToggleButton.Click += ThemeToggleButton_Click;
-                
             if (_apiKeyTextBox != null)
                 _apiKeyTextBox.KeyDown += ApiKeyTextBox_KeyDown;
-                
-            UpdateThemeToggleText();
-            ThemeManager.Instance.ThemeChanged += (sender, theme) => UpdateThemeToggleText();
         }
 
         private void InitializeComponent()
@@ -168,19 +158,6 @@ namespace Gumaedaehang
             {
                 _isAuthenticating = false;
                 _authenticateButton.IsEnabled = true;
-            }
-        }
-        
-        private void ThemeToggleButton_Click(object? sender, RoutedEventArgs e)
-        {
-            ThemeManager.Instance.ToggleTheme();
-        }
-        
-        private void UpdateThemeToggleText()
-        {
-            if (_themeToggleText != null)
-            {
-                _themeToggleText.Text = ThemeManager.Instance.IsDarkTheme ? "라이트모드" : "다크모드";
             }
         }
     }
