@@ -4879,9 +4879,7 @@ namespace Gumaedaehang.Services
                         var productId = parts[parts.Length - 1];
                         var storeId = string.Join("_", parts.Take(parts.Length - 1));
                         
-                        // 상품명 파일 읽기
-                        var nameFile = Path.Combine(productDataPath, $"{storeId}_{productId}_name.txt");
-                        var productName = File.Exists(nameFile) ? File.ReadAllText(nameFile).Trim() : "";
+                        var productName = "";
                         
                         productCards.Add(new
                         {

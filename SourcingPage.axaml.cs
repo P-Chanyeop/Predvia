@@ -1550,56 +1550,57 @@ namespace Gumaedaehang
         }
         
         // 선택된 카드 삭제 버튼 클릭
-        private void DeleteSelectedButton_Click(object? sender, RoutedEventArgs e)
+        protected void DeleteSelectedButton_Click(object? sender, RoutedEventArgs e)
         {
             try
             {
-                // 선택된 상품만 찾기
-                var selectedProducts = _productElements.Where(kvp => kvp.Value.CheckBox?.IsChecked == true).ToList();
-                
-                if (selectedProducts.Count == 0)
+                if (_allProductCards.Count == 0 && _productElements.Count == 0)
                 {
-                    LogWindow.AddLogStatic("❌ 선택된 상품이 없습니다.");
+                    LogWindow.AddLogStatic("❌ 삭제할 상품이 없습니다.");
                     return;
                 }
                 
-                LogWindow.AddLogStatic($"🗑️ 선택된 {selectedProducts.Count}개 상품 삭제 시작");
+                var totalCount = _allProductCards.Count;
+                LogWindow.AddLogStatic($"🗑️ 전체 {totalCount}개 상품 삭제 시작");
                 
+                // UI 컨테이너 비우기
                 var container = this.FindControl<StackPanel>("RealDataContainer");
+                container?.Children.Clear();
+                
+                // 모든 데이터 폴더 비우기
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
-                
-                foreach (var kvp in selectedProducts)
+                foreach (var folder in new[] { "Images", "ProductData", "Reviews", "Categories", "TaobaoImages" })
                 {
-                    var product = kvp.Value;
-                    var storeId = product.StoreId;
-                    var productId = product.RealProductId;
-                    
-                    // UI에서 제거
-                    if (container != null && product.Container != null)
+                    var folderPath = System.IO.Path.Combine(predviaPath, folder);
+                    if (Directory.Exists(folderPath))
                     {
-                        container.Children.Remove(product.Container);
+                        foreach (var file in Directory.GetFiles(folderPath))
+                            File.Delete(file);
                     }
-                    
-                    // 파일 삭제
-                    DeleteProductFiles(predviaPath, storeId, productId);
-                    
-                    // Dictionary에서 제거
-                    _productElements.Remove(kvp.Key);
                 }
+                
+                // 모든 데이터 클리어
+                _allProductCards.Clear();
+                _productElements.Clear();
+                _currentPage = 1;
                 
                 // 전체선택 체크박스 해제
                 if (_selectAllCheckBox != null)
                     _selectAllCheckBox.IsChecked = false;
                 
-                // JSON 파일 업데이트
-                SaveProductCardsToJson();
+                // JSON 파일 삭제
+                var jsonPath = System.IO.Path.Combine(predviaPath, "product_cards.json");
+                if (File.Exists(jsonPath)) File.Delete(jsonPath);
                 
-                LogWindow.AddLogStatic($"✅ {selectedProducts.Count}개 상품 삭제 완료");
+                // 페이지 정보 업데이트
+                UpdatePageInfo();
+                
+                LogWindow.AddLogStatic($"✅ {totalCount}개 상품 전체 삭제 완료");
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 선택 삭제 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 전체 삭제 오류: {ex.Message}");
             }
         }
         

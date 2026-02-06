@@ -29,6 +29,13 @@ namespace Gumaedaehang
                 _pdSaveButton.Click += PDSaveButton_Click;
             }
             
+            // 전체삭제 버튼 이벤트 연결
+            var deleteBtn = this.FindControl<Button>("DeleteSelectedButton");
+            if (deleteBtn != null)
+            {
+                deleteBtn.Click += DeleteSelectedButton_Click;
+            }
+            
             // 타오바오 검색 모드 스위치
             _pdTaobaoSearchModeSwitch = this.FindControl<ToggleSwitch>("TaobaoSearchModeSwitch");
             _taobaoSearchModeSwitch = _pdTaobaoSearchModeSwitch; // 부모 클래스 변수에도 할당
