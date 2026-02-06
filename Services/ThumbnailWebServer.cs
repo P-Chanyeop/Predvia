@@ -2373,34 +2373,37 @@ namespace Gumaedaehang.Services
                     return products;
                 }
                 
-                // 4. 이미지 검색 (프록시 사용)
-                var searchUrl = $"https://www.alibaba.com/picture/search.htm?imageType=oss&escapeQp=true&imageAddress=/{imageKey}&sourceFrom=imageupload";
+                // 4. 이미지 검색 (CNY 통화 설정)
+                var searchUrl = $"https://www.alibaba.com/picture/search.htm?imageType=oss&escapeQp=true&imageAddress=/{imageKey}&sourceFrom=imageupload&currency=CNY";
                 LogWindow.AddLogStatic($"🔍 검색 URL: {searchUrl}");
                 
+                // CNY 통화 설정 쿠키 추가
+                client.DefaultRequestHeaders.Add("Cookie", "ali_apache_id=11.1.1.1; intl_locale=en_US; CURRENCY=CNY");
                 client.DefaultRequestHeaders.Add("Referer", "https://www.alibaba.com/");
                 var searchResponse = await client.GetAsync(searchUrl);
                 var searchHtml = await searchResponse.Content.ReadAsStringAsync();
                 
                 LogWindow.AddLogStatic($"📄 검색 HTML 길이: {searchHtml.Length}");
                 
-                // HTML 일부 로그 (디버깅용)
-                if (searchHtml.Contains("product-detail"))
-                    LogWindow.AddLogStatic("✅ product-detail 포함");
-                if (searchHtml.Contains("offer"))
-                    LogWindow.AddLogStatic("✅ offer 포함");
-                    
-                // 5. HTML에서 상품 추출
-                // 알리바바 offer 링크 패턴 (더 일반적)
-                var patterns = new[]
+                // 디버깅: 실제 HTML에 가격/리뷰 관련 키워드 확인
+                LogWindow.AddLogStatic($"🔎 price-main:{searchHtml.Contains("price-main")}, CN¥:{searchHtml.Contains("CN¥")}, US$:{searchHtml.Contains("US$")}, review-score:{searchHtml.Contains("review-score")}, e-review:{searchHtml.Contains("e-review")}");
+                foreach (var kw in new[] { "CN¥", "US$", "price-main", "price-area", "review" })
                 {
-                    @"//www\.alibaba\.com/product-detail/[^""'\s<>]+",
-                    @"//[a-z]+\.alibaba\.com/product/\d+\.html",
-                    @"href=""([^""]*alibaba\.com[^""]*product[^""]*)"
-                };
+                    var ki = searchHtml.IndexOf(kw);
+                    if (ki >= 0)
+                    {
+                        var s = Math.Max(0, ki - 80);
+                        LogWindow.AddLogStatic($"💰 [{kw}] pos={ki}: {searchHtml.Substring(s, Math.Min(300, searchHtml.Length - s))}");
+                    }
+                }
+                
+                // HTML 파서로 가격/리뷰 추출
+                var doc = new HtmlAgilityPack.HtmlDocument();
+                doc.LoadHtml(searchHtml);
                 
                 var uniqueUrls = new HashSet<string>();
                 
-                // 1. 상품 이미지 추출 (//s.alicdn.com/@sc04/kf/ 또는 //s.alicdn.com/@sc01/kf/ 패턴)
+                // 1. 상품 이미지 추출 (기존 정규식)
                 var imgPattern = new System.Text.RegularExpressions.Regex(
                     @"<img[^>]*src=""(//s\.alicdn\.com/@sc\d+/kf/[^""]+)""",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
@@ -2409,22 +2412,46 @@ namespace Gumaedaehang.Services
                     .Select(m => "https:" + m.Groups[1].Value)
                     .Distinct().ToList();
                 
-                LogWindow.AddLogStatic($"🖼️ 상품 이미지 {imageUrls.Count}개 발견");
+                // 2. 가격 추출 (파서)
+                var priceNodes = doc.DocumentNode.SelectNodes("//*[contains(@class, 'price-main')]");
+                var priceList = priceNodes?.Select(n => n.InnerText.Trim()).ToList() ?? new List<string>();
                 
-                // 2. 상품 링크 추출
+                // 3. 리뷰 개수 추출 (파서)
+                var reviewNodes = doc.DocumentNode.SelectNodes("//*[contains(@class, 'e-review')]");
+                var reviewList = new List<string>();
+                if (reviewNodes != null)
+                {
+                    foreach (var rn in reviewNodes)
+                    {
+                        var m = System.Text.RegularExpressions.Regex.Match(rn.InnerText, @"\((\d+)\)");
+                        reviewList.Add(m.Success ? m.Groups[1].Value : "");
+                    }
+                }
+                
+                LogWindow.AddLogStatic($"🖼️ 이미지 {imageUrls.Count}개, 💰 가격 {priceList.Count}개, ⭐ 리뷰 {reviewList.Count}개");
+                
+                // 4. 상품 링크 추출 (기존 정규식)
                 var linkPattern = new System.Text.RegularExpressions.Regex(
                     @"//www\.alibaba\.com/product-detail/[^""'\s<>]+",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                 var linkMatches = linkPattern.Matches(searchHtml);
                 
-                int imgIndex = 0;
+                int imgIdx = 0, priceIdx = 0, revIdx = 0;
                 foreach (System.Text.RegularExpressions.Match match in linkMatches)
                 {
                     var productUrl = "https:" + match.Value.Split('"')[0].Split('\'')[0];
                     if (uniqueUrls.Add(productUrl))
                     {
                         var idMatch = System.Text.RegularExpressions.Regex.Match(productUrl, @"(\d{10,})");
-                        var imageUrl = imgIndex < imageUrls.Count ? imageUrls[imgIndex++] : "";
+                        var imageUrl = imgIdx < imageUrls.Count ? imageUrls[imgIdx++] : "";
+                        var price = priceIdx < priceList.Count ? priceList[priceIdx++] : "";
+                        var review = "";
+                        if (revIdx < reviewList.Count)
+                        {
+                            if (!string.IsNullOrEmpty(reviewList[revIdx]))
+                                review = $"{reviewList[revIdx]}+";
+                            revIdx++;
+                        }
                         
                         products.Add(new TaobaoProduct
                         {
@@ -2432,10 +2459,10 @@ namespace Gumaedaehang.Services
                             Title = "알리바바 상품",
                             ProductUrl = productUrl,
                             ImageUrl = imageUrl,
-                            Price = "",
-                            Sales = ""
+                            Price = price,
+                            Sales = review
                         });
-                        LogWindow.AddLogStatic($"🔗 상품: {productUrl.Substring(0, Math.Min(50, productUrl.Length))}, 이미지: {(string.IsNullOrEmpty(imageUrl) ? "없음" : "있음")}");
+                        LogWindow.AddLogStatic($"🔗 상품: {price} | 리뷰 {review}");
                         if (products.Count >= 5) break;
                     }
                 }

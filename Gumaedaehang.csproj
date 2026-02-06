@@ -43,6 +43,7 @@
     <PackageReference Include="PuppeteerSharp" Version="19.0.0" />
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="ClosedXML" Version="0.102.2" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.10" />
   </ItemGroup>

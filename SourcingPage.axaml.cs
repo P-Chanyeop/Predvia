@@ -2133,7 +2133,7 @@ namespace Gumaedaehang
                     var priceStr = "";
                     if (!string.IsNullOrEmpty(price) && price != "0")
                     {
-                        var priceNum = price.Replace("¥", "").Trim();
+                        var priceNum = price.Replace("CN¥", "").Replace("¥", "").Trim();
                         priceStr = $"{priceNum} 위안";
                     }
                     
@@ -4823,7 +4823,7 @@ namespace Gumaedaehang
                         var priceStr = "";
                         if (!string.IsNullOrEmpty(product.Price) && product.Price != "0")
                         {
-                            var priceNum = product.Price.Replace("¥", "").Trim();
+                            var priceNum = product.Price.Replace("CN¥", "").Replace("¥", "").Trim();
                             priceStr = $"{priceNum} 위안";
                         }
                         
