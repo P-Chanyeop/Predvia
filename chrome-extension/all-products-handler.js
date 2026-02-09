@@ -1,3 +1,17 @@
+// ⭐ localhost 프록시 함수 (CORS 우회)
+async function localFetch(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+            { action: 'proxyFetch', url, method: options.method || 'GET', body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : null },
+            (resp) => {
+                if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
+                if (!resp || !resp.success) { reject(new Error(resp?.error || 'proxyFetch failed')); return; }
+                resolve({ ok: resp.status >= 200 && resp.status < 300, status: resp.status, json: () => Promise.resolve(resp.data), text: () => Promise.resolve(typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data)) });
+            }
+        );
+    });
+}
+
 console.log('🔥 all-products-handler.js 파일 로드됨!');
 console.log('🔥 현재 URL:', window.location.href);
 
@@ -106,7 +120,7 @@ async function handleAllProductsPage() {
     console.log(`🔗 현재 URL: ${window.location.href}`);
     
     // 즉시 로그 전송
-    fetch('http://localhost:8080/api/smartstore/log', {
+    localFetch('http://localhost:8080/api/smartstore/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -197,7 +211,7 @@ async function extractAndSendCategories(storeId) {
 // 서버 연결 상태 확인
 async function checkServerConnection() {
   try {
-    const response = await fetch('http://localhost:8080/api/smartstore/status', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/status', {
       method: 'GET',
       timeout: 2000
     });
@@ -211,7 +225,7 @@ async function checkServerConnection() {
 // 로그를 서버로 전송하는 함수 (완전 조용히 처리)
 async function sendLogToServer(message) {
   try {
-    const response = await fetch('http://localhost:8080/api/smartstore/log', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, timestamp: new Date().toISOString() }),
@@ -225,19 +239,10 @@ async function sendLogToServer(message) {
 // 서버로 데이터 전송하는 범용 함수
 async function sendToServer(endpoint, data) {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
-    
-    const response = await fetch(`http://localhost:8080${endpoint}`, {
+    const response = await localFetch(`http://localhost:8080${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data),
-      signal: controller.signal
+      body: JSON.stringify(data)
     });
-    
-    clearTimeout(timeoutId);
     
     if (response.ok) {
       console.log(`✅ 서버 전송 성공: ${endpoint}`);
@@ -261,7 +266,7 @@ async function sendToServer(endpoint, data) {
 // ⭐ 상태 설정 함수
 async function setStoreStateFromHandler(storeId, runId, state, lock, expected = 0, progress = 0) {
   try {
-    const response = await fetch('http://localhost:8080/api/smartstore/state', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/state', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -286,7 +291,7 @@ async function setStoreStateFromHandler(storeId, runId, state, lock, expected = 
 // ⭐ 진행률 업데이트 함수
 async function updateProgress(storeId, runId, inc = 1) {
   try {
-    await fetch('http://localhost:8080/api/smartstore/progress', {
+    await localFetch('http://localhost:8080/api/smartstore/progress', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ storeId, runId, inc })
@@ -678,7 +683,7 @@ async function sendProductDataToServer(storeId, productData, reviewCount) {
     
     console.log(`🔥🔥🔥 전송할 데이터 준비 완료: ${storeId}, 상품수: ${data.productCount}`);
     
-    const response = await fetch('http://localhost:8080/api/smartstore/product-data', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/product-data', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -709,7 +714,7 @@ async function notifyAllProductsPageLoaded(storeId) {
       timestamp: new Date().toISOString()
     };
     
-    const response = await fetch('http://localhost:8080/api/smartstore/all-products', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/all-products', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -818,7 +823,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                     
                     // ⭐ 서버에 중단 신호 전송
                     try {
-                      await fetch('http://localhost:8080/api/smartstore/stop', {
+                      await localFetch('http://localhost:8080/api/smartstore/stop', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -859,7 +864,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                         const categoryString = categories.map(c => c.name).join(' > ');
                         await sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 - ${categoryString}`);
                         
-                        await fetch('http://localhost:8080/api/smartstore/categories', {
+                        await localFetch('http://localhost:8080/api/smartstore/categories', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
@@ -900,7 +905,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                       
                       while (imageRetries < maxImageRetries && !imageSuccess) {
                         try {
-                          const imageResponse = await fetch('http://localhost:8080/api/smartstore/image', {
+                          const imageResponse = await localFetch('http://localhost:8080/api/smartstore/image', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -951,7 +956,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                       
                       while (nameRetries < maxNameRetries && !nameSuccess) {
                         try {
-                          const nameResponse = await fetch('http://localhost:8080/api/smartstore/product-name', {
+                          const nameResponse = await localFetch('http://localhost:8080/api/smartstore/product-name', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -1005,7 +1010,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                         const categoryString = categories.join(' > ');
                         await sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 - ${categoryString}`);
                         
-                        await fetch('http://localhost:8080/api/smartstore/categories', {
+                        await localFetch('http://localhost:8080/api/smartstore/categories', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
@@ -1084,7 +1089,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                       
                       while (priceRetries < maxPriceRetries && !priceSuccess) {
                         try {
-                          const priceResponse = await fetch('http://localhost:8080/api/smartstore/product-price', {
+                          const priceResponse = await localFetch('http://localhost:8080/api/smartstore/product-price', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -1171,7 +1176,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
                         timestamp: new Date().toISOString()
                       };
                       
-                      const reviewResponse = await fetch('http://localhost:8080/api/smartstore/reviews', {
+                      const reviewResponse = await localFetch('http://localhost:8080/api/smartstore/reviews', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(reviewData)
@@ -1317,7 +1322,7 @@ async function visitProductsSequentially(storeId, runId, productUrls) {
 // ⭐ 서버에서 중단 신호 확인
 async function checkShouldStop() {
   try {
-    const response = await fetch('http://localhost:8080/api/smartstore/status', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/status', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });

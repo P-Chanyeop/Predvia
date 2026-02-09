@@ -1,3 +1,17 @@
+// ⭐ localhost 프록시 함수 (CORS 우회)
+async function localFetch(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+            { action: 'proxyFetch', url, method: options.method || 'GET', body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : null },
+            (resp) => {
+                if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
+                if (!resp || !resp.success) { reject(new Error(resp?.error || 'proxyFetch failed')); return; }
+                resolve({ ok: resp.status >= 200 && resp.status < 300, status: resp.status, json: () => Promise.resolve(resp.data), text: () => Promise.resolve(typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data)) });
+            }
+        );
+    });
+}
+
 // 크롤링 루프에 중단 체크 추가
 async function 크롤링루프() {
   for (let i = 0; i < 상품목록.length; i++) {
@@ -14,7 +28,7 @@ async function 크롤링루프() {
 
 async function checkShouldStop() {
   try {
-    const response = await fetch('http://localhost:8080/api/smartstore/status', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/status', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });

@@ -386,6 +386,27 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Background received message:', request);
     
+    // ⭐ localhost 프록시 요청 처리 (CORS 우회)
+    if (request.action === 'proxyFetch') {
+        (async () => {
+            try {
+                const opts = { method: request.method || 'GET' };
+                if (request.body) {
+                    opts.headers = { 'Content-Type': 'application/json' };
+                    opts.body = typeof request.body === 'string' ? request.body : JSON.stringify(request.body);
+                }
+                const resp = await fetch(request.url, opts);
+                const text = await resp.text();
+                let data;
+                try { data = JSON.parse(text); } catch { data = text; }
+                sendResponse({ success: true, data, status: resp.status });
+            } catch (e) {
+                sendResponse({ success: false, error: e.message });
+            }
+        })();
+        return true;
+    }
+    
     // ⭐ 타오바오 쿠키 수집 요청 처리
     if (request.action === 'collectTaobaoCookies') {
         console.log('🍪 Content Script에서 쿠키 수집 요청 받음');

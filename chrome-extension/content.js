@@ -3,6 +3,20 @@ console.log('🆕 Predvia 스마트스토어 링크 수집 확장프로그램 �
 console.log('🌐 현재 URL:', window.location.href);
 console.log('⏰ 현재 시간:', new Date().toLocaleString());
 
+// ⭐ localhost 프록시 함수 (CORS 우회)
+async function localFetch(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+            { action: 'proxyFetch', url, method: options.method || 'GET', body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : null },
+            (resp) => {
+                if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
+                if (!resp || !resp.success) { reject(new Error(resp?.error || 'proxyFetch failed')); return; }
+                resolve({ ok: resp.status >= 200 && resp.status < 300, status: resp.status, json: () => Promise.resolve(resp.data), text: () => Promise.resolve(typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data)) });
+            }
+        );
+    });
+}
+
 // ⭐ 네이버 가격비교 캡챠 감지 및 서버 알림 + 창 닫기
 async function checkForNaverCaptcha() {
   // 네이버 가격비교 페이지에서만 실행
@@ -46,7 +60,7 @@ async function checkForNaverCaptcha() {
 
       // 서버에 캡챠 감지 알림
       try {
-        await fetch('http://localhost:8080/api/captcha/detected', {
+        await localFetch('http://localhost:8080/api/captcha/detected', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -128,19 +142,19 @@ setTimeout(forceWindowResize, 1000);
 // ⭐ 크롤링 완료 시 네이버 창 자동 닫기 체크
 setInterval(async () => {
   try {
-    const response = await fetch('http://localhost:8080/api/smartstore/crawling-status');
+    const response = await localFetch('http://localhost:8080/api/smartstore/crawling-status');
     if (response.ok) {
       const data = await response.json();
-      // 크롤링이 완료되었거나 중단되었으면 창 닫기
-      if (!data.isRunning || data.shouldStop) {
+      // 크롤링이 완료되었고, 실제로 스토어가 있었을 때만 창 닫기
+      if (data.isCompleted && data.totalStores > 0) {
         console.log('🔥 크롤링 완료 감지 - 네이버 창 닫기');
         setTimeout(() => {
           window.close();
-        }, 2000); // 2초 후 닫기
+        }, 2000);
       }
     }
   } catch (error) {
-    // 에러 무시
+    // 서버 미실행 또는 에러 시 무시 (창 닫지 않음)
   }
 }, 3000); // 3초마다 체크
 
@@ -253,7 +267,7 @@ async function initializeExtension() {
 
     try {
       console.log('📡 플래그 확인 요청 전송: http://localhost:8080/api/crawling/allowed');
-      const response = await fetch('http://localhost:8080/api/crawling/allowed');
+      const response = await localFetch('http://localhost:8080/api/crawling/allowed');
       console.log('📡 플래그 확인 응답 상태:', response.status, response.ok);
 
       if (response.ok) {
@@ -300,7 +314,7 @@ async function testServerConnection() {
   try {
     console.log('🔍 Predvia 서버 연결 테스트 중...');
     
-    const response = await fetch('http://localhost:8080/api/smartstore/status', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/status', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -414,7 +428,7 @@ async function scrollAndCollectLinks() {
 
   // ⭐ 크롤링 완료 후 플래그 리셋
   try {
-    await fetch('http://localhost:8080/api/crawling/allow', { method: 'DELETE' });
+    await localFetch('http://localhost:8080/api/crawling/allow', { method: 'DELETE' });
     console.log('🔄 크롤링 허용 플래그 리셋 완료');
   } catch (error) {
     console.log('❌ 플래그 리셋 오류:', error.message);
@@ -747,7 +761,7 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
     
     console.log('🔥🔥🔥 fetch 요청 시작...');
     
-    const response = await fetch('http://localhost:8080/api/smartstore/links', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/links', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -936,7 +950,7 @@ async function visitSelectedStoresOnly(selectedStores) {
         
         // ⭐ 완료 신호 전송
         try {
-          await fetch('http://localhost:8080/api/smartstore/all-stores-completed', {
+          await localFetch('http://localhost:8080/api/smartstore/all-stores-completed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
           });
@@ -1091,7 +1105,7 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
         
         // ⭐ 완료 신호 전송
         try {
-          await fetch('http://localhost:8080/api/smartstore/all-stores-completed', {
+          await localFetch('http://localhost:8080/api/smartstore/all-stores-completed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
           });
@@ -1191,7 +1205,7 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
 // ⭐ 서버 상태 설정 함수
 async function setStoreState(storeId, runId, state, lock, expected = 0, progress = 0) {
   try {
-    const response = await fetch('http://localhost:8080/api/smartstore/state', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/state', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1218,7 +1232,7 @@ async function waitForTaskCompletion(storeId, runId) {
   
   while (true) {
     try {
-      const response = await fetch(`http://localhost:8080/api/smartstore/state?storeId=${storeId}&runId=${runId}`);
+      const response = await localFetch(`http://localhost:8080/api/smartstore/state?storeId=${storeId}&runId=${runId}`);
       const state = response.ok ? await response.json() : { state: 'unknown', lock: false };
       
       console.log(`🔍 ${storeId}: 상태 확인 - ${state.state} (lock: ${state.lock})`);
@@ -1247,7 +1261,7 @@ async function waitForTaskCompletion(storeId, runId) {
 // ⭐ 서버에서 중단 신호 확인
 async function checkShouldStop() {
   try {
-    const response = await fetch('http://localhost:8080/api/smartstore/status', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/status', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -1265,7 +1279,7 @@ async function checkShouldStop() {
 // ⭐ 스토어 방문 알림
 async function notifyStoreVisit(visitData) {
   try {
-    const response = await fetch('http://localhost:8080/api/smartstore/visit', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/visit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(visitData)
@@ -1372,7 +1386,7 @@ async function notifyServerGongguCount(storeId, gongguCount, isValid) {
       timestamp: new Date().toISOString()
     };
     
-    await fetch('http://localhost:8080/api/smartstore/gonggu-check', {
+    await localFetch('http://localhost:8080/api/smartstore/gonggu-check', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1399,7 +1413,7 @@ async function notifyServerLinkVisited(link, currentIndex, totalCount) {
       timestamp: new Date().toISOString()
     };
     
-    await fetch('http://localhost:8080/api/smartstore/visit', {
+    await localFetch('http://localhost:8080/api/smartstore/visit', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1426,7 +1440,7 @@ async function sendProductNamesToServer(productNames) {
       timestamp: new Date().toISOString()
     };
     
-    const response = await fetch('http://localhost:8080/api/smartstore/product-names', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/product-names', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1441,7 +1455,7 @@ async function sendProductNamesToServer(productNames) {
       // ⭐ 키워드 태그 실시간 표시 요청
       console.log('🏷️ 키워드 태그 실시간 표시 요청 전송');
       try {
-        await fetch('http://localhost:8080/api/smartstore/trigger-keywords', {
+        await localFetch('http://localhost:8080/api/smartstore/trigger-keywords', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'show_keywords' })
@@ -1451,7 +1465,7 @@ async function sendProductNamesToServer(productNames) {
         // ⭐ 잠시 후 SourcingPage에서 키워드를 가져가도록 추가 요청
         setTimeout(async () => {
           try {
-            await fetch('http://localhost:8080/api/smartstore/latest-keywords', {
+            await localFetch('http://localhost:8080/api/smartstore/latest-keywords', {
               method: 'GET'
             });
             console.log('✅ 키워드 가져가기 신호 전송 완료');
@@ -1476,7 +1490,7 @@ async function sendProductNamesToServer(productNames) {
 // ⭐ 서버로 로그 전송 함수
 async function sendLogToServer(message) {
   try {
-    await fetch('http://localhost:8080/api/smartstore/log', {
+    await localFetch('http://localhost:8080/api/smartstore/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, timestamp: new Date().toISOString() })
@@ -1556,7 +1570,7 @@ async function collectProductReviews() {
         timestamp: new Date().toISOString()
       };
       
-      const response = await fetch('http://localhost:8080/api/smartstore/reviews', {
+      const response = await localFetch('http://localhost:8080/api/smartstore/reviews', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1664,7 +1678,7 @@ function pasteImageFromClipboard() {
 // ⭐ 서버에 로그 전송
 async function sendLogToServer(message) {
   try {
-    await fetch('http://localhost:8080/api/log', {
+    await localFetch('http://localhost:8080/api/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: message })
@@ -1681,7 +1695,7 @@ function startAllStoresCompletionCheck() {
   // 30초마다 체크
   const checkInterval = setInterval(async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/smartstore/crawling-status');
+      const response = await localFetch('http://localhost:8080/api/smartstore/crawling-status');
       const status = await response.json();
       
       console.log(`📊 크롤링 상태: ${status.processedStores}/${status.totalStores} 스토어 완료, ${status.currentCount}/100개 수집`);
@@ -1692,7 +1706,7 @@ function startAllStoresCompletionCheck() {
         clearInterval(checkInterval);
         
         // 서버에 모든 스토어 완료 알림
-        await fetch('http://localhost:8080/api/smartstore/all-stores-completed', {
+        await localFetch('http://localhost:8080/api/smartstore/all-stores-completed', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 

@@ -1,10 +1,24 @@
+// ⭐ localhost 프록시 함수 (CORS 우회)
+async function localFetch(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+            { action: 'proxyFetch', url, method: options.method || 'GET', body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : null },
+            (resp) => {
+                if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
+                if (!resp || !resp.success) { reject(new Error(resp?.error || 'proxyFetch failed')); return; }
+                resolve({ ok: resp.status >= 200 && resp.status < 300, status: resp.status, json: () => Promise.resolve(resp.data), text: () => Promise.resolve(typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data)) });
+            }
+        );
+    });
+}
+
 // 개별 상품 페이지 전용 핸들러
 console.log('🔥🔥🔥 product-handler.js 로드됨 - ', window.location.href);
 
 // ⭐ 서버로 로그 전송 함수 추가
 function sendLogToServer(message) {
   try {
-    fetch('http://localhost:8080/api/smartstore/log', {
+    localFetch('http://localhost:8080/api/smartstore/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: message, timestamp: new Date().toISOString() })
@@ -146,8 +160,8 @@ async function collectProductPageData(storeId, productId) {
     // 1. 가격 정보 먼저 추출 (필터링용)
     const priceResult = await extractProductPrice(storeId, productId);
     
-    // 가격 필터링 실패 시 다른 데이터 수집 중단
-    if (!priceResult || priceResult.filtered) {
+    // 가격 필터링으로 제외된 경우만 중단 (가격 추출 실패는 계속 진행)
+    if (priceResult && priceResult.filtered) {
       console.log(`🚫 ${storeId}/${productId}: 가격 필터링으로 제외됨`);
       setTimeout(() => {
         window.close();
@@ -194,10 +208,13 @@ async function collectProductPageData(storeId, productId) {
 // 상품 이미지 추출
 async function extractProductImage(storeId, productId) {
   try {
+    sendLogToServer(`🔍 ${storeId}/${productId}: 이미지 추출 시작`);
+    
     // 대표 이미지 선택자들
     const selectors = [
       '.bd_2DO68 img[alt="대표이미지"]',
       '.bd_2DO68 img',
+      'img[alt="대표이미지"]',
       '.product_thumb img',
       '.thumb_area img',
       '.product_image img'
@@ -206,11 +223,14 @@ async function extractProductImage(storeId, productId) {
     let imageElement = null;
     for (const selector of selectors) {
       imageElement = document.querySelector(selector);
-      if (imageElement && imageElement.src) break;
+      if (imageElement && imageElement.src) {
+        sendLogToServer(`🔍 ${storeId}/${productId}: 선택자 ${selector}로 이미지 발견`);
+        break;
+      }
     }
     
     if (!imageElement || !imageElement.src) {
-      console.log(`❌ ${storeId}/${productId}: 상품 이미지 없음`);
+      sendLogToServer(`❌ ${storeId}/${productId}: 상품 이미지 없음`);
       return null;
     }
     
@@ -225,7 +245,7 @@ async function extractProductImage(storeId, productId) {
       timestamp: new Date().toISOString()
     };
     
-    await fetch('http://localhost:8080/api/smartstore/image', {
+    await localFetch('http://localhost:8080/api/smartstore/image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(imageData)
@@ -274,7 +294,7 @@ async function extractProductName(storeId, productId) {
       timestamp: new Date().toISOString()
     };
     
-    await fetch('http://localhost:8080/api/smartstore/product-name', {
+    await localFetch('http://localhost:8080/api/smartstore/product-name', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(nameData)
@@ -353,7 +373,7 @@ async function extractProductReviews(storeId, productId) {
       productUrl: window.location.href
     };
     
-    await fetch('http://localhost:8080/api/smartstore/reviews', {
+    await localFetch('http://localhost:8080/api/smartstore/reviews', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reviewData)
@@ -460,7 +480,7 @@ async function extractProductPrice(storeId, productId) {
         productUrl: window.location.href
       };
       
-      const response = await fetch('http://localhost:8080/api/smartstore/product-price', {
+      const response = await localFetch('http://localhost:8080/api/smartstore/product-price', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(priceData)
@@ -535,7 +555,7 @@ async function extractProductCategories(storeId, productId) {
       extractedAt: new Date().toISOString()
     };
     
-    await fetch('http://localhost:8080/api/smartstore/categories', {
+    await localFetch('http://localhost:8080/api/smartstore/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(categoryData)

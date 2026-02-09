@@ -1,3 +1,17 @@
+// ⭐ localhost 프록시 함수 (CORS 우회)
+async function localFetch(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+            { action: 'proxyFetch', url, method: options.method || 'GET', body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : null },
+            (resp) => {
+                if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
+                if (!resp || !resp.success) { reject(new Error(resp?.error || 'proxyFetch failed')); return; }
+                resolve({ ok: resp.status >= 200 && resp.status < 300, status: resp.status, json: () => Promise.resolve(resp.data), text: () => Promise.resolve(typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data)) });
+            }
+        );
+    });
+}
+
 // 타오바오 이미지 검색 전용 Content Script
 console.log('🔍 [taobao-image-search.js] 스크립트 로드됨, URL:', window.location.href);
 
@@ -19,7 +33,7 @@ console.log('🔍 [taobao-image-search.js] 스크립트 로드됨, URL:', window
     
     try {
         // 서버에서 이미지 데이터 가져오기
-        const response = await fetch(`http://localhost:8080/api/taobao/get-search-image?id=${searchRequestId}`);
+        const response = await localFetch(`http://localhost:8080/api/taobao/get-search-image?id=${searchRequestId}`);
         if (!response.ok) {
             console.log('❌ 이미지 데이터 가져오기 실패:', response.status);
             await sendResult(searchRequestId, { success: false, error: '이미지 데이터 없음' });
@@ -157,7 +171,7 @@ console.log('🔍 [taobao-image-search.js] 스크립트 로드됨, URL:', window
 // 결과 전송 함수
 async function sendResult(searchId, result) {
     try {
-        await fetch('http://localhost:8080/api/taobao/image-search-result', {
+        await localFetch('http://localhost:8080/api/taobao/image-search-result', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ searchId, ...result })

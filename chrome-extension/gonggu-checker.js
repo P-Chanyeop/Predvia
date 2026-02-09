@@ -1,3 +1,17 @@
+// ⭐ localhost 프록시 함수 (CORS 우회)
+async function localFetch(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+            { action: 'proxyFetch', url, method: options.method || 'GET', body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : null },
+            (resp) => {
+                if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
+                if (!resp || !resp.success) { reject(new Error(resp?.error || 'proxyFetch failed')); return; }
+                resolve({ ok: resp.status >= 200 && resp.status < 300, status: resp.status, json: () => Promise.resolve(resp.data), text: () => Promise.resolve(typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data)) });
+            }
+        );
+    });
+}
+
 // 공구탭에서 실행되는 스크립트 - 공구 개수 확인
 console.log('🔥 gonggu-checker.js 파일 로드됨!');
 console.log('🔥 현재 URL:', window.location.href);
@@ -173,7 +187,7 @@ async function sendGongguResult(gongguCount) {
     
     // 먼저 서버 연결 테스트
     try {
-      const testResponse = await fetch('http://localhost:8080/api/smartstore/status');
+      const testResponse = await localFetch('http://localhost:8080/api/smartstore/status');
       console.log('🔥🔥🔥 서버 연결 테스트 결과:', testResponse.status);
       
       if (!testResponse.ok) {
@@ -197,7 +211,7 @@ async function sendGongguResult(gongguCount) {
     
     console.log('📡 서버로 공구 개수 결과 전송:', data);
     
-    const response = await fetch('http://localhost:8080/api/smartstore/gonggu-check', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/gonggu-check', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -221,7 +235,7 @@ async function sendGongguResult(gongguCount) {
         
         // 서버에 전체상품 페이지 이동 알림
         try {
-          await fetch('http://localhost:8080/api/smartstore/log', {
+          await localFetch('http://localhost:8080/api/smartstore/log', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -248,7 +262,7 @@ async function sendGongguResult(gongguCount) {
         
         // ⭐ 서버에 스킵 완료 신호 전송 (다음 스토어로 이동 트리거)
         try {
-          await fetch('http://localhost:8080/api/smartstore/skip-store', {
+          await localFetch('http://localhost:8080/api/smartstore/skip-store', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -416,7 +430,7 @@ async function sendProductDataToServer(storeId, productData, reviewCount) {
       timestamp: new Date().toISOString()
     };
     
-    const response = await fetch('http://localhost:8080/api/smartstore/product-data', {
+    const response = await localFetch('http://localhost:8080/api/smartstore/product-data', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
