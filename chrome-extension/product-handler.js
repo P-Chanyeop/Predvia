@@ -109,10 +109,10 @@ async function initProductHandler() {
     console.log(`🎯 상품 데이터 수집 시작: ${storeId}/${productId}`);
     sendLogToServer(`🎯 상품 데이터 수집 시작: ${storeId}/${productId}`);
     
-    // 2초 대기 후 데이터 수집
+    // 1초 대기 후 데이터 수집
     setTimeout(async () => {
       await collectProductPageData(storeId, productId);
-    }, 2000);
+    }, 500);
     
   } catch (error) {
     console.error('❌ 상품 핸들러 오류:', error);
@@ -152,10 +152,10 @@ async function collectProductPageData(storeId, productId) {
     sendLogToServer(`📄 ${storeId}/${productId}: 페이지 로딩 완료`);
     
     // ⭐ 추가 대기 (동적 콘텐츠 로딩)
-    await new Promise(r => setTimeout(r, 2000));
+    // await new Promise(r => setTimeout(r, 1000));
     
     // ⭐ 카테고리 요소 대기 (최대 5초)
-    await waitForElement('ul.ySOklWNBjf', 5000);
+    await waitForElement('ul.ySOklWNBjf', 1000);
     
     // 1. 가격 정보 먼저 추출 (필터링용)
     const priceResult = await extractProductPrice(storeId, productId);
@@ -177,8 +177,8 @@ async function collectProductPageData(storeId, productId) {
     
     // ⭐ 실패한 항목 1회 재시도
     if (!imageData || !nameData || !categoryData) {
-      sendLogToServer(`🔄 ${storeId}/${productId}: 일부 실패 - 2초 후 재시도`);
-      await new Promise(r => setTimeout(r, 2000));
+      sendLogToServer(`🔄 ${storeId}/${productId}: 일부 실패 - 0.5초 후 재시도`);
+      await new Promise(r => setTimeout(r, 500));
       
       if (!imageData) imageData = await extractProductImage(storeId, productId);
       if (!nameData) nameData = await extractProductName(storeId, productId);
@@ -190,18 +190,32 @@ async function collectProductPageData(storeId, productId) {
     
     console.log(`✅ ${storeId}/${productId}: 데이터 수집 완료`);
     
-    // ⭐ 모든 작업 완료 후 1초 대기 후 탭 닫기
+    // ⭐ 서버에 상품 처리 완료 신호 전송
+    await localFetch('http://localhost:8080/api/smartstore/product-done', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storeId, productId })
+    }).catch(e => {});
+    
+    // ⭐ 탭 닫기
     setTimeout(() => {
       window.close();
-    }, 1000);
+    }, 500);
     
   } catch (error) {
     console.error(`❌ ${storeId}/${productId}: 데이터 수집 실패:`, error);
     sendLogToServer(`❌ ${storeId}/${productId}: 데이터 수집 실패 - ${error.message}`);
-    // 오류 시에도 탭 닫기
+    
+    // ⭐ 실패해도 완료 신호 전송 (다음 상품 진행)
+    await localFetch('http://localhost:8080/api/smartstore/product-done', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storeId, productId })
+    }).catch(e => {});
+    
     setTimeout(() => {
       window.close();
-    }, 1000);
+    }, 500);
   }
 }
 
@@ -249,9 +263,9 @@ async function extractProductImage(storeId, productId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(imageData)
-    });
+    }).catch(e => console.log('이미지 전송 오류:', e.message));
     
-    console.log(`✅ ${storeId}/${productId}: 이미지 전송 완료`);
+    sendLogToServer(`✅ ${storeId}/${productId}: 이미지 전송 완료`);
     return imageData;
     
   } catch (error) {
@@ -298,9 +312,9 @@ async function extractProductName(storeId, productId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(nameData)
-    });
+    }).catch(e => console.log('상품명 전송 오류:', e.message));
     
-    console.log(`✅ ${storeId}/${productId}: 상품명 전송 완료`);
+    sendLogToServer(`✅ ${storeId}/${productId}: 상품명 전송 완료`);
     return nameData;
     
   } catch (error) {
@@ -312,8 +326,10 @@ async function extractProductName(storeId, productId) {
 // 리뷰 데이터 추출
 async function extractProductReviews(storeId, productId) {
   try {
-    // 리뷰 영역 대기
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    sendLogToServer(`⭐ ${storeId}/${productId}: 리뷰 추출 시작`);
+    
+    // 리뷰 영역 대기 (0.5초로 단축)
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // 별점 선택자들
     const ratingSelectors = [
@@ -377,13 +393,13 @@ async function extractProductReviews(storeId, productId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reviewData)
-    });
+    }).catch(e => console.log('리뷰 전송 오류:', e.message));
     
-    console.log(`✅ ${storeId}/${productId}: 리뷰 전송 완료`);
+    sendLogToServer(`✅ ${storeId}/${productId}: 리뷰 ${reviews.length}개 전송 완료`);
     return reviewData;
     
   } catch (error) {
-    // 조용한 처리 - 리뷰 추출 실패
+    sendLogToServer(`❌ ${storeId}/${productId}: 리뷰 추출 오류 - ${error.message}`);
     return null;
   }
 }
@@ -513,27 +529,34 @@ async function extractProductPrice(storeId, productId) {
 // ⭐ 카테고리 추출
 async function extractProductCategories(storeId, productId) {
   try {
-    sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 추출 시작`);
+    sendLogToServer(`⭐ ${storeId}/${productId}: 카테고리 추출 시작`);
     
-    // ⭐ 선택자 대신 href에 /category/ 포함된 모든 링크에서 카테고리 추출
-    const allLinks = document.querySelectorAll('a[href*="/category/"]');
+    // ⭐ 상품 브레드크럼(경로)에서만 카테고리 추출
+    const breadcrumb = document.querySelector('ul.ySOklWNBjf');
     const categories = [];
     
-    allLinks.forEach(link => {
-      const href = link.getAttribute('href') || '';
-      // /category/ 포함된 링크만 (홈 제외)
-      if (href.includes('/category/')) {
-        const text = link.textContent
-          .replace(/\(총\s*\d+개\)/g, '')
-          .replace(/카테고리 더보기/g, '')
-          .replace(/\s+/g, ' ')
-          .trim();
+    if (breadcrumb) {
+      const items = breadcrumb.querySelectorAll('li');
+      items.forEach(li => {
+        // 텍스트만 추출 (하위 메뉴 있음, 총 X개 등 제거)
+        let text = '';
+        const span = li.querySelector('span.sAla67hq4a, span._copyable');
+        if (span) {
+          text = span.textContent.trim();
+        } else {
+          // span이 없으면 li 직접 텍스트
+          text = li.textContent
+            .replace(/하위 메뉴 있음/g, '')
+            .replace(/\(총\s*\d+개\)/g, '')
+            .replace(/카테고리 더보기/g, '')
+            .trim();
+        }
         
-        if (text && text !== '홈' && text.length > 0 && !categories.includes(text)) {
+        if (text && text !== '홈' && text !== 'Home' && text !== '전체상품' && text.length > 0 && !categories.includes(text)) {
           categories.push(text);
         }
-      }
-    });
+      });
+    }
     
     const categoryString = categories.join(' > ');
     sendLogToServer(`📂 ${storeId}/${productId}: 카테고리 - ${categoryString || '없음'}`);
@@ -559,7 +582,7 @@ async function extractProductCategories(storeId, productId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(categoryData)
-    });
+    }).catch(e => console.log('카테고리 전송 오류:', e.message));
     
     sendLogToServer(`✅ ${storeId}/${productId}: 카테고리 전송 완료 - ${categoryString}`);
     return categoryData;

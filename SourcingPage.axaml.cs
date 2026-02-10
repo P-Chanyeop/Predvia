@@ -28,7 +28,7 @@ namespace Gumaedaehang
     // 리뷰 데이터 구조
     public class ReviewItem
     {
-        public int rating { get; set; }
+        public string rating { get; set; } = "0";
         public string content { get; set; } = "";
     }
 
@@ -685,7 +685,7 @@ namespace Gumaedaehang
                         {
                             if (!string.IsNullOrEmpty(review.content))
                             {
-                                reviews.Add($"⭐ {review.rating}/5 - {review.content}");
+                                reviews.Add($"⭐{review.rating} {review.content}");
                             }
                         }
                     }
@@ -711,6 +711,69 @@ namespace Gumaedaehang
             Debug.WriteLine("🚫 더미 카테고리 데이터 생성 비활성화 - 실제 크롤링 데이터만 사용");
         }
 
+        // ⭐ 리뷰 UI 업데이트 메서드
+        public void UpdateProductReviews(string storeId, string productId, List<Services.ReviewData> reviews)
+        {
+            try
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    foreach (var kvp in _productElements)
+                    {
+                        var elements = kvp.Value;
+                        if (elements.StoreId == storeId && elements.RealProductId == productId)
+                        {
+                            // 리뷰 패널 찾기 (Container 내부에서)
+                            if (elements.Container != null)
+                            {
+                                var reviewPanel = FindReviewPanel(elements.Container);
+                                if (reviewPanel != null)
+                                {
+                                    reviewPanel.Children.Clear();
+                                    foreach (var review in reviews.Take(3)) // 최대 3개
+                                    {
+                                        var reviewText = new TextBlock
+                                        {
+                                            Text = $"⭐{review.Rating} {review.Content}",
+                                            FontSize = 12,
+                                            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                                            Margin = new Thickness(0, 2, 0, 2)
+                                        };
+                                        reviewPanel.Children.Add(reviewText);
+                                    }
+                                    Debug.WriteLine($"✅ 리뷰 UI 업데이트: {storeId}/{productId} - {reviews.Count}개");
+                                }
+                            }
+                            break;
+                        }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 리뷰 UI 업데이트 오류: {ex.Message}");
+            }
+        }
+        
+        private StackPanel? FindReviewPanel(Control parent)
+        {
+            if (parent is StackPanel sp && sp.Classes.Contains("review-panel"))
+                return sp;
+            
+            if (parent is Panel panel)
+            {
+                foreach (var child in panel.Children)
+                {
+                    if (child is Control ctrl)
+                    {
+                        var result = FindReviewPanel(ctrl);
+                        if (result != null) return result;
+                    }
+                }
+            }
+            return null;
+        }
+
         // 카테고리 데이터 추가 메서드
         public void AddCategoryData(CategoryData categoryData)
         {
@@ -718,18 +781,33 @@ namespace Gumaedaehang
             {
                 Debug.WriteLine($"📂 카테고리 데이터 추가: {categoryData.StoreId} - {categoryData.Categories.Count}개");
                 
-                // 카테고리 정보를 상품 카드에 표시하기 위해 저장
-                // 실제로는 각 상품 카드의 카테고리 정보를 업데이트해야 함
-                
-                // 로그 출력
-                foreach (var category in categoryData.Categories)
-                {
-                    Debug.WriteLine($"  - {category.Name} (순서: {category.Order})");
-                }
-                
-                // 카테고리 데이터를 메모리에 저장 (나중에 상품 카드에서 사용)
+                // 카테고리 데이터를 메모리에 저장
                 _categoryDataCache[categoryData.StoreId] = categoryData;
                 
+                // ⭐ 기존 카드의 카테고리 텍스트 업데이트
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        foreach (var kvp in _productElements)
+                        {
+                            var elements = kvp.Value;
+                            if (elements.StoreId == categoryData.StoreId && elements.CategoryTextBlock != null)
+                            {
+                                var categoryInfo = GetCategoryInfo(categoryData.StoreId, elements.RealProductId ?? "");
+                                if (!string.IsNullOrEmpty(categoryInfo))
+                                {
+                                    elements.CategoryTextBlock.Text = categoryInfo;
+                                    Debug.WriteLine($"✅ 카테고리 업데이트: {categoryData.StoreId}/{elements.RealProductId} -> {categoryInfo}");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"❌ 카드 카테고리 업데이트 오류: {ex.Message}");
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -907,7 +985,7 @@ namespace Gumaedaehang
 
                 var nameInputText = new TextBox 
                 { 
-                    Text = productName ?? "", // ⭐ JSON에서 로드된 상품명 표시
+                    Text = "", // ⭐ 사용자가 직접 입력하는 부분 - 비워둠
                     FontSize = 14,
                     FontFamily = new FontFamily("Malgun Gothic"),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
@@ -916,13 +994,13 @@ namespace Gumaedaehang
                 };
                 
                 // ⭐ 초기 바이트 계산
-                var initialByteCount = CalculateByteCount(productName ?? "");
+                var initialByteCount = 0;
                 var byteCountText = new TextBlock 
                 { 
-                    Text = $"{initialByteCount}/50 byte", 
+                    Text = "0/50 byte", 
                     FontSize = 12, 
                     FontFamily = new FontFamily("Malgun Gothic"),
-                    Foreground = initialByteCount > 50 ? Brushes.Red : new SolidColorBrush(Colors.Gray),
+                    Foreground = new SolidColorBrush(Colors.Gray),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
 
@@ -1314,6 +1392,7 @@ namespace Gumaedaehang
                     ImagePath = imageUrl, // 실제 이미지 파일 경로 저장 (imageUrl이 실제로는 파일 경로)
                     Container = productContainer, // 컨테이너 참조 추가
                     CheckBox = checkBox, // 체크박스 참조 추가 - 메서드 시작 부분의 checkBox 변수
+                    CategoryTextBlock = categoryText, // ⭐ 카테고리 텍스트블록 참조 추가
                     NameInputBox = nameInputText,
                     ByteCountTextBlock = byteCountText,
                     KeywordPanel = keywordPanel,
@@ -6075,6 +6154,7 @@ namespace Gumaedaehang
         public string? ImagePath { get; set; } // 실제 이미지 파일 경로
         public StackPanel? Container { get; set; } // 상품 카드 컨테이너
         public CheckBox? CheckBox { get; set; }
+        public TextBlock? CategoryTextBlock { get; set; } // ⭐ 카테고리 텍스트블록
         public Ellipse? CategoryStatusIndicator { get; set; }
         public Ellipse? NameStatusIndicator { get; set; }
         public WrapPanel? NameKeywordPanel { get; set; }

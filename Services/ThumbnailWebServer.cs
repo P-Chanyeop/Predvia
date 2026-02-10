@@ -90,6 +90,10 @@ namespace Gumaedaehang.Services
         // ⭐ 상품별 중복 카운팅 방지
         private readonly HashSet<string> _processedProducts = new HashSet<string>();
         
+        // ⭐ 상품 처리 완료 신호
+        private string? _lastCompletedProductId = null;
+        private readonly object _productDoneLock = new object();
+        
         // ⭐ 크롤링 허용 플래그
         private bool _crawlingAllowed = false;
         private readonly object _crawlingLock = new object();
@@ -296,6 +300,8 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/product-name", HandleProductName); // ⭐ 상품명 처리 API 추가
                 _app.MapPost("/api/smartstore/product-price", HandleProductPrice); // ⭐ 가격 처리 API 추가
                 _app.MapPost("/api/smartstore/reviews", HandleProductReviews); // ⭐ 리뷰 처리 API 추가
+                _app.MapPost("/api/smartstore/product-done", HandleProductDone); // ⭐ 상품 처리 완료 신호 API
+                _app.MapGet("/api/smartstore/product-done", HandleGetProductDone); // ⭐ 상품 처리 완료 확인 API
                 _app.MapPost("/api/captcha/detected", HandleCaptchaDetected); // ⭐ CAPTCHA 감지 API 추가
                 _app.MapPost("/api/smartstore/categories", HandleCategories); // ⭐ 카테고리 처리 API 추가
                 _app.MapPost("/api/smartstore/product-categories", HandleProductCategories); // ⭐ 개별 상품 카테고리 처리 API 추가
@@ -5141,6 +5147,48 @@ namespace Gumaedaehang.Services
             }
         }
 
+        // ⭐ 상품 처리 완료 신호 수신 API
+        private async Task<IResult> HandleProductDone(HttpContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                var body = await reader.ReadToEndAsync();
+                var json = JsonDocument.Parse(body);
+                
+                var storeId = json.RootElement.GetProperty("storeId").GetString() ?? "";
+                var productId = json.RootElement.GetProperty("productId").GetString() ?? "";
+                
+                lock (_productDoneLock)
+                {
+                    _lastCompletedProductId = $"{storeId}_{productId}";
+                }
+                
+                LogWindow.AddLogStatic($"✅ 상품 처리 완료 신호: {storeId}/{productId}");
+                return Results.Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Results.Ok(new { success = false, error = ex.Message });
+            }
+        }
+        
+        // ⭐ 상품 처리 완료 확인 API (폴링용)
+        private Task<IResult> HandleGetProductDone(HttpContext context)
+        {
+            var productKey = context.Request.Query["productKey"].ToString();
+            
+            lock (_productDoneLock)
+            {
+                var isDone = _lastCompletedProductId == productKey;
+                if (isDone)
+                {
+                    _lastCompletedProductId = null; // 확인 후 초기화
+                }
+                return Task.FromResult(Results.Ok(new { done = isDone }));
+            }
+        }
+
         // ⭐ 상품 이미지 처리 API
         private async Task<IResult> HandleProductImage(HttpContext context)
         {
@@ -5734,6 +5782,9 @@ namespace Gumaedaehang.Services
 
                 // 리뷰 저장
                 await SaveProductReviews(reviewData);
+                
+                // ⭐ UI 업데이트
+                await UpdateSourcingPageReviews(reviewData);
 
                 await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
                 return Results.Ok();
@@ -5768,6 +5819,26 @@ namespace Gumaedaehang.Services
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 리뷰 저장 실패: {ex.Message}");
+            }
+        }
+        
+        // ⭐ 리뷰 UI 업데이트
+        private async Task UpdateSourcingPageReviews(ProductReviewsData reviewData)
+        {
+            try
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                        ? desktop.MainWindow as MainWindow
+                        : null;
+                    
+                    mainWindow?.SourcingPageInstance?.UpdateProductReviews(reviewData.StoreId, reviewData.ProductId, reviewData.Reviews);
+                });
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 리뷰 UI 업데이트 오류: {ex.Message}");
             }
         }
 
@@ -6508,7 +6579,7 @@ public class ProductCategoryData
     public class ReviewData
     {
         [JsonPropertyName("rating")]
-        public double Rating { get; set; }
+        public string Rating { get; set; } = "0";
         
         [JsonPropertyName("content")]
         public string Content { get; set; } = string.Empty;
