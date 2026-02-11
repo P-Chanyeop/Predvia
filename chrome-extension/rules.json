@@ -10,7 +10,7 @@
       ]
     },
     "condition": {
-      "regexFilter": ".*taobao\\.com.*",
+      "regexFilter": ".*s\\.taobao\\.com.*(image|imgsearch).*",
       "resourceTypes": ["xmlhttprequest"]
     }
   }
