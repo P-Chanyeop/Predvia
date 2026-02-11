@@ -664,6 +664,27 @@ namespace Gumaedaehang
             return "상품명 없음";
         }
 
+        // ⭐ 크롤링된 가격 데이터 읽기
+        private string GetOriginalProductPrice(string storeId, string productId)
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var productDataPath = System.IO.Path.Combine(appDataPath, "Predvia", "ProductData");
+                var priceFile = System.IO.Path.Combine(productDataPath, $"{storeId}_{productId}_price.txt");
+                
+                if (File.Exists(priceFile))
+                {
+                    return File.ReadAllText(priceFile, System.Text.Encoding.UTF8).Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 가격 읽기 오류: {ex.Message}");
+            }
+            return "";
+        }
+
         // 크롤링된 리뷰 데이터 읽기
         private List<string> GetProductReviews(string storeId, string productId)
         {
@@ -1021,9 +1042,13 @@ namespace Gumaedaehang
 
                 // 원상품명 (실제 크롤링된 상품명 표시) - 클릭 시 상품 상세페이지로 이동
                 var originalProductName = !string.IsNullOrEmpty(productName) ? productName : GetOriginalProductName(storeId, productId);
+                var originalProductPrice = GetOriginalProductPrice(storeId, productId);
+                var displayText = string.IsNullOrEmpty(originalProductPrice) 
+                    ? $"원상품명: {originalProductName}" 
+                    : $"원상품명: {originalProductName} | {originalProductPrice}";
                 var originalNameText = new TextBlock 
                 { 
-                    Text = "원상품명: " + originalProductName, 
+                    Text = displayText, 
                     FontSize = 13,
                     FontFamily = new FontFamily("Malgun Gothic"),
                     Foreground = new SolidColorBrush(Color.Parse("#0066CC")), // 링크 색상
