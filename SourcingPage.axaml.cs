@@ -1925,6 +1925,23 @@ namespace Gumaedaehang
         // 타오바오 페어링 버튼 클릭 이벤트
         private async void TaobaoPairingButton_Click(int productId)
         {
+            if (!_productElements.TryGetValue(productId, out var product)) return;
+            
+            // ⭐ 모든 상품의 타오바오 페어링 버튼 비활성화
+            foreach (var p in _productElements.Values)
+            {
+                if (p.TaobaoPairingButton != null)
+                {
+                    p.TaobaoPairingButton.IsEnabled = false;
+                }
+            }
+            
+            // 현재 버튼 "검색 중..." 표시
+            if (product.TaobaoPairingButton != null)
+            {
+                product.TaobaoPairingButton.Content = "검색 중...";
+            }
+            
             // 스위치 상태에 따라 검색 방식 분기
             bool useLoginMode = _taobaoSearchModeSwitch?.IsChecked ?? true;
             
@@ -1936,6 +1953,34 @@ namespace Gumaedaehang
             {
                 await TaobaoPairingButton_GoogleLensMode(productId);
             }
+            
+            // ⭐ 페어링 완료 후 10초 카운트다운 (모든 버튼)
+            _ = Task.Run(async () =>
+            {
+                for (int i = 10; i > 0; i--)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        foreach (var p in _productElements.Values)
+                        {
+                            if (p.TaobaoPairingButton != null)
+                                p.TaobaoPairingButton.Content = $"{i}초 대기";
+                        }
+                    });
+                    await Task.Delay(1000);
+                }
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    foreach (var p in _productElements.Values)
+                    {
+                        if (p.TaobaoPairingButton != null)
+                        {
+                            p.TaobaoPairingButton.IsEnabled = true;
+                            p.TaobaoPairingButton.Content = "타오바오 페어링";
+                        }
+                    }
+                });
+            });
         }
         
         // 구글렌즈 방식 (비로그인)
@@ -2013,17 +2058,6 @@ namespace Gumaedaehang
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 구글렌즈 검색 오류: {ex.Message}");
-            }
-            finally
-            {
-                if (product.TaobaoPairingButton != null)
-                {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        product.TaobaoPairingButton.IsEnabled = true;
-                        product.TaobaoPairingButton.Content = "타오바오 페어링";
-                    });
-                }
             }
         }
         
@@ -2143,14 +2177,6 @@ namespace Gumaedaehang
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 오류: {ex.Message}");
-            }
-            finally
-            {
-                if (product.TaobaoPairingButton != null)
-                {
-                    product.TaobaoPairingButton.IsEnabled = true;
-                    product.TaobaoPairingButton.Content = "페어링";
-                }
             }
         }
         
