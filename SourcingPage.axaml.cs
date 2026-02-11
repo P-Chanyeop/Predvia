@@ -956,7 +956,7 @@ namespace Gumaedaehang
                 { 
                     Width = 8, 
                     Height = 8, 
-                    Fill = new SolidColorBrush(Colors.Green),
+                    Fill = new SolidColorBrush(Colors.Red), // ⭐ 초기값 빨강 (글자 없음)
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
                 var nameText = new TextBlock 
@@ -1005,7 +1005,11 @@ namespace Gumaedaehang
                 };
 
                 // 바이트 계산 이벤트 연결
-                nameInputText.TextChanged += (s, e) => UpdateByteCount(cardId, nameInputText, byteCountText);
+                var cardIdForEvent = cardId; // 클로저 변수
+                nameInputText.TextChanged += (s, e) => {
+                    UpdateByteCount(cardIdForEvent, nameInputText, byteCountText);
+                    UpdateProductStatusIndicators(cardIdForEvent); // ⭐ 상태 표시등 업데이트
+                };
 
                 Grid.SetColumn(nameInputText, 0);
                 Grid.SetColumn(byteCountText, 1);
@@ -1393,6 +1397,9 @@ namespace Gumaedaehang
                     Container = productContainer, // 컨테이너 참조 추가
                     CheckBox = checkBox, // 체크박스 참조 추가 - 메서드 시작 부분의 checkBox 변수
                     CategoryTextBlock = categoryText, // ⭐ 카테고리 텍스트블록 참조 추가
+                    CategoryStatusIndicator = redDot, // ⭐ 카테고리 점
+                    NameStatusIndicator = greenDot, // ⭐ 상품명 점
+                    TaobaoPairingStatusIndicator = redDot2, // ⭐ 타오바오 페어링 점
                     NameInputBox = nameInputText,
                     ByteCountTextBlock = byteCountText,
                     KeywordPanel = keywordPanel,
@@ -2956,16 +2963,13 @@ namespace Gumaedaehang
                 bool isNameStatusGreen = false;
                 bool isTaobaoPairingStatusGreen = false;
                 
-                // 상품명 바이트 수 표시등 업데이트
+                // ⭐ 상품명 상태 표시등: 1글자 이상 + 50byte 이하 → 초록
                 if (product.NameStatusIndicator != null)
                 {
-                    var totalByteCount = 0;
-                    foreach (var keyword in product.ProductNameKeywords)
-                    {
-                        totalByteCount += CalculateByteCount(keyword);
-                    }
+                    var nameText = product.NameInputBox?.Text ?? "";
+                    var byteCount = CalculateByteCount(nameText); // ⭐ 통일된 계산 방식
                     
-                    if (totalByteCount <= 50)
+                    if (nameText.Length >= 1 && byteCount <= 50)
                     {
                         product.NameStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#53DA4C"));
                         isNameStatusGreen = true;
@@ -2977,7 +2981,7 @@ namespace Gumaedaehang
                     }
                 }
                 
-                // 타오바오 페어링 상태 표시등 업데이트
+                // ⭐ 타오바오 페어링 상태: 5개 중 1개라도 선택 → 초록
                 if (product.TaobaoPairingStatusIndicator != null)
                 {
                     if (product.IsTaobaoPaired)
@@ -2992,17 +2996,15 @@ namespace Gumaedaehang
                     }
                 }
                 
-                // 카테고리 상태 표시등 업데이트 (상품명과 타오바오 페어링 상태에 따라)
+                // ⭐ 카테고리 상태: 상품명 + 타오바오 둘 다 초록 → 초록
                 if (product.CategoryStatusIndicator != null)
                 {
                     if (isNameStatusGreen && isTaobaoPairingStatusGreen)
                     {
-                        // 둘 다 초록불이면 카테고리도 초록불
                         product.CategoryStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#53DA4C"));
                     }
                     else
                     {
-                        // 둘 중 하나라도 빨간불이면 카테고리도 빨간불
                         product.CategoryStatusIndicator.Fill = new SolidColorBrush(Color.Parse("#FF7272"));
                     }
                 }
@@ -5283,10 +5285,12 @@ namespace Gumaedaehang
                     if (_productElements.TryGetValue(cardId, out var product))
                     {
                         product.SelectedTaobaoIndex = index;
+                        product.IsTaobaoPaired = true; // ⭐ 선택 시 페어링 완료 처리
                         LogWindow.AddLogStatic($"✅ 상품 {cardId}: 타오바오 상품 {index + 1}번 선택됨");
                         
                         // UI 업데이트 - 선택된 상품 테두리 강조
                         UpdateTaobaoSelectionUI(cardId, index);
+                        UpdateProductStatusIndicators(cardId); // ⭐ 상태 표시등 업데이트
                     }
                 }
             }
