@@ -2270,15 +2270,15 @@ namespace Gumaedaehang.Services
             
             try
             {
-                // 프록시 사용
-                var proxy = GetRandomProxy();
+                // 프록시 사용 (비활성화)
+                // var proxy = GetRandomProxy();
                 using var handler = new HttpClientHandler();
-                if (proxy != null)
-                {
-                    handler.Proxy = new System.Net.WebProxy(proxy);
-                    handler.UseProxy = true;
-                    LogWindow.AddLogStatic($"🔄 알리바바 프록시: {proxy}");
-                }
+                // if (proxy != null)
+                // {
+                //     handler.Proxy = new System.Net.WebProxy(proxy);
+                //     handler.UseProxy = true;
+                //     LogWindow.AddLogStatic($"🔄 알리바바 프록시: {proxy}");
+                // }
                 
                 using var client = new HttpClient(handler);
                 client.Timeout = TimeSpan.FromSeconds(30);
@@ -2814,11 +2814,12 @@ namespace Gumaedaehang.Services
                             $"&type=json&dataType=json";
                         
                         var handler = new HttpClientHandler { UseCookies = false };
-                        if (!string.IsNullOrEmpty(proxy))
-                        {
-                            handler.Proxy = new System.Net.WebProxy($"http://{proxy}");
-                            handler.UseProxy = true;
-                        }
+                        // 프록시 비활성화
+                        // if (!string.IsNullOrEmpty(proxy))
+                        // {
+                        //     handler.Proxy = new System.Net.WebProxy($"http://{proxy}");
+                        //     handler.UseProxy = true;
+                        // }
                         
                         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
                         client.DefaultRequestHeaders.Add("Referer", "https://www.taobao.com/");
@@ -2978,11 +2979,12 @@ namespace Gumaedaehang.Services
                             $"&type=jsonp&dataType=jsonp&callback=mtopjsonp1&data={Uri.EscapeDataString(data)}";
                         
                         var handler = new HttpClientHandler { UseCookies = false };
-                        if (!string.IsNullOrEmpty(proxy))
-                        {
-                            handler.Proxy = new System.Net.WebProxy($"http://{proxy}");
-                            handler.UseProxy = true;
-                        }
+                        // 프록시 비활성화
+                        // if (!string.IsNullOrEmpty(proxy))
+                        // {
+                        //     handler.Proxy = new System.Net.WebProxy($"http://{proxy}");
+                        //     handler.UseProxy = true;
+                        // }
                         
                         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
                         client.DefaultRequestHeaders.Add("Referer", "https://s.taobao.com/");
@@ -3031,11 +3033,12 @@ namespace Gumaedaehang.Services
                     AllowAutoRedirect = true,  // 리다이렉트 자동 따라가기
                     MaxAutomaticRedirections = 5
                 };
-                if (!string.IsNullOrEmpty(proxy))
-                {
-                    handler.Proxy = new System.Net.WebProxy($"http://{proxy}");
-                    handler.UseProxy = true;
-                }
+                // 프록시 비활성화
+                // if (!string.IsNullOrEmpty(proxy))
+                // {
+                //     handler.Proxy = new System.Net.WebProxy($"http://{proxy}");
+                //     handler.UseProxy = true;
+                // }
                 
                 using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
                 
