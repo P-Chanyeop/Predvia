@@ -426,13 +426,13 @@ async function scrollAndCollectLinks() {
       }
     }
 
-  // ⭐ 크롤링 완료 후 플래그 리셋
-  try {
-    await localFetch('http://localhost:8080/api/crawling/allow', { method: 'DELETE' });
-    console.log('🔄 크롤링 허용 플래그 리셋 완료');
-  } catch (error) {
-    console.log('❌ 플래그 리셋 오류:', error.message);
-  }
+  // ⭐ 크롤링 완료 후 플래그 리셋 (항상 true 유지하므로 비활성화)
+  // try {
+  //   await localFetch('http://localhost:8080/api/crawling/allow', { method: 'DELETE' });
+  //   console.log('🔄 크롤링 허용 플래그 리셋 완료');
+  // } catch (error) {
+  //   console.log('❌ 플래그 리셋 오류:', error.message);
+  // }
 
   // ⭐ 링크 수집 완료 - 가격비교 창은 크롤링 완료까지 유지
   console.log('✅ 링크 수집 완료 - 가격비교 창은 크롤링 완료까지 유지');

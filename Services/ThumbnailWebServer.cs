@@ -6142,15 +6142,12 @@ namespace Gumaedaehang.Services
             return Results.Ok();
         }
 
-        // ⭐ 크롤링 플래그 리셋 API
+        // ⭐ 크롤링 플래그 리셋 API (항상 true 유지)
         private async Task<IResult> HandleResetCrawling()
         {
             await Task.CompletedTask;
-            lock (_crawlingLock)
-            {
-                _crawlingAllowed = false;
-                return Results.Json(new { success = true });
-            }
+            // _crawlingAllowed는 항상 true 유지
+            return Results.Json(new { success = true });
         }
 
         // ⭐ 현재 상품 ID 설정 API
