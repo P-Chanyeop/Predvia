@@ -276,9 +276,9 @@ async function initializeExtension() {
         console.log('🔍 서버 응답 전체:', JSON.stringify(data));
 
         if (!data.allowed) {
-          console.log('🔒 크롤링이 허용되지 않았습니다. 상품명만 추출합니다.');
-          // ⭐ "추가" 버튼 모드: 상품명만 추출
-          await extractAndSendProductNames();
+          console.log('🔒 크롤링이 허용되지 않았습니다. 키워드 수집은 상품데이터 탭에서 처리합니다.');
+          // // ⭐ "추가" 버튼 모드: 상품명만 추출 (상품데이터 탭에서 별도 처리하므로 비활성화)
+          // await extractAndSendProductNames();
           return;
         }
         console.log('🔥🔥🔥 크롤링이 허용되었습니다! 스마트스토어 링크 수집을 시작합니다!');

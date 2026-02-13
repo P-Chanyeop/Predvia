@@ -95,7 +95,7 @@ namespace Gumaedaehang.Services
         private readonly object _productDoneLock = new object();
         
         // ⭐ 크롤링 허용 플래그
-        private bool _crawlingAllowed = false;
+        private bool _crawlingAllowed = true;
         private readonly object _crawlingLock = new object();
 
         // ⭐ 상품별 키워드 저장 (productId → keywords)
@@ -2583,6 +2583,7 @@ namespace Gumaedaehang.Services
                 var fileExists = File.Exists(cookiesPath);
                 var fileCookieCount = 0;
                 string? fileToken = null;
+                bool hasLoggedIn = false; // ⭐ 로그인 쿠키 여부
                 
                 if (fileExists)
                 {
@@ -2595,10 +2596,18 @@ namespace Gumaedaehang.Services
                     {
                         fileToken = h5tk.Split('_')[0];
                     }
+                    
+                    // ⭐ 로그인 쿠키로도 확인 (lgc, unb, lid 중 하나라도 있으면 로그인됨)
+                    if (fileCookies != null && !hasLoggedIn)
+                    {
+                        hasLoggedIn = fileCookies.ContainsKey("lgc") || 
+                                      fileCookies.ContainsKey("unb") || 
+                                      fileCookies.ContainsKey("lid");
+                    }
                 }
                 
-                // 메모리 토큰이 없으면 파일 토큰 사용
-                var hasToken = !string.IsNullOrEmpty(_taobaoToken) || !string.IsNullOrEmpty(fileToken);
+                // 메모리 토큰이 없으면 파일 토큰 사용, 또는 로그인 쿠키 확인
+                var hasToken = !string.IsNullOrEmpty(_taobaoToken) || !string.IsNullOrEmpty(fileToken) || hasLoggedIn;
                 var tokenPreview = !string.IsNullOrEmpty(_taobaoToken) ? _taobaoToken : fileToken;
                 
                 var result = new
