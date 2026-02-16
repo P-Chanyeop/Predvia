@@ -1040,20 +1040,19 @@ namespace Gumaedaehang
 
                 // 중복 카테고리 제거됨
 
-                // 원상품명 (실제 크롤링된 상품명 표시) - 클릭 시 상품 상세페이지로 이동
+                // 원상품명 (링크) + 가격 (뱃지) 분리
                 var originalProductName = !string.IsNullOrEmpty(productName) ? productName : GetOriginalProductName(storeId, productId);
                 var originalProductPrice = GetOriginalProductPrice(storeId, productId);
-                var displayText = string.IsNullOrEmpty(originalProductPrice) 
-                    ? $"원상품명: {originalProductName}" 
-                    : $"원상품명: {originalProductName} | {originalProductPrice}";
+                
                 var originalNameText = new TextBlock 
                 { 
-                    Text = displayText, 
+                    Text = $"원상품명: {originalProductName}", 
                     FontSize = 13,
                     FontFamily = new FontFamily("Malgun Gothic"),
-                    Foreground = new SolidColorBrush(Color.Parse("#0066CC")), // 링크 색상
-                    TextDecorations = TextDecorations.Underline, // 밑줄
-                    Cursor = new Cursor(StandardCursorType.Hand) // 손가락 커서
+                    Foreground = new SolidColorBrush(Color.Parse("#0066CC")),
+                    TextDecorations = TextDecorations.Underline,
+                    Cursor = new Cursor(StandardCursorType.Hand),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
                 
                 // 원상품명 클릭 이벤트 - 상품 상세페이지로 이동
@@ -1062,19 +1061,39 @@ namespace Gumaedaehang
                     {
                         var productUrl = $"https://smartstore.naver.com/{storeId}/products/{productId}";
                         LogWindow.AddLogStatic($"🔗 상품 상세페이지 열기: {productUrl}");
-                        
-                        var startInfo = new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = productUrl,
-                            UseShellExecute = true
-                        };
-                        System.Diagnostics.Process.Start(startInfo);
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = productUrl, UseShellExecute = true });
                     }
                     catch (Exception ex)
                     {
                         LogWindow.AddLogStatic($"❌ 상품 페이지 열기 오류: {ex.Message}");
                     }
                 };
+                
+                // 가격 뱃지 (클릭 불가)
+                var originalNamePanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+                originalNamePanel.Children.Add(originalNameText);
+                
+                if (!string.IsNullOrEmpty(originalProductPrice))
+                {
+                    var priceBadge = new Border
+                    {
+                        Background = new SolidColorBrush(Color.Parse("#FFF0E0")),
+                        BorderBrush = new SolidColorBrush(Color.Parse("#E67E22")),
+                        BorderThickness = new Thickness(1),
+                        CornerRadius = new CornerRadius(4),
+                        Padding = new Thickness(8, 2),
+                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                        Child = new TextBlock
+                        {
+                            Text = originalProductPrice,
+                            FontSize = 12,
+                            FontFamily = new FontFamily("Malgun Gothic"),
+                            Foreground = new SolidColorBrush(Color.Parse("#E67E22")),
+                            FontWeight = FontWeight.SemiBold
+                        }
+                    };
+                    originalNamePanel.Children.Add(priceBadge);
+                }
                 
                 // ⭐ 상품명 입력칸은 비워둠 - 사용자가 키워드 조합해서 입력
 
@@ -1203,7 +1222,7 @@ namespace Gumaedaehang
                 // 정보 패널에 모든 요소 추가
                 infoPanel.Children.Add(nameLabel);
                 infoPanel.Children.Add(nameInputBorder);
-                infoPanel.Children.Add(originalNameText);
+                infoPanel.Children.Add(originalNamePanel);
                 infoPanel.Children.Add(keywordPanel);
                 infoPanel.Children.Add(keywordInputPanel);
                 infoPanel.Children.Add(nameDirectInputPanel); // 새로운 첨부 패널 추가
