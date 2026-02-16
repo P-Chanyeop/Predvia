@@ -1115,6 +1115,26 @@ namespace Gumaedaehang
                 
                 keywordInputPanel.Children.Add(keywordInput);
                 keywordInputPanel.Children.Add(addButton);
+                
+                // ⭐ 보스 메시지 라벨 + 입력칸
+                var bossLabel = new TextBlock
+                {
+                    Text = "보스메시지:",
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    Margin = new Thickness(15, 0, 0, 0)
+                };
+                var bossMessageInput = new TextBox
+                {
+                    Width = 200,
+                    Height = 30,
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Watermark = "보스 메시지 입력"
+                };
+                keywordInputPanel.Children.Add(bossLabel);
+                keywordInputPanel.Children.Add(bossMessageInput);
 
                 // 상품명 직접 입력 + 첨부 버튼 + 배대지 비용
                 var nameDirectInputPanel = new StackPanel 
@@ -1430,6 +1450,7 @@ namespace Gumaedaehang
                     KeywordPanel = keywordPanel,
                     KeywordInputBox = keywordInput,
                     ShippingCostInput = shippingInput, // ⭐ 배대지 비용 입력박스
+                    BossMessageInput = bossMessageInput, // ⭐ 보스 메시지 입력박스
                     AddKeywordButton = addButton,
                     DeleteButton = deleteButton, // 삭제 버튼 참조 추가
                     HoldButton = holdButton, // 보류 버튼 참조 추가
@@ -5679,6 +5700,7 @@ namespace Gumaedaehang
                         card.TaobaoProducts = p.TaobaoProducts?.Count > 0 ? p.TaobaoProducts : card.TaobaoProducts;
                         card.ShippingCost = shippingCost > 0 ? shippingCost : card.ShippingCost;
                         card.SelectedTaobaoIndex = p.SelectedTaobaoIndex;
+                        card.BossMessage = p.BossMessageInput?.Text ?? card.BossMessage;
                     }
                 }
 
@@ -5851,6 +5873,15 @@ namespace Gumaedaehang
                         }
                         UpdateTaobaoProductBoxes(count, card.TaobaoProducts);
                     }
+                    
+                    // ⭐ 배대지 비용 + 보스메시지 복원
+                    if (_productElements.TryGetValue(count, out var el))
+                    {
+                        if (el.ShippingCostInput != null && card.ShippingCost > 0)
+                            el.ShippingCostInput.Text = card.ShippingCost.ToString();
+                        if (el.BossMessageInput != null && !string.IsNullOrEmpty(card.BossMessage))
+                            el.BossMessageInput.Text = card.BossMessage;
+                    }
                 }
             }
             
@@ -5951,6 +5982,10 @@ namespace Gumaedaehang
                     if (uiElement?.NameInputBox != null)
                     {
                         card.ProductName = uiElement.NameInputBox.Text ?? "";
+                    }
+                    if (uiElement?.BossMessageInput != null)
+                    {
+                        card.BossMessage = uiElement.BossMessageInput.Text ?? "";
                     }
                 }
                 
@@ -6156,7 +6191,7 @@ namespace Gumaedaehang
                     worksheet.Cell(row, 3).Value = byteCount;
                     worksheet.Cell(row, 4).Value = card.ShippingCost;
                     worksheet.Cell(row, 5).Value = taobaoUrl;
-                    worksheet.Cell(row, 6).Value = "";
+                    worksheet.Cell(row, 6).Value = card.BossMessage ?? "";
                     worksheet.Cell(row, 7).Value = 0;
                     worksheet.Cell(row, 8).Value = "";
 
@@ -6315,6 +6350,9 @@ namespace Gumaedaehang
         
         [JsonPropertyName("selectedTaobaoIndex")]
         public int SelectedTaobaoIndex { get; set; } = 0; // 선택된 타오바오 상품 인덱스
+        
+        [JsonPropertyName("bossMessage")]
+        public string BossMessage { get; set; } = ""; // 보스 메시지
     }
 
     // 상품별 UI 요소들을 관리하는 클래스
@@ -6346,6 +6384,7 @@ namespace Gumaedaehang
         public bool IsTaobaoPaired { get; set; } = false;
         public List<TaobaoProductData> TaobaoProducts { get; set; } = new(); // ⭐ 타오바오 상품 데이터 저장
         public int SelectedTaobaoIndex { get; set; } = 0; // ⭐ 선택된 타오바오 상품 인덱스 (기본 0번)
+        public TextBox? BossMessageInput { get; set; } // ⭐ 보스 메시지 입력박스
     }
 }
 
