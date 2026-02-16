@@ -97,6 +97,7 @@ namespace Gumaedaehang
         // 키워드 태그 자동 생성을 위한 타이머
         private DispatcherTimer? _keywordCheckTimer;
         private string _keywordSourceProductKey = ""; // 키워드를 생성한 상품 키 (storeId_productId)
+        private string _mainKeyword = ""; // 검색한 메인키워드
         private Dictionary<int, List<string>> _productKeywords = new(); // 상품별 키워드 저장
         private ChromeExtensionService? _extensionService;
         
@@ -1823,6 +1824,7 @@ namespace Gumaedaehang
                 if (!string.IsNullOrEmpty(keyword))
                 {
                     product.KeywordInputBox!.Text = ""; // 입력창 비우기
+                    _mainKeyword = keyword; // 메인키워드 저장
                     LogWindow.AddLogStatic($"🔍 입력된 키워드: {keyword}");
                     await SearchNaverPriceComparison(keyword);
                 }
@@ -1889,6 +1891,7 @@ namespace Gumaedaehang
                 if (!string.IsNullOrEmpty(keyword))
                 {
                     product.KeywordInputBox.Text = "";
+                    _mainKeyword = keyword; // 메인키워드 저장
                     
                     // 🔍 네이버 가격비교에서 키워드 검색만 (UI 표시 안 함)
                     await SearchNaverPriceComparison(keyword);
@@ -3797,6 +3800,13 @@ namespace Gumaedaehang
                 {
                     LogWindow.AddLogStatic($"✅ {keywords.Count}개 키워드 추출 완료");
                     
+                    // ⭐ 메인키워드를 맨 앞에 추가
+                    if (!string.IsNullOrEmpty(_mainKeyword))
+                    {
+                        keywords.Remove(_mainKeyword);
+                        keywords.Insert(0, _mainKeyword);
+                    }
+                    
                     // ⭐ 키워드 태그 바로 표시 (productKey 기반)
                     await Dispatcher.UIThread.InvokeAsync(() => {
                         CreateKeywordTagsByKey(keywords, _keywordSourceProductKey);
@@ -4274,6 +4284,13 @@ namespace Gumaedaehang
                     
                     // ⭐ 상품별로 키워드 저장
                     _productKeywords[product.ProductId] = keywords;
+                    
+                    // ⭐ 메인키워드를 맨 앞에 추가
+                    if (!string.IsNullOrEmpty(_mainKeyword))
+                    {
+                        keywords.Remove(_mainKeyword);
+                        keywords.Insert(0, _mainKeyword);
+                    }
                     
                     // ⭐ 키워드가 있든 없든 무조건 UI 업데이트 (기존 태그 제거 포함)
                     await Dispatcher.UIThread.InvokeAsync(() =>
