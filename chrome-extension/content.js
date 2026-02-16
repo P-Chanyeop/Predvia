@@ -1616,7 +1616,7 @@ if (window.location.href.includes('smartstore.naver.com') && window.location.hre
 }
 
 // ⭐ 네이버 가격비교 페이지에서 모든 스토어 완료 감지 시작
-if (window.location.href.includes('shopping.naver.com/overseas')) {
+if (window.location.href.includes('search.shopping.naver.com')) {
   console.log('🔍 네이버 가격비교 페이지 - 모든 스토어 완료 감지 시작');
   startAllStoresCompletionCheck();
 }

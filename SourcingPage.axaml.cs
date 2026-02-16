@@ -3178,7 +3178,7 @@ namespace Gumaedaehang
                 
                 var keyword = "테스트키워드";
                 var encodedKeyword = Uri.EscapeDataString(keyword);
-                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=overseas";
+                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=checkout";
                 
                 LogWindow.AddLogStatic($"🌐 페이지만 열기 (크롤링 비활성화): {searchUrl}");
                 
@@ -3890,7 +3890,7 @@ namespace Gumaedaehang
 
                 // ⭐ 네이버 가격비교 페이지 열기 (백그라운드 렌더링)
                 var encodedKeyword = Uri.EscapeDataString(searchText);
-                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=overseas";
+                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=checkout";
 
                 LogWindow.AddLogStatic($"🌐 크롤링 시작: {searchUrl}");
 
@@ -4033,7 +4033,7 @@ namespace Gumaedaehang
 
                 // ⭐ 네이버 가격비교 페이지 열기 (크롤링 모드)
                 var encodedKeyword = Uri.EscapeDataString(searchText);
-                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=overseas";
+                var searchUrl = $"https://search.shopping.naver.com/search/all?query={encodedKeyword}&productSet=checkout";
 
                 LogWindow.AddLogStatic($"🌐 크롤링 시작: {searchUrl}");
 
