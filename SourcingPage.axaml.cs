@@ -1702,57 +1702,58 @@ namespace Gumaedaehang
         }
         
         // 선택된 카드 삭제 버튼 클릭
-        protected void DeleteSelectedButton_Click(object? sender, RoutedEventArgs e)
+        protected async void DeleteSelectedButton_Click(object? sender, RoutedEventArgs e)
         {
             try
             {
-                if (_allProductCards.Count == 0 && _productElements.Count == 0)
+                if (_allProductCards.Count == 0)
                 {
                     LogWindow.AddLogStatic("❌ 삭제할 상품이 없습니다.");
                     return;
                 }
                 
-                var totalCount = _allProductCards.Count;
-                LogWindow.AddLogStatic($"🗑️ 전체 {totalCount}개 상품 삭제 시작");
+                // 현재 페이지 상품만 가져오기
+                var startIndex = (_currentPage - 1) * _itemsPerPage;
+                var pageCards = _allProductCards.Skip(startIndex).Take(_itemsPerPage).ToList();
+                var deleteCount = pageCards.Count;
                 
-                // UI 컨테이너 비우기
-                var container = this.FindControl<StackPanel>("RealDataContainer");
-                container?.Children.Clear();
+                LogWindow.AddLogStatic($"🗑️ 현재 페이지 {deleteCount}개 상품 삭제 시작");
                 
-                // 모든 데이터 폴더 비우기
+                // 해당 상품 파일 삭제
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
-                foreach (var folder in new[] { "Images", "ProductData", "Reviews", "Categories", "TaobaoImages" })
+                foreach (var card in pageCards)
                 {
-                    var folderPath = System.IO.Path.Combine(predviaPath, folder);
-                    if (Directory.Exists(folderPath))
-                    {
-                        foreach (var file in Directory.GetFiles(folderPath))
-                            File.Delete(file);
-                    }
+                    if (card.StoreId != null && card.RealProductId != null)
+                        DeleteProductFiles(predviaPath, card.StoreId, card.RealProductId);
                 }
                 
-                // 모든 데이터 클리어
-                _allProductCards.Clear();
-                _productElements.Clear();
-                _currentPage = 1;
+                // _allProductCards에서 현재 페이지 항목 제거
+                _allProductCards.RemoveRange(startIndex, deleteCount);
+                
+                // JSON 파일 업데이트
+                var jsonPath = System.IO.Path.Combine(predviaPath, "product_cards.json");
+                if (_allProductCards.Count > 0)
+                    File.WriteAllText(jsonPath, JsonSerializer.Serialize(_allProductCards));
+                else if (File.Exists(jsonPath))
+                    File.Delete(jsonPath);
+                
+                // 페이지 재계산 (삭제 후 현재 페이지가 범위 초과하면 조정)
+                var totalPages = Math.Max(1, (int)Math.Ceiling((double)_allProductCards.Count / _itemsPerPage));
+                if (_currentPage > totalPages) _currentPage = totalPages;
                 
                 // 전체선택 체크박스 해제
                 if (_selectAllCheckBox != null)
                     _selectAllCheckBox.IsChecked = false;
                 
-                // JSON 파일 삭제
-                var jsonPath = System.IO.Path.Combine(predviaPath, "product_cards.json");
-                if (File.Exists(jsonPath)) File.Delete(jsonPath);
+                // UI 새로고침
+                await LoadCurrentPage();
                 
-                // 페이지 정보 업데이트
-                UpdatePageInfo();
-                
-                LogWindow.AddLogStatic($"✅ {totalCount}개 상품 전체 삭제 완료");
+                LogWindow.AddLogStatic($"✅ {deleteCount}개 상품 삭제 완료 (남은 상품: {_allProductCards.Count}개)");
             }
             catch (Exception ex)
             {
-                LogWindow.AddLogStatic($"❌ 전체 삭제 오류: {ex.Message}");
+                LogWindow.AddLogStatic($"❌ 삭제 오류: {ex.Message}");
             }
         }
         
