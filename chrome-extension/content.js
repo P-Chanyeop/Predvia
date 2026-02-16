@@ -1007,6 +1007,13 @@ async function visitSelectedStoresOnly(selectedStores) {
       await releaseProcessingPermission(storeId);
       console.log(`🔓 ${store.title}: 처리 권한 해제 (완료)`);
       
+      // ⭐ 완료 후 중단 신호 재확인
+      const stopAfter = await checkShouldStop();
+      if (stopAfter) {
+        console.log(`🛑 ${storeId}: 완료 후 목표 달성 확인 - 크롤링 종료`);
+        return;
+      }
+
       // 2초 대기 후 다음 스토어
       await new Promise(resolve => setTimeout(resolve, 2000));
       
@@ -1178,6 +1185,13 @@ async function visitSmartStoreLinksSequentially(smartStoreLinks) {
         console.log(`⚠️ ${storeId}: 탭 닫기 실패 - ${e.message}`);
       }
       
+      // ⭐ 완료 후 중단 신호 재확인
+      const stopAfter = await checkShouldStop();
+      if (stopAfter) {
+        console.log(`🛑 ${storeId}: 완료 후 목표 달성 확인 - 크롤링 종료`);
+        return;
+      }
+
       console.log(`✅ [${index + 1}/${smartStoreLinks.length}] 작업 완료: ${link.title}`);
       
       // 다음 링크 처리
@@ -1232,6 +1246,13 @@ async function waitForTaskCompletion(storeId, runId) {
   
   while (true) {
     try {
+      // ⭐ 중단 신호 확인 - 목표 달성 시 즉시 탈출
+      const shouldStop = await checkShouldStop();
+      if (shouldStop) {
+        console.log(`🛑 ${storeId}: 목표 달성으로 대기 즉시 종료`);
+        return false;
+      }
+
       const response = await localFetch(`http://localhost:8080/api/smartstore/state?storeId=${storeId}&runId=${runId}`);
       const state = response.ok ? await response.json() : { state: 'unknown', lock: false };
       
