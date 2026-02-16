@@ -264,7 +264,7 @@
         
         <!-- 데이터가 있을 때 보여줄 화면 -->
         <Grid x:Name="DataAvailableView" IsVisible="True">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer x:Name="DataScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="20" Margin="30,20,30,30">
                     
                     <!-- 전체선택 및 삭제 영역 -->

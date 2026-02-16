@@ -112,7 +112,7 @@
     </UserControl.Styles>
 
     <!-- 상품 데이터 화면 (데이터 있을 때만 표시) -->
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer x:Name="DataScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Spacing="20" Margin="30,20,30,30">
 
             <!-- 전체선택 및 삭제, 저장 영역 -->

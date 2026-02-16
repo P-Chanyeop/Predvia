@@ -5925,6 +5925,13 @@ namespace Gumaedaehang
             // 페이지 정보 업데이트
             UpdatePageInfo();
             LogWindow.AddLogStatic($"✅ 페이지 {_currentPage}/{totalPages} 로드 완료");
+            
+            // 스크롤 맨 위로 (카드 로드 완료 후)
+            Dispatcher.UIThread.Post(() =>
+            {
+                var sv = this.FindControl<ScrollViewer>("DataScrollViewer");
+                if (sv != null) sv.Offset = new Avalonia.Vector(0, 0);
+            }, DispatcherPriority.Background);
         }
         
         // ⭐ 페이지 정보 업데이트
