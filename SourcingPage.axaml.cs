@@ -1712,9 +1712,11 @@ namespace Gumaedaehang
                     return;
                 }
                 
-                // 현재 페이지 상품만 가져오기
                 var startIndex = (_currentPage - 1) * _itemsPerPage;
                 var pageCards = _allProductCards.Skip(startIndex).Take(_itemsPerPage).ToList();
+                
+                if (!await ShowConfirmDialog($"현재 페이지의 {pageCards.Count}개 상품을 삭제하시겠습니까?")) return;
+                
                 var deleteCount = pageCards.Count;
                 
                 LogWindow.AddLogStatic($"🗑️ 현재 페이지 {deleteCount}개 상품 삭제 시작");
@@ -1950,10 +1952,12 @@ namespace Gumaedaehang
         }
         
         // 삭제 버튼 클릭 이벤트
-        private void DeleteButton_Click(int productId)
+        private async void DeleteButton_Click(int productId)
         {
             try
             {
+                if (!await ShowConfirmDialog("이 상품을 삭제하시겠습니까?")) return;
+                
                 LogWindow.AddLogStatic($"🗑️ 개별 삭제 버튼 클릭: 상품 {productId}");
                 
                 if (_productElements.TryGetValue(productId, out var product) && product.Container != null)
@@ -5984,6 +5988,8 @@ namespace Gumaedaehang
         {
             try
             {
+                if (!await ShowConfirmDialog("선택된 상품을 Excel로 내보내시겠습니까?")) return;
+                
                 var mainWindow = (MainWindow?)TopLevel.GetTopLevel(this);
                 
                 // ⭐ 선택된 상품 ID 가져오기 (UI에서)
@@ -6306,6 +6312,38 @@ namespace Gumaedaehang
                 await msgBox.ShowDialog(parent);
             else
                 msgBox.Show();
+        }
+        
+        // ⭐ 확인/취소 팝업
+        private async Task<bool> ShowConfirmDialog(string message)
+        {
+            var result = false;
+            var dialog = new Window
+            {
+                Title = "확인",
+                Width = 380,
+                Height = 160,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = false
+            };
+            
+            var panel = new StackPanel { Margin = new Thickness(20), Spacing = 20, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            panel.Children.Add(new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, FontSize = 14 });
+            
+            var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, Spacing = 15 };
+            var yesBtn = new Button { Content = "확인", Width = 80, Background = new SolidColorBrush(Color.Parse("#E67E22")), Foreground = Brushes.White };
+            var noBtn = new Button { Content = "취소", Width = 80, Background = new SolidColorBrush(Color.Parse("#999999")), Foreground = Brushes.White };
+            yesBtn.Click += (s, e) => { result = true; dialog.Close(); };
+            noBtn.Click += (s, e) => { dialog.Close(); };
+            btnPanel.Children.Add(yesBtn);
+            btnPanel.Children.Add(noBtn);
+            panel.Children.Add(btnPanel);
+            
+            dialog.Content = panel;
+            
+            var parent = this.VisualRoot as Window;
+            if (parent != null) await dialog.ShowDialog(parent);
+            return result;
         }
 
         // 상품명 파일에서 가져오기
