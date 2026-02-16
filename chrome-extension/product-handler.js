@@ -52,33 +52,34 @@ function forceWindowResize() {
   }
 }
 
-// ⭐ 즉시 실행 (페이지 로드 전에도)
-forceWindowResize();
+// ⭐ 즉시 실행하지 않고, 크롤링 활성 시에만 창 크기 조절
+async function initWindowResize() {
+  try {
+    const statusResp = await localFetch('http://localhost:8080/api/smartstore/status');
+    const statusData = await statusResp.json();
+    if (!statusData.isCrawlingActive) return; // 크롤링 비활성이면 스킵
+  } catch (e) { return; }
 
-// ⭐ 다중 안전장치: 여러 시점에서 반복 실행
-setTimeout(forceWindowResize, 50);   // 0.05초 후
-setTimeout(forceWindowResize, 100);  // 0.1초 후
-setTimeout(forceWindowResize, 200);  // 0.2초 후
-setTimeout(forceWindowResize, 500);  // 0.5초 후
-setTimeout(forceWindowResize, 1000); // 1초 후
-setTimeout(forceWindowResize, 2000); // 2초 후
+  forceWindowResize();
+  setTimeout(forceWindowResize, 100);
+  setTimeout(forceWindowResize, 500);
+  setTimeout(forceWindowResize, 1000);
+  setTimeout(forceWindowResize, 2000);
 
-// ⭐ 페이지 로드 이벤트에서도 실행
-document.addEventListener('DOMContentLoaded', forceWindowResize);
-window.addEventListener('load', forceWindowResize);
+  document.addEventListener('DOMContentLoaded', forceWindowResize);
+  window.addEventListener('load', forceWindowResize);
 
-// ⭐ 지속적 감시: 창이 다른 위치로 이동하면 다시 우하단으로
-setInterval(() => {
-  const currentX = window.screenX;
-  const currentY = window.screenY;
-  const targetX = window.screen.availWidth - 220;
-  const targetY = window.screen.availHeight - 320;
-  
-  // 위치가 우하단이 아니면 다시 이동
-  if (Math.abs(currentX - targetX) > 50 || Math.abs(currentY - targetY) > 50) {
-    forceWindowResize();
-  }
-}, 1000); // 1초마다 위치 체크
+  setInterval(() => {
+    const currentX = window.screenX;
+    const currentY = window.screenY;
+    const targetX = window.screen.availWidth - 220;
+    const targetY = window.screen.availHeight - 320;
+    if (Math.abs(currentX - targetX) > 50 || Math.abs(currentY - targetY) > 50) {
+      forceWindowResize();
+    }
+  }, 1000);
+}
+initWindowResize();
 
 // 페이지 로드 완료 대기
 if (document.readyState === 'loading') {
@@ -89,6 +90,19 @@ if (document.readyState === 'loading') {
 
 async function initProductHandler() {
   try {
+    // ⭐ 크롤링 활성 상태 확인 - 비활성이면 아무것도 하지 않음 (사용자가 직접 연 페이지)
+    try {
+      const statusResp = await localFetch('http://localhost:8080/api/smartstore/status');
+      const statusData = await statusResp.json();
+      if (!statusData.isCrawlingActive) {
+        console.log('ℹ️ 크롤링 비활성 - 사용자가 직접 연 페이지, 핸들러 스킵');
+        return;
+      }
+    } catch (e) {
+      console.log('ℹ️ 서버 연결 불가 - 핸들러 스킵');
+      return;
+    }
+
     const url = window.location.href;
     console.log('🔥 상품 페이지 핸들러 시작:', url);
     sendLogToServer(`🔥 상품 페이지 핸들러 시작: ${url}`);

@@ -1764,6 +1764,7 @@ namespace Gumaedaehang.Services
                     productCount = _productCount,
                     targetCount = TARGET_PRODUCT_COUNT,
                     isRunning = !_shouldStop,
+                    isCrawlingActive = _isCrawlingActive,
                     shouldStop = _shouldStop,  // ⭐ Chrome 확장프로그램이 기대하는 필드 추가
                     selectedStores = _selectedStores.Count,
                     progress = _productCount * 100.0 / TARGET_PRODUCT_COUNT,
