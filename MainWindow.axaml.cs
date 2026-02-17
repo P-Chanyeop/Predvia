@@ -224,6 +224,8 @@ namespace Gumaedaehang
                 Button? activeTab = null;
                 if (_sourcingTab != null && _sourcingContent != null && _sourcingContent.IsVisible)
                     activeTab = _sourcingTab;
+                else if (_productDataTab != null && _productDataContent != null && _productDataContent.IsVisible)
+                    activeTab = _productDataTab;
                 else if (_marketCheckTab != null && _marketCheckContent != null && _marketCheckContent.IsVisible)
                     activeTab = _marketCheckTab;
                 else if (_mainProductTab != null && _mainProductContent != null && _mainProductContent.IsVisible)
@@ -463,6 +465,12 @@ namespace Gumaedaehang
             {
                 _sourcingTab.FontWeight = FontWeight.Normal;
                 _sourcingTab.Foreground = new SolidColorBrush(textColor);
+            }
+            
+            if (_productDataTab != null)
+            {
+                _productDataTab.FontWeight = FontWeight.Normal;
+                _productDataTab.Foreground = new SolidColorBrush(textColor);
             }
             
             if (_marketCheckTab != null)
