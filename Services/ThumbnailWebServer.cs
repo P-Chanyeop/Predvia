@@ -99,6 +99,9 @@ namespace Gumaedaehang.Services
         private bool _crawlingAllowed = true;
         private readonly object _crawlingLock = new object();
 
+        // ⭐ 서버 주도 크롤링 상태 머신
+        private CrawlStateMachine? _crawlSM = null;
+
         // ⭐ 상품별 키워드 저장 (productId → keywords)
         private Dictionary<int, List<string>> _productKeywords = new();
         private List<string> _latestKeywords = new();  // 가장 최근 키워드
@@ -330,6 +333,12 @@ namespace Gumaedaehang.Services
                 _app.MapPost("/api/smartstore/all-stores-completed", HandleAllStoresCompleted); // ⭐ 모든 스토어 완료 API 추가
                 _app.MapGet("/api/smartstore/check-all-completed", HandleCheckAllCompleted); // ⭐ 완료 상태 체크 API 추가
                 _app.MapGet("/api/smartstore/crawling-status", HandleGetCrawlingStatus); // ⭐ 크롤링 상태 확인 API 추가
+                
+                // ⭐ 서버 주도 크롤링 API (v2)
+                _app.MapGet("/api/crawl/next-task", HandleCrawlNextTask);
+                _app.MapPost("/api/crawl/report", HandleCrawlReport);
+                _app.MapPost("/api/crawl/start", HandleCrawlStart);
+                
                 _app.MapPost("/api/taobao/upload-image", HandleTaobaoImageUpload); // ⭐ 타오바오 이미지 업로드 API
                 _app.MapPost("/api/taobao/login", HandleTaobaoLogin); // ⭐ 타오바오 로그인 API
                 _app.MapPost("/api/taobao/cookies", HandleTaobaoCookies); // ⭐ 타오바오 쿠키 수신 API
@@ -2237,6 +2246,141 @@ namespace Gumaedaehang.Services
             }
         }
         
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 서버 주도 크롤링 API (v2)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        
+        private async Task<IResult> HandleCrawlStart(HttpContext context)
+        {
+            try
+            {
+                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<JsonElement>(body);
+                
+                var stores = new List<CrawlStore>();
+                if (data.TryGetProperty("stores", out var storesArr))
+                {
+                    foreach (var s in storesArr.EnumerateArray())
+                    {
+                        stores.Add(new CrawlStore
+                        {
+                            StoreId = s.GetProperty("storeId").GetString() ?? "",
+                            Url = s.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "",
+                            Title = s.TryGetProperty("title", out var t) ? t.GetString() ?? "" : ""
+                        });
+                    }
+                }
+
+                _crawlSM = new CrawlStateMachine(TARGET_PRODUCT_COUNT, _minPrice, _maxPrice, _priceFilterEnabled);
+                _crawlSM.SetStores(stores);
+                
+                LogWindow.AddLogStatic($"🚀 [v2] 크롤링 시작: {stores.Count}개 스토어");
+                
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = true, storeCount = stores.Count }));
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = ex.Message }));
+                return Results.Ok();
+            }
+        }
+
+        private async Task<IResult> HandleCrawlNextTask(HttpContext context)
+        {
+            try
+            {
+                context.Response.ContentType = "application/json; charset=utf-8";
+                if (_crawlSM == null)
+                {
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(new { action = "wait", reason = "크롤링 미시작" }));
+                    return Results.Ok();
+                }
+                
+                var task = _crawlSM.GetNextTask();
+                await context.Response.WriteAsync(JsonSerializer.Serialize(task));
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { action = "wait", reason = ex.Message }));
+                return Results.Ok();
+            }
+        }
+
+        private async Task<IResult> HandleCrawlReport(HttpContext context)
+        {
+            try
+            {
+                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<JsonElement>(body);
+                var type = data.GetProperty("type").GetString() ?? "";
+                var storeId = data.TryGetProperty("storeId", out var sid) ? sid.GetString() ?? "" : "";
+
+                if (_crawlSM == null)
+                {
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = "크롤링 미시작" }));
+                    return Results.Ok();
+                }
+
+                switch (type)
+                {
+                    case "gonggu_result":
+                        var count = data.GetProperty("count").GetInt32();
+                        _crawlSM.ReportGongguResult(storeId, count);
+                        break;
+
+                    case "no_gonggu":
+                        _crawlSM.ReportNoGonggu(storeId);
+                        break;
+
+                    case "product_list":
+                        var products = new List<string>();
+                        foreach (var p in data.GetProperty("products").EnumerateArray())
+                            products.Add(p.GetString() ?? "");
+                        _crawlSM.ReportProductList(storeId, products);
+                        break;
+
+                    case "product_data":
+                        var productId = data.GetProperty("productId").GetString() ?? "";
+                        var priceValue = data.TryGetProperty("priceValue", out var pv) ? pv.GetInt32() : 0;
+                        var hasImage = data.TryGetProperty("hasImage", out var hi) && hi.GetBoolean();
+                        var hasName = data.TryGetProperty("hasName", out var hn) && hn.GetBoolean();
+                        _crawlSM.ReportProductData(storeId, productId, priceValue, hasImage, hasName);
+                        
+                        // 기존 데이터 저장 로직 호출 (이미지/상품명/리뷰는 기존 API로 처리)
+                        break;
+
+                    case "page_timeout":
+                        _crawlSM.ReportPageLoadTimeout(storeId);
+                        break;
+
+                    default:
+                        LogWindow.AddLogStatic($"⚠️ [v2] 알 수 없는 report type: {type}");
+                        break;
+                }
+
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { 
+                    success = true, 
+                    phase = _crawlSM.CurrentPhase.ToString(),
+                    successCount = _crawlSM.SuccessCount,
+                    attempted = _crawlSM.TotalAttempted
+                }));
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = ex.Message }));
+                return Results.Ok();
+            }
+        }
+
         // ⭐ 구글렌즈 타오바오 검색 핸들러
         private async Task<IResult> HandleGoogleLensSearch(HttpContext context)
         {
@@ -6776,5 +6920,213 @@ public class ProductCategoryData
         {
             HideLoadingFromSourcingPage();
         }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 서버 주도 크롤링 상태 머신
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    public class CrawlStateMachine
+    {
+        public enum Phase { Idle, WaitingLinks, GongguCheck, WaitingGonggu, AllProducts, WaitingProducts, VisitingProduct, WaitingProductData, Done }
+
+        public Phase CurrentPhase { get; private set; } = Phase.Idle;
+        public List<CrawlStore> Stores { get; private set; } = new();
+        public int CurrentStoreIdx { get; private set; } = 0;
+        public int CurrentProductIdx { get; private set; } = 0;
+        public List<string> CurrentProductList { get; private set; } = new();
+        public int SuccessCount { get; private set; } = 0;
+        public int TotalAttempted { get; private set; } = 0;
+        public bool IsCompleted => CurrentPhase == Phase.Done;
+        public string? CurrentTabUrl { get; private set; }
+
+        private readonly int _targetCount;
+        private readonly int _minPrice;
+        private readonly int _maxPrice;
+        private readonly bool _priceFilterEnabled;
+
+        public CrawlStateMachine(int targetCount = 100, int minPrice = 0, int maxPrice = int.MaxValue, bool priceFilterEnabled = true)
+        {
+            _targetCount = targetCount;
+            _minPrice = minPrice;
+            _maxPrice = maxPrice;
+            _priceFilterEnabled = priceFilterEnabled;
+        }
+
+        public void SetStores(List<CrawlStore> stores)
+        {
+            Stores = stores;
+            CurrentStoreIdx = 0;
+            CurrentPhase = stores.Count > 0 ? Phase.GongguCheck : Phase.Done;
+        }
+
+        public object GetNextTask()
+        {
+            if (SuccessCount >= _targetCount)
+            {
+                CurrentPhase = Phase.Done;
+                return new { action = "done", reason = "목표 달성", success = SuccessCount, attempted = TotalAttempted };
+            }
+
+            if (CurrentStoreIdx >= Stores.Count)
+            {
+                CurrentPhase = Phase.Done;
+                return new { action = "done", reason = "모든 스토어 완료", success = SuccessCount, attempted = TotalAttempted };
+            }
+
+            var store = Stores[CurrentStoreIdx];
+
+            switch (CurrentPhase)
+            {
+                case Phase.Idle:
+                case Phase.WaitingLinks:
+                    return new { action = "wait", reason = "링크 수집 대기" };
+
+                case Phase.GongguCheck:
+                    CurrentPhase = Phase.WaitingGonggu;
+                    var gongguUrl = $"https://smartstore.naver.com/{store.StoreId}/category/50000165?cp=1";
+                    CurrentTabUrl = gongguUrl;
+                    return new { action = "open_gonggu", url = gongguUrl, storeId = store.StoreId, storeIdx = CurrentStoreIdx, totalStores = Stores.Count };
+
+                case Phase.WaitingGonggu:
+                    return new { action = "wait", reason = "공구 개수 확인 중", storeId = store.StoreId };
+
+                case Phase.AllProducts:
+                    CurrentPhase = Phase.WaitingProducts;
+                    var allUrl = $"https://smartstore.naver.com/{store.StoreId}/category/ALL?st=TOTALSALE";
+                    CurrentTabUrl = allUrl;
+                    return new { action = "open_all_products", url = allUrl, storeId = store.StoreId };
+
+                case Phase.WaitingProducts:
+                    return new { action = "wait", reason = "상품 목록 수집 중", storeId = store.StoreId };
+
+                case Phase.VisitingProduct:
+                    if (CurrentProductIdx >= CurrentProductList.Count)
+                    {
+                        MoveToNextStore();
+                        return GetNextTask();
+                    }
+                    CurrentPhase = Phase.WaitingProductData;
+                    var productId = CurrentProductList[CurrentProductIdx];
+                    var productUrl = $"https://smartstore.naver.com/{store.StoreId}/products/{productId}";
+                    CurrentTabUrl = productUrl;
+                    return new { action = "open_product", url = productUrl, storeId = store.StoreId, productId = productId, productIdx = CurrentProductIdx, totalProducts = CurrentProductList.Count };
+
+                case Phase.WaitingProductData:
+                    return new { action = "wait", reason = "상품 데이터 수집 중", storeId = store.StoreId };
+
+                case Phase.Done:
+                    return new { action = "done", reason = "크롤링 완료", success = SuccessCount, attempted = TotalAttempted };
+
+                default:
+                    return new { action = "wait", reason = "알 수 없는 상태" };
+            }
+        }
+
+        public void ReportGongguResult(string storeId, int count)
+        {
+            if (CurrentPhase != Phase.WaitingGonggu) return;
+            var store = Stores[CurrentStoreIdx];
+            if (store.StoreId != storeId) return;
+
+            store.GongguCount = count;
+            if (count >= 1000)
+            {
+                store.Status = "products";
+                CurrentPhase = Phase.AllProducts;
+                LogWindow.AddLogStatic($"✅ {storeId}: 공구 {count}개 → 전체상품 진행");
+            }
+            else
+            {
+                store.Status = "skip";
+                LogWindow.AddLogStatic($"⏭️ {storeId}: 공구 {count}개 → 스킵");
+                MoveToNextStore();
+            }
+        }
+
+        public void ReportNoGonggu(string storeId)
+        {
+            if (CurrentPhase != Phase.WaitingGonggu) return;
+            var store = Stores[CurrentStoreIdx];
+            if (store.StoreId != storeId) return;
+
+            store.Status = "skip";
+            LogWindow.AddLogStatic($"⏭️ {storeId}: 공구탭 없음 → 스킵");
+            MoveToNextStore();
+        }
+
+        public void ReportProductList(string storeId, List<string> productIds)
+        {
+            if (CurrentPhase != Phase.WaitingProducts) return;
+            var store = Stores[CurrentStoreIdx];
+            if (store.StoreId != storeId) return;
+
+            CurrentProductList = productIds;
+            CurrentProductIdx = 0;
+            CurrentPhase = Phase.VisitingProduct;
+            LogWindow.AddLogStatic($"📋 {storeId}: {productIds.Count}개 상품 목록 수신");
+        }
+
+        public void ReportProductData(string storeId, string productId, int priceValue, bool hasImage, bool hasName)
+        {
+            if (CurrentPhase != Phase.WaitingProductData) return;
+
+            TotalAttempted++;
+
+            // 가격 필터링
+            bool priceOk = !_priceFilterEnabled || (priceValue >= _minPrice && priceValue <= _maxPrice);
+            if (priceOk && hasImage && hasName)
+            {
+                SuccessCount++;
+                LogWindow.AddLogStatic($"✅ {storeId}/{productId}: 성공 ({SuccessCount}/{_targetCount})");
+            }
+            else
+            {
+                string reason = !priceOk ? $"가격 {priceValue}원 범위 밖" : "데이터 부족";
+                LogWindow.AddLogStatic($"⏭️ {storeId}/{productId}: {reason}");
+            }
+
+            CurrentProductIdx++;
+            CurrentPhase = Phase.VisitingProduct;
+
+            if (SuccessCount >= _targetCount)
+                CurrentPhase = Phase.Done;
+        }
+
+        public void ReportPageLoadTimeout(string storeId)
+        {
+            TotalAttempted++;
+            CurrentProductIdx++;
+            CurrentPhase = Phase.VisitingProduct;
+            LogWindow.AddLogStatic($"⏱️ {storeId}: 페이지 로드 타임아웃");
+        }
+
+        private void MoveToNextStore()
+        {
+            CurrentStoreIdx++;
+            CurrentProductList.Clear();
+            CurrentProductIdx = 0;
+            CurrentPhase = CurrentStoreIdx < Stores.Count ? Phase.GongguCheck : Phase.Done;
+        }
+
+        public void Reset()
+        {
+            CurrentPhase = Phase.Idle;
+            Stores.Clear();
+            CurrentStoreIdx = 0;
+            CurrentProductIdx = 0;
+            CurrentProductList.Clear();
+            SuccessCount = 0;
+            TotalAttempted = 0;
+            CurrentTabUrl = null;
+        }
+    }
+
+    public class CrawlStore
+    {
+        public string StoreId { get; set; } = "";
+        public string Url { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Status { get; set; } = "pending"; // pending, gonggu, products, visiting, done, skip
+        public int GongguCount { get; set; } = 0;
     }
 }

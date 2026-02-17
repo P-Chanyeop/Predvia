@@ -870,3 +870,152 @@ async function extractProductData() {
     window.close();
   }, 500);
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [v2] 서버 주도 크롤링 - background.js 폴링 루프
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const v2Crawl = {
+  polling: false,
+  intervalId: null,
+  currentTabId: null,
+  POLL_INTERVAL: 2000,
+  SERVER: 'http://localhost:8080',
+
+  async start(stores) {
+    console.log('[v2] 크롤링 시작 요청:', stores.length, '개 스토어');
+    try {
+      const res = await fetch(`${this.SERVER}/api/crawl/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stores })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.polling = true;
+        this.poll(); // 즉시 첫 폴링
+        this.intervalId = setInterval(() => this.poll(), this.POLL_INTERVAL);
+        console.log('[v2] 폴링 시작');
+      }
+    } catch (e) {
+      console.log('[v2] start 실패:', e.message);
+    }
+  },
+
+  stop() {
+    this.polling = false;
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+    this.closeCurrentTab();
+    console.log('[v2] 폴링 중지');
+  },
+
+  async poll() {
+    if (!this.polling) return;
+    try {
+      const res = await fetch(`${this.SERVER}/api/crawl/next-task`);
+      const task = await res.json();
+      await this.handleTask(task);
+    } catch (e) {
+      // 서버 연결 실패 시 조용히 무시 (다음 폴링에서 재시도)
+    }
+  },
+
+  async handleTask(task) {
+    switch (task.action) {
+      case 'open_gonggu':
+      case 'open_all_products':
+      case 'open_product':
+        await this.openTab(task.url);
+        console.log(`[v2] ${task.action}: ${task.url}`);
+        break;
+
+      case 'done':
+        console.log(`[v2] 크롤링 완료: ${task.reason} (성공: ${task.success})`);
+        this.stop();
+        // 서버에 완료 알림 (기존 API 호출)
+        try {
+          await fetch(`${this.SERVER}/api/smartstore/stop-crawling`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: task.reason })
+          });
+        } catch (e) {}
+        break;
+
+      case 'wait':
+        // 대기 - 아무것도 안 함
+        break;
+    }
+  },
+
+  async openTab(url) {
+    // 이전 탭 닫기
+    await this.closeCurrentTab();
+
+    return new Promise((resolve) => {
+      chrome.tabs.create({
+        url: url,
+        active: false
+      }, (tab) => {
+        this.currentTabId = tab.id;
+        console.log(`[v2] 탭 열림: ${tab.id}`);
+        resolve(tab);
+      });
+    });
+  },
+
+  closeCurrentTab() {
+    return new Promise((resolve) => {
+      if (this.currentTabId) {
+        const tabId = this.currentTabId;
+        this.currentTabId = null;
+        chrome.tabs.remove(tabId, () => {
+          if (chrome.runtime.lastError) {
+            // 이미 닫힌 탭 - 무시
+          }
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  },
+
+  // 외부에서 report 호출용 헬퍼
+  async report(data) {
+    try {
+      const res = await fetch(`${this.SERVER}/api/crawl/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return await res.json();
+    } catch (e) {
+      console.log('[v2] report 실패:', e.message);
+      return { success: false };
+    }
+  }
+};
+
+// v2 메시지 핸들러 (content script → background)
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === 'v2_start_crawl') {
+    v2Crawl.start(request.stores);
+    sendResponse({ ok: true });
+    return true;
+  }
+  if (request.type === 'v2_report') {
+    v2Crawl.report(request.data).then(r => sendResponse(r));
+    return true; // async
+  }
+  if (request.type === 'v2_stop') {
+    v2Crawl.stop();
+    sendResponse({ ok: true });
+    return true;
+  }
+});
+
+console.log('[v2] 서버 주도 크롤링 시스템 로드 완료');

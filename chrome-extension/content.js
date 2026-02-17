@@ -823,7 +823,20 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
               console.log(`  ${index + 1}. ${store.title || '제목없음'} (${store.storeId || 'ID없음'})`);
             });
             
-            // ⭐ 선택된 스토어만 방문
+            // [v2] 서버 주도 크롤링 시작 (background.js 폴링)
+            const v2Stores = responseData.selectedStores.map(s => ({
+              storeId: s.storeId,
+              url: s.url || '',
+              title: s.title || ''
+            }));
+            chrome.runtime.sendMessage({
+              type: 'v2_start_crawl',
+              stores: v2Stores
+            }, (resp) => {
+              console.log('[v2] 크롤링 시작 요청 완료:', resp);
+            });
+            
+            // ⭐ [v1] 기존 방식도 병행 실행
             visitSelectedStoresOnly(responseData.selectedStores); // await 제거 - 백그라운드에서 실행
             
             // 🔥 네이버 가격비교 완료 - 즉시 창 닫기 (v1.78)

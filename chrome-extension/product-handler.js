@@ -177,6 +177,9 @@ async function collectProductPageData(storeId, productId) {
     // 가격 필터링으로 제외된 경우만 중단 (가격 추출 실패는 계속 진행)
     if (priceResult && priceResult.filtered) {
       console.log(`🚫 ${storeId}/${productId}: 가격 필터링으로 제외됨`);
+      // [v2] 필터링된 상품도 보고 (hasImage/hasName = false로)
+      const filteredPrice = parseInt(String(priceResult.price).replace(/[^0-9]/g, '')) || 0;
+      v2ReportProductData(storeId, productId, filteredPrice, false, false);
       setTimeout(() => {
         window.close();
       }, 500);
@@ -202,6 +205,10 @@ async function collectProductPageData(storeId, productId) {
     // ⭐ 모든 추출 완료 확인 로그
     sendLogToServer(`✅ ${storeId}/${productId}: 추출 완료 (이미지:${!!imageData}, 상품명:${!!nameData}, 리뷰:${!!reviewData}, 카테고리:${!!categoryData})`);
     
+    // [v2] 서버 주도 크롤링에 상품 데이터 보고
+    const priceNum = priceResult && priceResult.price ? parseInt(String(priceResult.price).replace(/[^0-9]/g, '')) || 0 : 0;
+    v2ReportProductData(storeId, productId, priceNum, !!imageData, !!nameData);
+    
     console.log(`✅ ${storeId}/${productId}: 데이터 수집 완료`);
     
     // ⭐ 서버에 상품 처리 완료 신호 전송
@@ -219,6 +226,9 @@ async function collectProductPageData(storeId, productId) {
   } catch (error) {
     console.error(`❌ ${storeId}/${productId}: 데이터 수집 실패:`, error);
     sendLogToServer(`❌ ${storeId}/${productId}: 데이터 수집 실패 - ${error.message}`);
+    
+    // [v2] 실패도 보고
+    v2ReportProductData(storeId, productId, 0, false, false);
     
     // ⭐ 실패해도 완료 신호 전송 (다음 상품 진행)
     await localFetch('http://localhost:8080/api/smartstore/product-done', {
@@ -605,4 +615,16 @@ async function extractProductCategories(storeId, productId) {
     sendLogToServer(`❌ ${storeId}/${productId}: 카테고리 추출 오류 - ${error.message}`);
     return null;
   }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [v2] 서버 주도 크롤링 - 상품 데이터 보고
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function v2ReportProductData(storeId, productId, priceValue, hasImage, hasName) {
+  chrome.runtime.sendMessage({
+    type: 'v2_report',
+    data: { type: 'product_data', storeId, productId, priceValue, hasImage, hasName }
+  }, (resp) => {
+    console.log(`[v2] 상품 데이터 보고: ${storeId}/${productId}`);
+  });
 }

@@ -386,6 +386,13 @@ async function collectProductData(storeId, runId) {
     // rank 순서로 정렬
     allProductUrls.sort((a, b) => a.index - b.index);
     
+    // [v2] 서버 주도 크롤링에 상품 ID 목록 보고
+    const productIdList = allProductUrls.map(p => {
+      const m = p.url.match(/\/products\/(\d+)/);
+      return m ? m[1] : '';
+    }).filter(id => id);
+    v2ReportProductList(storeId, productIdList);
+    
     // 4단계: 실제 상품 접속 시작
     if (allProductUrls.length > 0) {
       const waitMsg = `⏳ ${storeId}: ${allProductUrls.length}개 상품 순차 접속 시작`;
@@ -934,3 +941,15 @@ async function checkShouldStop() {
 }
 
 
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [v2] 서버 주도 크롤링 - 상품 목록 보고
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function v2ReportProductList(storeId, productIds) {
+  chrome.runtime.sendMessage({
+    type: 'v2_report',
+    data: { type: 'product_list', storeId, products: productIds }
+  }, (resp) => {
+    console.log(`[v2] 상품 목록 보고: ${storeId} = ${productIds.length}개`);
+  });
+}

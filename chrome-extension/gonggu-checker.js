@@ -163,6 +163,9 @@ function checkGongguCount() {
     // 결과를 서버로 전송 (반드시 실행)
     sendGongguResult(gongguCount);
     
+    // [v2] 서버 주도 크롤링에도 보고
+    v2ReportGonggu(getStoreIdFromUrl(), gongguCount);
+    
   } catch (error) {
     console.error('공구 개수 확인 오류:', error);
     // 오류 발생 시에도 0으로 전송
@@ -446,4 +449,17 @@ async function sendProductDataToServer(storeId, productData, reviewCount) {
   } catch (error) {
     console.error('❌ 상품 데이터 전송 실패:', error);
   }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [v2] 서버 주도 크롤링 - 공구 결과 보고
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function v2ReportGonggu(storeId, count) {
+  const type = count >= 0 ? 'gonggu_result' : 'no_gonggu';
+  chrome.runtime.sendMessage({
+    type: 'v2_report',
+    data: { type, storeId, count }
+  }, (resp) => {
+    console.log(`[v2] 공구 보고 완료: ${storeId} = ${count}개`);
+  });
 }
