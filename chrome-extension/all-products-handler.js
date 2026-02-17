@@ -74,10 +74,59 @@ if (window.__ALL_PRODUCTS_HANDLER_RUNNING__) {
   window.__ALL_PRODUCTS_HANDLER_RUNNING__ = true;
   console.log('✅ all-products-handler 실행 시작 - 가드 설정 완료');
   
-  // ⭐ 순차 처리 권한 요청
-  chrome.runtime.sendMessage({
-    action: 'requestProcessing',
-    storeId: getStoreIdFromUrl(),
+  // [v2] v2 모드 체크 - v2면 상품 목록만 수집하고 report
+  (async () => {
+    try {
+      const sr = await fetch('http://localhost:8080/api/smartstore/status');
+      const sd = await sr.json();
+      if (sd.v2Mode) {
+        console.log('[v2] v2 모드 - 상품 목록만 수집');
+        // 페이지 로드 대기
+        await new Promise(r => setTimeout(r, 2000));
+        const storeId = getStoreIdFromUrl();
+        
+        // 상품 목록 수집 (기존 로직 재사용)
+        const allProducts = document.querySelectorAll('a[data-shp-contents-rank]');
+        const reviewSpans = document.evaluate("//span[normalize-space(text())='리뷰']", document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+        
+        let lastReviewRank = -1;
+        for (let i = 0; i < allProducts.length; i++) {
+          const rank = parseInt(allProducts[i].getAttribute('data-shp-contents-rank'));
+          if (rank > 40) continue;
+          const parent = allProducts[i].parentElement;
+          if (parent && parent.textContent.includes('리뷰')) {
+            lastReviewRank = Math.max(lastReviewRank, rank);
+          }
+        }
+        
+        const productIds = [];
+        const seenIds = new Set();
+        for (let i = 0; i < allProducts.length; i++) {
+          const rank = parseInt(allProducts[i].getAttribute('data-shp-contents-rank'));
+          if (rank <= lastReviewRank) {
+            const pid = allProducts[i].getAttribute('data-shp-contents-id');
+            if (pid && /^\d{8,}$/.test(pid) && !seenIds.has(pid)) {
+              seenIds.add(pid);
+              productIds.push(pid);
+            }
+          }
+        }
+        
+        console.log(`[v2] ${storeId}: ${productIds.length}개 상품 수집 완료`);
+        v2ReportProductList(storeId, productIds);
+        
+        if (productIds.length === 0) {
+          // 상품 없으면 빈 목록 보고 (서버가 다음 스토어로 이동)
+          v2ReportProductList(storeId, []);
+        }
+        return; // v2에서는 여기서 끝 (background.js가 탭 관리)
+      }
+    } catch(e) { console.log('[v2] 상태 체크 실패, v1 폴백'); }
+    
+    // v1 모드 폴백
+    chrome.runtime.sendMessage({
+      action: 'requestProcessing',
+      storeId: getStoreIdFromUrl(),
     storeTitle: document.title
   }, (response) => {
     if (response.granted) {

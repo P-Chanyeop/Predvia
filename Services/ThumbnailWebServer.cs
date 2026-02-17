@@ -101,6 +101,7 @@ namespace Gumaedaehang.Services
 
         // ⭐ 서버 주도 크롤링 상태 머신
         private CrawlStateMachine? _crawlSM = null;
+        private bool _v2Mode = false; // v2 모드 활성화 여부
 
         // ⭐ 상품별 키워드 저장 (productId → keywords)
         private Dictionary<int, List<string>> _productKeywords = new();
@@ -1779,10 +1780,11 @@ namespace Gumaedaehang.Services
                     targetCount = TARGET_PRODUCT_COUNT,
                     isRunning = !_shouldStop,
                     isCrawlingActive = _isCrawlingActive,
-                    shouldStop = _shouldStop,  // ⭐ Chrome 확장프로그램이 기대하는 필드 추가
+                    shouldStop = _shouldStop,
                     selectedStores = _selectedStores.Count,
                     progress = _productCount * 100.0 / TARGET_PRODUCT_COUNT,
-                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    v2Mode = _v2Mode
                 };
                 
                 // ⭐ 중단 신호 요청 시 로그 출력
@@ -2279,6 +2281,7 @@ namespace Gumaedaehang.Services
                 _productCount = 0;
                 _totalAttempted = 0;
                 _currentStoreIndex = 0;
+                _v2Mode = true;
                 _selectedStores = stores.Select(s => new SmartStoreLink { StoreId = s.StoreId, Url = s.Url, Title = s.Title }).ToList();
                 
                 LogWindow.AddLogStatic($"🚀 [v2] 크롤링 시작: {stores.Count}개 스토어");

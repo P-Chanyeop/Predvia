@@ -70,26 +70,34 @@ setInterval(() => {
 }, 1000); // 1초마다 위치 체크
 
 // ⭐ 순차 처리 권한 요청
-chrome.runtime.sendMessage({
-  action: 'requestProcessing',
-  storeId: getStoreIdFromUrl(),
-  storeTitle: document.title
-}, (response) => {
-  if (response.granted) {
-    console.log('✅ 순차 처리 권한 획득');
-    // 페이지 로딩 완료 후 실행
-    setTimeout(() => {
-      checkGongguCount();
-    }, 2000);
-    
-    // 추가로 5초 후에도 한번 더 시도
-    setTimeout(() => {
-      checkGongguCount();
-    }, 5000);
-  } else {
-    console.log(`🔒 대기열 ${response.position}번째 - 권한 대기 중`);
-  }
-});
+// [v2] v2 모드면 v1 순차처리 스킵, 바로 공구 체크 실행
+(async () => {
+  try {
+    const statusResp = await fetch('http://localhost:8080/api/smartstore/status');
+    const statusData = await statusResp.json();
+    if (statusData.v2Mode) {
+      console.log('[v2] v2 모드 - v1 순차처리 스킵, 바로 공구 체크');
+      setTimeout(() => checkGongguCount(), 2000);
+      setTimeout(() => checkGongguCount(), 5000);
+      return;
+    }
+  } catch (e) {}
+  
+  // v1 모드 폴백
+  chrome.runtime.sendMessage({
+    action: 'requestProcessing',
+    storeId: getStoreIdFromUrl(),
+    storeTitle: document.title
+  }, (response) => {
+    if (response.granted) {
+      console.log('✅ 순차 처리 권한 획득');
+      setTimeout(() => checkGongguCount(), 2000);
+      setTimeout(() => checkGongguCount(), 5000);
+    } else {
+      console.log(`🔒 대기열 ${response.position}번째 - 권한 대기 중`);
+    }
+  });
+})();
 
 function getStoreIdFromUrl() {
   const url = window.location.href;
@@ -171,7 +179,12 @@ function checkGongguCount() {
     // 오류 발생 시에도 0으로 전송
     sendGongguResult(0);
   } finally {
-    // ⭐ 항상 순차 처리 권한 해제
+    // ⭐ v1 모드에서만 순차 처리 권한 해제
+    try {
+      const sr = await fetch('http://localhost:8080/api/smartstore/status');
+      const sd = await sr.json();
+      if (sd.v2Mode) return; // v2면 스킵
+    } catch(e) {}
     chrome.runtime.sendMessage({
       action: 'releaseProcessing',
       storeId: getStoreIdFromUrl()
@@ -184,8 +197,20 @@ function checkGongguCount() {
 // 서버로 공구 개수 결과 전송
 async function sendGongguResult(gongguCount) {
   try {
-    // URL에서 스토어 ID 추출
     const storeId = extractStoreIdFromUrl(window.location.href);
+    
+    // [v2] v2 모드면 v1 서버 API 스킵, report만 전송
+    try {
+      const sr = await fetch('http://localhost:8080/api/smartstore/status');
+      const sd = await sr.json();
+      if (sd.v2Mode) {
+        console.log(`[v2] 공구 결과: ${storeId} = ${gongguCount}개 (v1 API 스킵)`);
+        v2ReportGonggu(storeId, gongguCount);
+        return; // v2에서는 background.js가 탭 관리하므로 여기서 끝
+      }
+    } catch(e) {}
+    
+    // === v1 기존 로직 ===
     console.log('🔥🔥🔥 서버 연결 테스트 시작');
     
     // 먼저 서버 연결 테스트

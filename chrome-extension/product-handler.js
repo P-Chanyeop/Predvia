@@ -90,12 +90,14 @@ if (document.readyState === 'loading') {
 
 async function initProductHandler() {
   try {
-    // ⭐ 크롤링 활성 상태 확인 - 비활성이면 아무것도 하지 않음 (사용자가 직접 연 페이지)
+    // ⭐ 서버 상태 확인
+    let v2Mode = false;
     try {
       const statusResp = await localFetch('http://localhost:8080/api/smartstore/status');
       const statusData = await statusResp.json();
-      if (!statusData.isCrawlingActive) {
-        console.log('ℹ️ 크롤링 비활성 - 사용자가 직접 연 페이지, 핸들러 스킵');
+      v2Mode = statusData.v2Mode || false;
+      if (!statusData.isCrawlingActive && !v2Mode) {
+        console.log('ℹ️ 크롤링 비활성 - 핸들러 스킵');
         return;
       }
     } catch (e) {
@@ -104,26 +106,20 @@ async function initProductHandler() {
     }
 
     const url = window.location.href;
-    console.log('🔥 상품 페이지 핸들러 시작:', url);
-    sendLogToServer(`🔥 상품 페이지 핸들러 시작: ${url}`);
-    
-    // URL에서 스토어ID와 상품ID 추출
     const storeMatch = url.match(/smartstore\.naver\.com\/([^\/]+)/);
     const productMatch = url.match(/products\/(\d+)/);
     
     if (!storeMatch || !productMatch) {
       console.log('❌ 스토어ID 또는 상품ID 추출 실패');
-      sendLogToServer(`❌ 스토어ID 또는 상품ID 추출 실패: ${url}`);
       return;
     }
     
     const storeId = storeMatch[1];
     const productId = productMatch[1];
     
-    console.log(`🎯 상품 데이터 수집 시작: ${storeId}/${productId}`);
-    sendLogToServer(`🎯 상품 데이터 수집 시작: ${storeId}/${productId}`);
+    console.log(`🎯 상품 데이터 수집 시작: ${storeId}/${productId}` + (v2Mode ? ' [v2]' : ''));
     
-    // 1초 대기 후 데이터 수집
+    // 0.5초 대기 후 데이터 수집
     setTimeout(async () => {
       await collectProductPageData(storeId, productId);
     }, 500);
