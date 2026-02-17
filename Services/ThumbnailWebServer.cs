@@ -1330,25 +1330,27 @@ namespace Gumaedaehang.Services
                     {
                         // 먼저 인덱스 증가
                         _currentStoreIndex++;
-                        LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/10");
+                        var totalStores = _selectedStores?.Count ?? 10;
+                        LogWindow.AddLogStatic($"📈 다음 스토어로 이동: {_currentStoreIndex}/{totalStores}");
 
-                        // 🛑 10개 스토어 완료 체크 (증가 후)
-                        if (_currentStoreIndex >= 10)
+                        // 🛑 모든 스토어 완료 체크
+                        if (_currentStoreIndex >= totalStores)
                         {
-                            LogWindow.AddLogStatic("🎉 10개 스토어 모두 완료 - 크롤링 중단");
+                            LogWindow.AddLogStatic($"🎉 {totalStores}개 스토어 모두 완료 - 크롤링 중단");
                             _shouldStop = true;
                             _isCrawlingActive = false;
 
-                            // ⭐ 크롤링 완료 시 파일 기반으로 JSON 저장 (UI 없이도 동작)
                             SaveProductCardsFromFiles();
 
-                            // ⭐ 즉시 팝업 표시 (한 번만)
                             if (!_completionPopupShown)
                             {
                                 var finalCount = GetCurrentProductCount();
-                                ShowCrawlingResultPopup(finalCount, "10개 스토어 모두 완료");
+                                ShowCrawlingResultPopup(finalCount, $"{totalStores}개 스토어 모두 완료");
                                 _completionPopupShown = true;
                             }
+
+                            LoadingHelper.HideLoadingFromSourcingPage();
+                            _ = Task.Run(async () => await CloseAllChromeApps());
 
                             var currentCount = GetCurrentProductCount();
                             return Results.Json(new {
@@ -1357,12 +1359,12 @@ namespace Gumaedaehang.Services
                                 totalProducts = currentCount,
                                 targetProducts = TARGET_PRODUCT_COUNT,
                                 shouldStop = true,
-                                message = "10개 스토어 모두 완료"
+                                message = $"{totalStores}개 스토어 모두 완료"
                             });
                         }
 
                         // 🚀 다음 스토어 자동 방문 시작
-                        if (_currentStoreIndex < 10 && !_shouldStop)
+                        if (_currentStoreIndex < totalStores && !_shouldStop)
                         {
                             var nextStore = _selectedStores[_currentStoreIndex];
                             var nextStoreId = UrlExtensions.ExtractStoreIdFromUrl(nextStore.Url);
@@ -2221,7 +2223,7 @@ namespace Gumaedaehang.Services
                     totalAttempted = _totalAttempted,
                     processedStores = processedStores,
                     totalStores = totalStores,
-                    isCompleted = totalStores > 0 && (currentCount >= TARGET_PRODUCT_COUNT || processedStores >= totalStores)
+                    isCompleted = _shouldStop || (totalStores > 0 && (currentCount >= TARGET_PRODUCT_COUNT || processedStores >= totalStores))
                 });
                 context.Response.ContentType = "application/json; charset=utf-8";
                 await context.Response.WriteAsync(json);

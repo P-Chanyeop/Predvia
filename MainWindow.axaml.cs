@@ -752,6 +752,12 @@ namespace Gumaedaehang
                         if (titleText != null) titleText.Text = $"크롤링 완료! {attempted}/100개 진행";
                         if (detailText != null) detailText.Text = $"스토어 {total}/{total} 완료 · 성공 {count}개, 실패 {failed}개";
                         StopCrawlingPoll();
+                        // 3초 후 로딩창 자동 숨김
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(3000);
+                            Avalonia.Threading.Dispatcher.UIThread.Post(() => HideLoading());
+                        });
                     }
                 }
                 catch (Exception ex) { LogWindow.AddLogStatic($"⚠️ 크롤링 폴링 오류: {ex.Message}"); }
