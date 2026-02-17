@@ -3461,7 +3461,6 @@ namespace Gumaedaehang
                     Spacing = 15
                 };
                 
-                // 스피너 (회전하는 원)
                 var spinner = new Border
                 {
                     Width = 40,

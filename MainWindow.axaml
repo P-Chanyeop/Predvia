@@ -309,12 +309,15 @@
         
         <!-- 🔄 로딩창 -->
         <Grid x:Name="LoadingOverlay" IsVisible="False" Background="#CC000000" ZIndex="9999" Grid.RowSpan="4">
-            <Border Background="White" CornerRadius="12" Width="300" Height="120" 
+            <Border Background="White" CornerRadius="12" Width="380" Height="180" 
                     HorizontalAlignment="Center" VerticalAlignment="Center">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="데이터 불러오는 중..." FontSize="18" FontWeight="Medium" 
-                               HorizontalAlignment="Center" Margin="0,0,0,15"/>
-                    <ProgressBar IsIndeterminate="True" Width="200" Height="6"/>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                    <TextBlock x:Name="LoadingTitleText" Text="데이터 불러오는 중..." FontSize="18" FontWeight="Medium" 
+                               HorizontalAlignment="Center"/>
+                    <ProgressBar x:Name="CrawlingProgressBar" Minimum="0" Maximum="100" Value="0" 
+                                 Width="300" Height="14" Foreground="#E67E22"/>
+                    <TextBlock x:Name="CrawlingDetailText" Text="" FontSize="13" Foreground="#888888"
+                               HorizontalAlignment="Center"/>
                 </StackPanel>
             </Border>
         </Grid>    </Grid>

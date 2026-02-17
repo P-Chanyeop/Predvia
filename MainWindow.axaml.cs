@@ -685,12 +685,66 @@ namespace Gumaedaehang
         {
             var overlay = this.FindControl<Grid>("LoadingOverlay");
             if (overlay != null) overlay.IsVisible = true;
+            StartCrawlingPoll();
         }
         
         public void HideLoading()
         {
+            StopCrawlingPoll();
             var overlay = this.FindControl<Grid>("LoadingOverlay");
             if (overlay != null) overlay.IsVisible = false;
+        }
+        
+        private DispatcherTimer? _crawlingPollTimer;
+        
+        private void StartCrawlingPoll()
+        {
+            var titleText = this.FindControl<TextBlock>("LoadingTitleText");
+            var progressBar = this.FindControl<ProgressBar>("CrawlingProgressBar");
+            var detailText = this.FindControl<TextBlock>("CrawlingDetailText");
+            
+            if (progressBar != null) { progressBar.Value = 0; progressBar.IsIndeterminate = false; }
+            if (titleText != null) titleText.Text = "크롤링 준비 중...";
+            if (detailText != null) detailText.Text = "스토어 접속 대기";
+            
+            _crawlingPollTimer?.Stop();
+            _crawlingPollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            _crawlingPollTimer.Tick += async (s, e) =>
+            {
+                try
+                {
+                    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+                    var resp = await http.GetStringAsync("http://localhost:8080/api/smartstore/crawling-status");
+                    var doc = System.Text.Json.JsonDocument.Parse(resp);
+                    var root = doc.RootElement;
+                    
+                    int count = root.GetProperty("currentCount").GetInt32();
+                    int processed = root.GetProperty("processedStores").GetInt32();
+                    int total = root.GetProperty("totalStores").GetInt32();
+                    bool completed = root.GetProperty("isCompleted").GetBoolean();
+                    
+                    double pct = Math.Min(count, 100);
+                    
+                    if (progressBar != null) progressBar.Value = pct;
+                    if (titleText != null) titleText.Text = $"크롤링 중... {count}/100개 ({pct:F0}%)";
+                    if (detailText != null) detailText.Text = $"스토어 {Math.Min(processed + 1, total)}/{total} 진행 중 · 완료 {processed}개";
+                    
+                    if (completed)
+                    {
+                        if (titleText != null) titleText.Text = $"크롤링 완료! {count}개 수집";
+                        if (detailText != null) detailText.Text = $"스토어 {total}/{total} 완료";
+                        StopCrawlingPoll();
+                    }
+                }
+                catch { /* 서버 미응답 무시 */ }
+            };
+            _crawlingPollTimer.Start();
+        }
+        
+        private void StopCrawlingPoll()
+        {
+            _crawlingPollTimer?.Stop();
+            _crawlingPollTimer = null;
         }
         
         // ⭐ 엑셀 다운로드 남은 횟수 조회 (관리자는 건너뛰기)
