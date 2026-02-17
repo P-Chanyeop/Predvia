@@ -252,18 +252,13 @@
                     </Grid>
                 </StackPanel>
                 
-                <!-- 테스트 버튼 -->
-                <Button Content="데이터 있는 화면 보기 (테스트)" 
-                        Background="#F47B20" Foreground="White" Padding="30,15" CornerRadius="8"
-                        FontSize="16" FontWeight="Medium" HorizontalAlignment="Center"
-                        Margin="0,30,0,0" x:Name="TestDataButton" Click="TestDataButton_Click"/>
                 
                 </StackPanel>
             </ScrollViewer>
         </Grid>
         
         <!-- 데이터가 있을 때 보여줄 화면 -->
-        <Grid x:Name="DataAvailableView" IsVisible="True">
+        <Grid x:Name="DataAvailableView" IsVisible="False">
             <ScrollViewer x:Name="DataScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="20" Margin="30,20,30,30">
                     
@@ -293,11 +288,6 @@
                         <!-- 실제 데이터 컨테이너 - C# 코드에서 동적으로 상품 카드들이 추가됩니다 -->
                     </StackPanel>
                     
-                    
-                    <!-- 테스트 버튼 -->
-                    <Button Content="데이터 없는 화면 보기 (테스트)" Background="#F47B20" Foreground="White" 
-                            Padding="30,15" CornerRadius="8" FontSize="16" FontWeight="Medium"
-                            HorizontalAlignment="Center" Margin="0,30,0,0" x:Name="TestDataButton2"/>
                     
                 </StackPanel>
             </ScrollViewer>

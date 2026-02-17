@@ -429,19 +429,13 @@ namespace Gumaedaehang
             if (_mainProductContent != null) _mainProductContent.IsVisible = contentToShow == _mainProductContent;
             if (_settingsContent != null) _settingsContent.IsVisible = contentToShow == _settingsContent;
             
-            // 소싱 페이지가 표시될 때 데이터 상태 설정
+            // 소싱 페이지가 표시될 때 데이터 로드
             if (contentToShow == _sourcingContent && _sourcingContent != null)
             {
-                // 소싱 페이지의 인스턴스 가져오기
                 var sourcingPage = _sourcingContent.Content as SourcingPage;
                 if (sourcingPage != null)
                 {
-                    // 초기에는 데이터가 없는 상태로 설정
                     sourcingPage.SetHasData(false);
-                    
-                    // 🔥 소싱 탭 클릭 시 항상 크롤링된 데이터 로드
-                    sourcingPage.LoadCrawledData();
-                    LogWindow.AddLogStatic("🔄 소싱 탭 클릭 - 크롤링 데이터 새로고침");
                 }
             }
         }
