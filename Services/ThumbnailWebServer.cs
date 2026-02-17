@@ -2208,25 +2208,30 @@ namespace Gumaedaehang.Services
         }
 
         // ⭐ 크롤링 상태 확인 API
-        private Task<IResult> HandleGetCrawlingStatus(HttpContext context)
+        private async Task<IResult> HandleGetCrawlingStatus(HttpContext context)
         {
             try
             {
                 var currentCount = GetCurrentProductCount();
-                var processedStores = _currentStoreIndex; // _processedStores.Count 대신 _currentStoreIndex 사용
+                var processedStores = _currentStoreIndex;
                 var totalStores = _selectedStores?.Count ?? 0;
 
-                return Task.FromResult(Results.Ok(new {
+                var json = JsonSerializer.Serialize(new {
                     currentCount = currentCount,
                     totalAttempted = _totalAttempted,
                     processedStores = processedStores,
                     totalStores = totalStores,
-                    isCompleted = currentCount >= TARGET_PRODUCT_COUNT || processedStores >= totalStores
-                }));
+                    isCompleted = totalStores > 0 && (currentCount >= TARGET_PRODUCT_COUNT || processedStores >= totalStores)
+                });
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync(json);
+                return Results.Ok();
             }
             catch (Exception ex)
             {
-                return Task.FromResult(Results.BadRequest(new { error = ex.Message }));
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = ex.Message }));
+                return Results.Ok();
             }
         }
         
@@ -5226,11 +5231,9 @@ namespace Gumaedaehang.Services
                 if (imageData == null)
                 {
                     LogWindow.AddLogStatic("❌ 이미지 데이터 파싱 실패");
-                    _totalAttempted++;
                     return Results.BadRequest("Invalid image data");
                 }
 
-                _totalAttempted++;
                 // 이미지 다운로드 및 저장
                 await DownloadAndSaveImage(imageData);
 
@@ -5498,6 +5501,8 @@ namespace Gumaedaehang.Services
 
                 var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
                 LogWindow.AddLogStatic($"💰 가격 처리 요청: {body}");
+
+                _totalAttempted++;
 
                 var priceData = JsonSerializer.Deserialize<ProductPriceData>(body);
                 if (priceData == null)

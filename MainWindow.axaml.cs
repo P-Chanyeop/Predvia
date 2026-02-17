@@ -685,6 +685,17 @@ namespace Gumaedaehang
         {
             var overlay = this.FindControl<Grid>("LoadingOverlay");
             if (overlay != null) overlay.IsVisible = true;
+            
+            var titleText = this.FindControl<TextBlock>("LoadingTitleText");
+            var progressBar = this.FindControl<ProgressBar>("CrawlingProgressBar");
+            var detailText = this.FindControl<TextBlock>("CrawlingDetailText");
+            
+            LogWindow.AddLogStatic($"🔄 ShowLoading - overlay:{overlay != null}, title:{titleText != null}, bar:{progressBar != null}, detail:{detailText != null}");
+            
+            if (progressBar != null) { progressBar.Value = 0; progressBar.IsIndeterminate = false; }
+            if (titleText != null) titleText.Text = "크롤링 준비 중...";
+            if (detailText != null) detailText.Text = "스토어 접속 대기";
+            
             StartCrawlingPoll();
         }
         
@@ -699,20 +710,16 @@ namespace Gumaedaehang
         
         private void StartCrawlingPoll()
         {
-            var titleText = this.FindControl<TextBlock>("LoadingTitleText");
-            var progressBar = this.FindControl<ProgressBar>("CrawlingProgressBar");
-            var detailText = this.FindControl<TextBlock>("CrawlingDetailText");
-            
-            if (progressBar != null) { progressBar.Value = 0; progressBar.IsIndeterminate = false; }
-            if (titleText != null) titleText.Text = "크롤링 준비 중...";
-            if (detailText != null) detailText.Text = "스토어 접속 대기";
-            
             _crawlingPollTimer?.Stop();
             _crawlingPollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             _crawlingPollTimer.Tick += async (s, e) =>
             {
                 try
                 {
+                    var titleText = this.FindControl<TextBlock>("LoadingTitleText");
+                    var progressBar = this.FindControl<ProgressBar>("CrawlingProgressBar");
+                    var detailText = this.FindControl<TextBlock>("CrawlingDetailText");
+                    
                     using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
                     var resp = await http.GetStringAsync("http://localhost:8080/api/smartstore/crawling-status");
                     var doc = System.Text.Json.JsonDocument.Parse(resp);
@@ -727,9 +734,17 @@ namespace Gumaedaehang
                     double pct = Math.Min(attempted, 100);
                     int failed = attempted - count;
                     
-                    if (progressBar != null) progressBar.Value = pct;
-                    if (titleText != null) titleText.Text = $"크롤링 중... {attempted}/100개 진행 ({pct:F0}%)";
-                    if (detailText != null) detailText.Text = $"스토어 {Math.Min(processed + 1, total)}/{total} · 성공 {count}개" + (failed > 0 ? $", 실패 {failed}개" : "");
+                    if (attempted > 0)
+                    {
+                        if (progressBar != null) progressBar.Value = pct;
+                        if (titleText != null) titleText.Text = $"크롤링 중... {attempted}/100개 진행 ({pct:F0}%)";
+                        if (detailText != null) detailText.Text = $"스토어 {Math.Min(processed + 1, total)}/{total} · 성공 {count}개" + (failed > 0 ? $", 실패 {failed}개" : "");
+                    }
+                    else if (total > 0)
+                    {
+                        if (titleText != null) titleText.Text = $"스토어 탐색 중... ({Math.Min(processed + 1, total)}/{total})";
+                        if (detailText != null) detailText.Text = "적합한 스토어 찾는 중";
+                    }
                     
                     if (completed)
                     {
@@ -739,7 +754,7 @@ namespace Gumaedaehang
                         StopCrawlingPoll();
                     }
                 }
-                catch { /* 서버 미응답 무시 */ }
+                catch (Exception ex) { LogWindow.AddLogStatic($"⚠️ 크롤링 폴링 오류: {ex.Message}"); }
             };
             _crawlingPollTimer.Start();
         }
