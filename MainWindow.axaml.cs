@@ -731,8 +731,11 @@ namespace Gumaedaehang
                     
                     if (completed)
                     {
-                        if (titleText != null) titleText.Text = $"크롤링 완료! {count}개 수집";
-                        if (detailText != null) detailText.Text = $"스토어 {total}/{total} 완료";
+                        if (progressBar != null) progressBar.Value = 100;
+                        if (titleText != null) titleText.Text = $"크롤링 완료! {count}/100개 수집 ({count}%)";
+                        if (detailText != null) detailText.Text = count >= 100 
+                            ? $"스토어 {total}/{total} 완료 · 목표 달성!" 
+                            : $"스토어 {total}/{total} 완료 · 성공 {count}개, 실패 {100 - count}개";
                         StopCrawlingPoll();
                     }
                 }
