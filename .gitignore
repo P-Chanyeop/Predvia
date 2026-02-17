@@ -3,3 +3,9 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+
+publish-squirrel/
+releases/
+$null
+dotnet
+powershell

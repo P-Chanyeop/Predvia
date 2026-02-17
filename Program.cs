@@ -5,6 +5,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Squirrel;
 
+[assembly: System.Reflection.AssemblyMetadata("SquirrelAwareVersion", "1")]
+
 namespace Gumaedaehang
 {
     class Program

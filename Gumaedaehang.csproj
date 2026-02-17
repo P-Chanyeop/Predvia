@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -19,8 +19,8 @@
     <AssemblyDescription>전문적인 구매대행 서비스를 위한 통합 관리 시스템</AssemblyDescription>
     <AssemblyCompany>Softcat Team</AssemblyCompany>
     <AssemblyProduct>Predvia</AssemblyProduct>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>3.0.7.0</AssemblyVersion>
+    <FileVersion>3.0.7.0</FileVersion>
   </PropertyGroup>
   
   <ItemGroup>
