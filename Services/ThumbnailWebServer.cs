@@ -2274,6 +2274,13 @@ namespace Gumaedaehang.Services
                 _crawlSM = new CrawlStateMachine(TARGET_PRODUCT_COUNT, _minPrice, _maxPrice, _priceFilterEnabled);
                 _crawlSM.SetStores(stores);
                 
+                // 기존 v1 상태 초기화
+                _shouldStop = false;
+                _productCount = 0;
+                _totalAttempted = 0;
+                _currentStoreIndex = 0;
+                _selectedStores = stores.Select(s => new SmartStoreLink { StoreId = s.StoreId, Url = s.Url, Title = s.Title }).ToList();
+                
                 LogWindow.AddLogStatic($"🚀 [v2] 크롤링 시작: {stores.Count}개 스토어");
                 
                 context.Response.ContentType = "application/json; charset=utf-8";
@@ -2300,6 +2307,25 @@ namespace Gumaedaehang.Services
                 }
                 
                 var task = _crawlSM.GetNextTask();
+                
+                // v2 완료 시 기존 시스템과 연동
+                if (_crawlSM.IsCompleted && !_shouldStop)
+                {
+                    _shouldStop = true;
+                    _productCount = _crawlSM.SuccessCount;
+                    _totalAttempted = _crawlSM.TotalAttempted;
+                    LogWindow.AddLogStatic($"🏁 [v2] 크롤링 완료: 성공 {_crawlSM.SuccessCount}, 시도 {_crawlSM.TotalAttempted}");
+                    
+                    // 로딩창 숨김 + Chrome 닫기 (비동기)
+                    var server = this;
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(1000);
+                        LoadingHelper.HideLoadingFromSourcingPage();
+                        await server.CloseAllChromeApps();
+                    });
+                }
+                
                 await context.Response.WriteAsync(JsonSerializer.Serialize(task));
                 return Results.Ok();
             }

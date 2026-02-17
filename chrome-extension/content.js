@@ -836,8 +836,8 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
               console.log('[v2] 크롤링 시작 요청 완료:', resp);
             });
             
-            // ⭐ [v1] 기존 방식도 병행 실행
-            visitSelectedStoresOnly(responseData.selectedStores); // await 제거 - 백그라운드에서 실행
+            // ⭐ [v1] 비활성화 - v2가 크롤링 흐름 제어
+            // visitSelectedStoresOnly(responseData.selectedStores);
             
             // 🔥 네이버 가격비교 완료 - 즉시 창 닫기 (v1.78)
             console.log('🔥 네이버 가격비교 링크 수집 완료 - 창 유지 (스토어 접속을 위해)');
