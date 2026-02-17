@@ -719,23 +719,23 @@ namespace Gumaedaehang
                     var root = doc.RootElement;
                     
                     int count = root.GetProperty("currentCount").GetInt32();
+                    int attempted = root.TryGetProperty("totalAttempted", out var att) ? att.GetInt32() : count;
                     int processed = root.GetProperty("processedStores").GetInt32();
                     int total = root.GetProperty("totalStores").GetInt32();
                     bool completed = root.GetProperty("isCompleted").GetBoolean();
                     
-                    double pct = Math.Min(count, 100);
+                    double pct = Math.Min(attempted, 100);
+                    int failed = attempted - count;
                     
                     if (progressBar != null) progressBar.Value = pct;
-                    if (titleText != null) titleText.Text = $"크롤링 중... {count}/100개 ({pct:F0}%)";
-                    if (detailText != null) detailText.Text = $"스토어 {Math.Min(processed + 1, total)}/{total} 진행 중 · 완료 {processed}개";
+                    if (titleText != null) titleText.Text = $"크롤링 중... {attempted}/100개 진행 ({pct:F0}%)";
+                    if (detailText != null) detailText.Text = $"스토어 {Math.Min(processed + 1, total)}/{total} · 성공 {count}개" + (failed > 0 ? $", 실패 {failed}개" : "");
                     
                     if (completed)
                     {
                         if (progressBar != null) progressBar.Value = 100;
-                        if (titleText != null) titleText.Text = $"크롤링 완료! {count}/100개 수집 ({count}%)";
-                        if (detailText != null) detailText.Text = count >= 100 
-                            ? $"스토어 {total}/{total} 완료 · 목표 달성!" 
-                            : $"스토어 {total}/{total} 완료 · 성공 {count}개, 실패 {100 - count}개";
+                        if (titleText != null) titleText.Text = $"크롤링 완료! {attempted}/100개 진행";
+                        if (detailText != null) detailText.Text = $"스토어 {total}/{total} 완료 · 성공 {count}개, 실패 {failed}개";
                         StopCrawlingPoll();
                     }
                 }

@@ -71,6 +71,7 @@ namespace Gumaedaehang.Services
         
         // ⭐ 상품 카운터 및 랜덤 선택 관련 변수
         private int _productCount = 0;
+        private int _totalAttempted = 0; // 총 시도 수 (성공+실패)
         private int _sessionStartFileCount = 0; // ⭐ 세션 시작 시 파일 개수
         private bool _isCrawlingActive = false;
         private const int TARGET_PRODUCT_COUNT = 100;
@@ -350,6 +351,7 @@ namespace Gumaedaehang.Services
                 lock (_counterLock)
                 {
                     _productCount = 0;
+                                        _totalAttempted = 0;
                     _shouldStop = false;
                     _completionPopupShown = false; // 팝업 플래그 초기화
                     _saveCompleted = false; // 저장 플래그 초기화
@@ -593,6 +595,7 @@ namespace Gumaedaehang.Services
                 lock (_counterLock)
                 {
                     _productCount = 0;
+                                        _totalAttempted = 0;
                     _shouldStop = false;
                     _processedStores.Clear(); // ⭐ 처리된 스토어 목록도 초기화
                     _processedProducts.Clear(); // ⭐ 처리된 상품 목록도 초기화
@@ -2215,6 +2218,7 @@ namespace Gumaedaehang.Services
 
                 return Task.FromResult(Results.Ok(new {
                     currentCount = currentCount,
+                    totalAttempted = _totalAttempted,
                     processedStores = processedStores,
                     totalStores = totalStores,
                     isCompleted = currentCount >= TARGET_PRODUCT_COUNT || processedStores >= totalStores
@@ -5222,9 +5226,11 @@ namespace Gumaedaehang.Services
                 if (imageData == null)
                 {
                     LogWindow.AddLogStatic("❌ 이미지 데이터 파싱 실패");
+                    _totalAttempted++;
                     return Results.BadRequest("Invalid image data");
                 }
 
+                _totalAttempted++;
                 // 이미지 다운로드 및 저장
                 await DownloadAndSaveImage(imageData);
 
@@ -5886,6 +5892,7 @@ namespace Gumaedaehang.Services
                 
                 // 상품 카운터 초기화
                 _productCount = 0;
+                                    _totalAttempted = 0;
                 _isCrawlingActive = true;
                 _processedStores.Clear();
                 _processedProducts.Clear(); // ⭐ 상품 목록도 초기화
@@ -5926,6 +5933,7 @@ namespace Gumaedaehang.Services
             lock (_counterLock)
             {
                 _productCount = 0;
+                                    _totalAttempted = 0;
                 // ⭐ 세션 시작 시 기존 파일 개수 저장 (이번 세션에서 추가된 개수만 카운트)
                 _sessionStartFileCount = GetRawFileCount();
             }
