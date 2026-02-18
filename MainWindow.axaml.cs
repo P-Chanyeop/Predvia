@@ -738,7 +738,7 @@ namespace Gumaedaehang
                     {
                         if (progressBar != null) progressBar.Value = pct;
                         if (titleText != null) titleText.Text = $"크롤링 중... {attempted}/100개 진행 ({pct:F0}%)";
-                        if (detailText != null) detailText.Text = $"스토어 {Math.Min(processed + 1, total)}/{total} · 성공 {count}개" + (failed > 0 ? $", 실패 {failed}개" : "");
+                        if (detailText != null) detailText.Text = $"스토어 {Math.Min(processed + 1, total)}/{total} · 성공 {count}개" + (failed > 0 ? $", 스킵 {failed}개" : "");
                     }
                     else if (total > 0)
                     {
@@ -749,8 +749,8 @@ namespace Gumaedaehang
                     if (completed)
                     {
                         if (progressBar != null) progressBar.Value = 100;
-                        if (titleText != null) titleText.Text = $"크롤링 완료! {attempted}/100개 진행";
-                        if (detailText != null) detailText.Text = $"스토어 {total}/{total} 완료 · 성공 {count}개, 실패 {failed}개";
+                        if (titleText != null) titleText.Text = $"크롤링 완료! 성공 {count}개 / {attempted}개 진행";
+                        if (detailText != null) detailText.Text = $"스토어 {total}/{total} 완료 · 성공 {count}개, 스킵 {failed}개";
                         StopCrawlingPoll();
                         // 3초 후 로딩창 자동 숨김
                         _ = Task.Run(async () =>

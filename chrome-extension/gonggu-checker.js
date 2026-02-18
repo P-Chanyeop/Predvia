@@ -73,15 +73,14 @@ setInterval(() => {
 // [v2] v2 모드면 v1 순차처리 스킵, 바로 공구 체크 실행
 (async () => {
   try {
-    const statusResp = await fetch('http://localhost:8080/api/smartstore/status');
+    const statusResp = await localFetch('http://localhost:8080/api/smartstore/status');
     const statusData = await statusResp.json();
     if (statusData.v2Mode) {
       console.log('[v2] v2 모드 - v1 순차처리 스킵, 바로 공구 체크');
       setTimeout(() => checkGongguCount(), 2000);
-      setTimeout(() => checkGongguCount(), 5000);
       return;
     }
-  } catch (e) {}
+  } catch (e) { console.log('[v2] 상태 체크 실패:', e.message); }
   
   // v1 모드 폴백
   chrome.runtime.sendMessage({
@@ -180,16 +179,17 @@ function checkGongguCount() {
     sendGongguResult(0);
   } finally {
     // ⭐ v1 모드에서만 순차 처리 권한 해제
-    try {
-      const sr = await fetch('http://localhost:8080/api/smartstore/status');
-      const sd = await sr.json();
-      if (sd.v2Mode) return; // v2면 스킵
-    } catch(e) {}
-    chrome.runtime.sendMessage({
-      action: 'releaseProcessing',
-      storeId: getStoreIdFromUrl()
-    }, (response) => {
-      console.log('🔓 순차 처리 권한 해제 완료');
+    localFetch('http://localhost:8080/api/smartstore/status').then(sr => sr.json()).then(sd => {
+      if (sd.v2Mode) return;
+      chrome.runtime.sendMessage({
+        action: 'releaseProcessing',
+        storeId: getStoreIdFromUrl()
+      }, () => console.log('🔓 순차 처리 권한 해제 완료'));
+    }).catch(() => {
+      chrome.runtime.sendMessage({
+        action: 'releaseProcessing',
+        storeId: getStoreIdFromUrl()
+      }, () => console.log('🔓 순차 처리 권한 해제 완료'));
     });
   }
 }
@@ -201,7 +201,7 @@ async function sendGongguResult(gongguCount) {
     
     // [v2] v2 모드면 v1 서버 API 스킵, report만 전송
     try {
-      const sr = await fetch('http://localhost:8080/api/smartstore/status');
+      const sr = await localFetch('http://localhost:8080/api/smartstore/status');
       const sd = await sr.json();
       if (sd.v2Mode) {
         console.log(`[v2] 공구 결과: ${storeId} = ${gongguCount}개 (v1 API 스킵)`);

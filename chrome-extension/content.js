@@ -771,7 +771,6 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
     });
     
     console.log('🔥🔥🔥 응답 상태:', response.status);
-    console.log('🔥🔥🔥 응답 헤더:', [...response.headers.entries()]);
     
     if (response.ok) {
       console.log('✅ 서버 통신 성공 - 응답 확인 중');
@@ -784,8 +783,6 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
         
         if (!responseText || responseText.trim().length === 0) {
           console.error('❌ 서버에서 완전히 빈 응답 수신');
-          console.log('🔄 폴백: 모든 스토어 방문으로 전환');
-          await visitSmartStoreLinksSequentially(smartStoreLinks);
           return;
         }
         
@@ -797,8 +794,6 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
         } catch (parseError) {
           console.error('❌ JSON 파싱 실패:', parseError.message);
           console.log('📄 원본 응답:', responseText);
-          console.log('🔄 폴백: 모든 스토어 방문으로 전환');
-          await visitSmartStoreLinksSequentially(smartStoreLinks);
           return;
         }
         
@@ -807,8 +802,6 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
         // ⭐ 응답 유효성 검사
         if (!responseData || typeof responseData !== 'object') {
           console.error('❌ 잘못된 응답 형식');
-          console.log('🔄 폴백: 모든 스토어 방문으로 전환');
-          await visitSmartStoreLinksSequentially(smartStoreLinks);
           return;
         }
         
@@ -843,16 +836,9 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
             console.log('🔥 네이버 가격비교 링크 수집 완료 - 창 유지 (스토어 접속을 위해)');
           } else {
             console.error('❌ 선택된 스토어 목록이 없거나 잘못됨');
-            console.log('🔄 폴백: 모든 스토어 방문으로 전환');
-            visitSmartStoreLinksSequentially(smartStoreLinks); // await 제거
-            
-            // 🔥 폴백 완료 - 즉시 창 닫기 (v1.78)
-            console.log('🔥 폴백 시작 - 창 유지 (스토어 접속을 위해)');
           }
         } else {
           console.error('❌ 서버에서 실패 응답:', responseData.error || '알 수 없는 오류');
-          console.log('🔄 폴백: 모든 스토어 방문으로 전환');
-          visitSmartStoreLinksSequentially(smartStoreLinks); // await 제거
           
           // 🔥 폴백 완료 - 즉시 창 닫기 (v1.78)
           console.log('🔥 폴백 시작 - 창 유지 (스토어 접속을 위해)');
@@ -860,41 +846,14 @@ async function sendSmartStoreLinksToServer(smartStoreLinks = null) {
         
       } catch (processError) {
         console.error('❌ 응답 처리 오류:', processError);
-        console.log('🔄 폴백: 모든 스토어 방문으로 전환');
-        await visitSmartStoreLinksSequentially(smartStoreLinks);
       }
       
     } else {
       console.error('❌ 서버 응답 오류:', response.status, response.statusText);
-      console.log('🔄 폴백: 모든 스토어 방문으로 전환');
-      await visitSmartStoreLinksSequentially(smartStoreLinks);
     }
     
   } catch (error) {
-    console.error('❌ Predvia 통신 오류:', error);
-    console.error('❌ 오류 타입:', error.constructor.name);
-    console.error('❌ 오류 메시지:', error.message);
-    console.error('❌ 오류 스택:', error.stack);
-    
-    // ⭐ 네트워크 오류 상세 분석
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      console.error('🌐 네트워크 연결 오류 - Predvia 서버가 실행 중인지 확인');
-    } else if (error.name === 'SyntaxError') {
-      console.error('📄 JSON 파싱 오류 - 서버 응답 형식 문제');
-    } else {
-      console.error('❓ 알 수 없는 오류 유형');
-    }
-    
-    console.log('💡 Predvia 프로그램이 실행 중인지 확인해주세요.');
-    console.log('💡 localhost:8080 포트가 열려있는지 확인해주세요.');
-    
-    // ⭐ 오류 발생 시에도 폴백으로 모든 스토어 방문
-    console.log('🔄 오류 발생으로 폴백: 모든 스토어 방문으로 전환');
-    try {
-      await visitSmartStoreLinksSequentially(smartStoreLinks);
-    } catch (fallbackError) {
-      console.error('❌ 폴백 실행도 실패:', fallbackError);
-    }
+    console.error('❌ Predvia 통신 오류:', error.message);
   }
 }
 

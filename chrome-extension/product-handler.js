@@ -89,6 +89,8 @@ if (document.readyState === 'loading') {
 }
 
 async function initProductHandler() {
+  if (window.__PRODUCT_HANDLER_RUNNING__) return;
+  window.__PRODUCT_HANDLER_RUNNING__ = true;
   try {
     // ⭐ 서버 상태 확인
     let v2Mode = false;

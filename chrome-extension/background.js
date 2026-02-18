@@ -386,6 +386,22 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Background received message:', request);
     
+    // [v2] 서버 주도 크롤링 메시지 처리
+    if (request.type === 'v2_start_crawl') {
+      v2Crawl.start(request.stores);
+      sendResponse({ ok: true });
+      return true;
+    }
+    if (request.type === 'v2_report') {
+      v2Crawl.report(request.data).then(r => sendResponse(r));
+      return true;
+    }
+    if (request.type === 'v2_stop') {
+      v2Crawl.stop();
+      sendResponse({ ok: true });
+      return true;
+    }
+    
     // ⭐ localhost 프록시 요청 처리 (CORS 우회)
     if (request.action === 'proxyFetch') {
         (async () => {
@@ -723,8 +739,26 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 // ⭐ 탭 업데이트 감지 (전체상품 페이지 강제 주입)
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
+    // [v2] v2 모드 - 공구탭 리다이렉트만 감지해서 report
+    if (v2Crawl.polling) {
+      if (tab.url.includes('smartstore.naver.com') && 
+          !tab.url.includes('/category/') && 
+          !tab.url.includes('/products/')) {
+        const m = tab.url.match(/smartstore\.naver\.com\/([^\/\?]+)/);
+        const sid = m ? m[1] : 'unknown';
+        console.log(`[v2] ${sid}: 공구탭 없음 - 리다이렉트 감지 (tabId=${tabId}, v2TabId=${v2Crawl.currentTabId})`);
+        v2Crawl.report({ type: 'no_gonggu', storeId: sid });
+      }
+      return;
+    }
+    try {
+      const sr = await fetch('http://localhost:8080/api/smartstore/status');
+      const sd = await sr.json();
+      if (sd.v2Mode) return;
+    } catch(e) {}
+    
     console.log('🔍 탭 업데이트 감지:', tab.url);
     
     // 전체상품 페이지 감지
@@ -879,11 +913,14 @@ const v2Crawl = {
   polling: false,
   intervalId: null,
   currentTabId: null,
+  currentWindowId: null,
+  _pollBusy: false,
   POLL_INTERVAL: 2000,
   SERVER: 'http://localhost:8080',
 
   async start(stores) {
     console.log('[v2] 크롤링 시작 요청:', stores.length, '개 스토어');
+    this.polling = true; // 즉시 설정 (tabs.onUpdated 차단용)
     try {
       const res = await fetch(`${this.SERVER}/api/crawl/start`, {
         method: 'POST',
@@ -892,12 +929,14 @@ const v2Crawl = {
       });
       const data = await res.json();
       if (data.success) {
-        this.polling = true;
-        this.poll(); // 즉시 첫 폴링
+        this.poll();
         this.intervalId = setInterval(() => this.poll(), this.POLL_INTERVAL);
         console.log('[v2] 폴링 시작');
+      } else {
+        this.polling = false;
       }
     } catch (e) {
+      this.polling = false;
       console.log('[v2] start 실패:', e.message);
     }
   },
@@ -913,13 +952,16 @@ const v2Crawl = {
   },
 
   async poll() {
-    if (!this.polling) return;
+    if (!this.polling || this._pollBusy) return;
+    this._pollBusy = true;
     try {
       const res = await fetch(`${this.SERVER}/api/crawl/next-task`);
       const task = await res.json();
       await this.handleTask(task);
     } catch (e) {
-      // 서버 연결 실패 시 조용히 무시 (다음 폴링에서 재시도)
+      // 서버 연결 실패 시 조용히 무시
+    } finally {
+      this._pollBusy = false;
     }
   },
 
@@ -930,6 +972,29 @@ const v2Crawl = {
       case 'open_product':
         await this.openTab(task.url);
         console.log(`[v2] ${task.action}: ${task.url}`);
+        // 탭 로드 완료 후 스크립트 강제 주입
+        if (this.currentTabId) {
+          const tid = this.currentTabId;
+          const scriptFile = task.action === 'open_gonggu' ? 'gonggu-checker.js' 
+            : task.action === 'open_all_products' ? 'all-products-handler.js'
+            : 'product-handler.js';
+          const injectWhenReady = (attempt) => {
+            if (attempt > 10) return;
+            chrome.tabs.get(tid, (tab) => {
+              if (chrome.runtime.lastError || !tab) return;
+              if (tab.status === 'complete') {
+                chrome.scripting.executeScript({
+                  target: { tabId: tid },
+                  files: [scriptFile]
+                }).then(() => console.log(`[v2] ${scriptFile} 주입 완료 (시도 ${attempt})`))
+                  .catch(e => console.log(`[v2] 스크립트 주입 실패:`, e.message));
+              } else {
+                setTimeout(() => injectWhenReady(attempt + 1), 1000);
+              }
+            });
+          };
+          setTimeout(() => injectWhenReady(1), 1500);
+        }
         break;
 
       case 'done':
@@ -952,30 +1017,42 @@ const v2Crawl = {
   },
 
   async openTab(url) {
-    // 이전 탭 닫기
     await this.closeCurrentTab();
-
     return new Promise((resolve) => {
-      chrome.tabs.create({
+      chrome.windows.create({
         url: url,
-        active: false
-      }, (tab) => {
-        this.currentTabId = tab.id;
-        console.log(`[v2] 탭 열림: ${tab.id}`);
-        resolve(tab);
+        type: 'popup',
+        width: 250,
+        height: 400,
+        left: 50,
+        top: 400,
+        focused: false
+      }, (win) => {
+        if (win && win.tabs && win.tabs[0]) {
+          this.currentTabId = win.tabs[0].id;
+          this.currentWindowId = win.id;
+          console.log(`[v2] 앱 창 열림: tabId=${win.tabs[0].id}, winId=${win.id}`);
+        }
+        resolve(win);
       });
     });
   },
 
   closeCurrentTab() {
     return new Promise((resolve) => {
-      if (this.currentTabId) {
+      if (this.currentWindowId) {
+        const winId = this.currentWindowId;
+        this.currentWindowId = null;
+        this.currentTabId = null;
+        chrome.windows.remove(winId, () => {
+          if (chrome.runtime.lastError) {}
+          resolve();
+        });
+      } else if (this.currentTabId) {
         const tabId = this.currentTabId;
         this.currentTabId = null;
         chrome.tabs.remove(tabId, () => {
-          if (chrome.runtime.lastError) {
-            // 이미 닫힌 탭 - 무시
-          }
+          if (chrome.runtime.lastError) {}
           resolve();
         });
       } else {
@@ -999,23 +1076,5 @@ const v2Crawl = {
     }
   }
 };
-
-// v2 메시지 핸들러 (content script → background)
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'v2_start_crawl') {
-    v2Crawl.start(request.stores);
-    sendResponse({ ok: true });
-    return true;
-  }
-  if (request.type === 'v2_report') {
-    v2Crawl.report(request.data).then(r => sendResponse(r));
-    return true; // async
-  }
-  if (request.type === 'v2_stop') {
-    v2Crawl.stop();
-    sendResponse({ ok: true });
-    return true;
-  }
-});
 
 console.log('[v2] 서버 주도 크롤링 시스템 로드 완료');

@@ -2348,6 +2348,7 @@ namespace Gumaedaehang.Services
                 var data = JsonSerializer.Deserialize<JsonElement>(body);
                 var type = data.GetProperty("type").GetString() ?? "";
                 var storeId = data.TryGetProperty("storeId", out var sid) ? sid.GetString() ?? "" : "";
+                LogWindow.AddLogStatic($"📨 [v2] report 수신: type={type}, storeId={storeId}");
 
                 if (_crawlSM == null)
                 {
