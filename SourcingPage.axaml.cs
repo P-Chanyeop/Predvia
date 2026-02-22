@@ -5728,44 +5728,27 @@ namespace Gumaedaehang
 
                 var jsonFilePath = System.IO.Path.Combine(predviaPath, "product_cards.json");
 
-                // 기존 JSON 로드 (순서 유지)
-                var productCards = new List<ProductCardData>();
-                if (File.Exists(jsonFilePath))
-                {
-                    var existingJson = File.ReadAllText(jsonFilePath);
-                    productCards = JsonSerializer.Deserialize<List<ProductCardData>>(existingJson) ?? new List<ProductCardData>();
-                }
-
-                // 현재 UI 데이터를 딕셔너리로
-                var uiData = new Dictionary<string, ProductUIElements>();
+                // 현재 페이지 UI 변경사항을 _allProductCards에 반영
                 foreach (var p in _productElements.Values.Where(p => p.StoreId != null && p.RealProductId != null))
                 {
-                    uiData[$"{p.StoreId}_{p.RealProductId}"] = p;
-                }
-
-                // UI에 없는 항목 제거 (삭제된 상품 반영)
-                productCards.RemoveAll(card => !uiData.ContainsKey($"{card.StoreId}_{card.RealProductId}"));
-
-                // 기존 순서 유지하면서 업데이트
-                foreach (var card in productCards)
-                {
-                    var key = $"{card.StoreId}_{card.RealProductId}";
-                    if (uiData.TryGetValue(key, out var p))
+                    var card = _allProductCards.FirstOrDefault(c => c.StoreId == p.StoreId && c.RealProductId == p.RealProductId);
+                    if (card != null)
                     {
-                        int shippingCost = 0;
-                        if (p.ShippingCostInput != null && !string.IsNullOrEmpty(p.ShippingCostInput.Text))
-                        {
-                            int.TryParse(p.ShippingCostInput.Text.Replace(",", ""), out shippingCost);
-                        }
-                        
                         card.ProductName = p.NameInputBox?.Text ?? card.ProductName;
                         card.IsTaobaoPaired = p.IsTaobaoPaired || card.IsTaobaoPaired;
                         card.TaobaoProducts = p.TaobaoProducts?.Count > 0 ? p.TaobaoProducts : card.TaobaoProducts;
-                        card.ShippingCost = shippingCost > 0 ? shippingCost : card.ShippingCost;
                         card.SelectedTaobaoIndex = p.SelectedTaobaoIndex;
                         card.BossMessage = p.BossMessageInput?.Text ?? card.BossMessage;
+                        if (p.ShippingCostInput != null && !string.IsNullOrEmpty(p.ShippingCostInput.Text))
+                        {
+                            if (int.TryParse(p.ShippingCostInput.Text.Replace(",", ""), out int sc) && sc > 0)
+                                card.ShippingCost = sc;
+                        }
                     }
                 }
+
+                // _allProductCards 전체를 저장
+                var productCards = _allProductCards;
 
                 var options = new JsonSerializerOptions
                 {

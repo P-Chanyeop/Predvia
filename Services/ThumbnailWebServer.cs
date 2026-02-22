@@ -6121,6 +6121,8 @@ namespace Gumaedaehang.Services
                 _currentStoreIndex = 0;
                 _completionPopupShown = false;
                 _saveCompleted = false;
+                _v2Mode = false;
+                _crawlSM = null;
             }
             lock (_counterLock)
             {
