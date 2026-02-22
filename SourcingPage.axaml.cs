@@ -1958,8 +1958,6 @@ namespace Gumaedaehang
             {
                 if (!await ShowConfirmDialog("이 상품을 삭제하시겠습니까?")) return;
                 
-                LogWindow.AddLogStatic($"🗑️ 개별 삭제 버튼 클릭: 상품 {productId}");
-                
                 if (_productElements.TryGetValue(productId, out var product) && product.Container != null)
                 {
                     var storeId = product.StoreId;
@@ -1967,10 +1965,7 @@ namespace Gumaedaehang
                     
                     // UI에서 제거
                     var container = this.FindControl<StackPanel>("RealDataContainer");
-                    if (container != null)
-                    {
-                        container.Children.Remove(product.Container);
-                    }
+                    container?.Children.Remove(product.Container);
                     
                     // 파일 삭제
                     var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -1979,20 +1974,45 @@ namespace Gumaedaehang
                     
                     // 메모리에서 제거
                     _productElements.Remove(productId);
+                    _allProductCards.RemoveAll(c => c.StoreId == storeId && c.RealProductId == realProductId);
                     
-                    // JSON 파일 업데이트
-                    SaveProductCardsToJson();
+                    // JSON에서 해당 상품만 제거 (팝업 없이)
+                    RemoveProductFromJson(storeId, realProductId);
                     
-                    LogWindow.AddLogStatic($"✅ 상품 {productId} 삭제 완료 (UI + 파일)");
-                }
-                else
-                {
-                    LogWindow.AddLogStatic($"❌ 상품 {productId}를 찾을 수 없음");
+                    // 페이지 정보 업데이트 (개수 반영)
+                    UpdatePageInfo();
+                    
+                    LogWindow.AddLogStatic($"🗑️ 상품 {productId} 삭제 완료");
                 }
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 개별 삭제 오류: {ex.Message}");
+            }
+        }
+
+        private void RemoveProductFromJson(string? storeId, string? realProductId)
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var jsonFilePath = System.IO.Path.Combine(appDataPath, "Predvia", "product_cards.json");
+                if (!File.Exists(jsonFilePath)) return;
+
+                var json = File.ReadAllText(jsonFilePath);
+                var cards = JsonSerializer.Deserialize<List<ProductCardData>>(json) ?? new List<ProductCardData>();
+                cards.RemoveAll(c => c.StoreId == storeId && c.RealProductId == realProductId);
+
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+                File.WriteAllText(jsonFilePath, JsonSerializer.Serialize(cards, options));
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ JSON 삭제 오류: {ex.Message}");
             }
         }
         
@@ -5722,6 +5742,9 @@ namespace Gumaedaehang
                 {
                     uiData[$"{p.StoreId}_{p.RealProductId}"] = p;
                 }
+
+                // UI에 없는 항목 제거 (삭제된 상품 반영)
+                productCards.RemoveAll(card => !uiData.ContainsKey($"{card.StoreId}_{card.RealProductId}"));
 
                 // 기존 순서 유지하면서 업데이트
                 foreach (var card in productCards)

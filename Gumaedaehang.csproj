@@ -19,8 +19,8 @@
     <AssemblyDescription>전문적인 구매대행 서비스를 위한 통합 관리 시스템</AssemblyDescription>
     <AssemblyCompany>Softcat Team</AssemblyCompany>
     <AssemblyProduct>Predvia</AssemblyProduct>
-    <AssemblyVersion>3.0.8.0</AssemblyVersion>
-    <FileVersion>3.0.8.0</FileVersion>
+    <AssemblyVersion>3.1.0.0</AssemblyVersion>
+    <FileVersion>3.1.0.0</FileVersion>
   </PropertyGroup>
   
   <ItemGroup>
@@ -56,5 +56,11 @@
   
   <ItemGroup>
     <Compile Remove="SourcingPage_old_backup.axaml.cs" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Update="빌드-완전안전모드.bat">
+      <DependentUpon>실행.bat</DependentUpon>
+    </None>
   </ItemGroup>
 </Project>

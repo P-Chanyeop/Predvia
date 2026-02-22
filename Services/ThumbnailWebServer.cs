@@ -2226,15 +2226,26 @@ namespace Gumaedaehang.Services
             try
             {
                 var currentCount = GetCurrentProductCount();
-                var processedStores = _currentStoreIndex;
-                var totalStores = _selectedStores?.Count ?? 0;
+                int processedStores = 0;
+                int totalStores = _selectedStores?.Count ?? 0;
+
+                // v2 상태머신 우선, 없으면 v1 폴백
+                if (_crawlSM != null && _crawlSM.Stores.Count > 0)
+                {
+                    processedStores = _crawlSM.CurrentStoreIdx;
+                    totalStores = _crawlSM.Stores.Count;
+                }
+                else
+                {
+                    processedStores = _currentStoreIndex;
+                }
 
                 var json = JsonSerializer.Serialize(new {
                     currentCount = currentCount,
-                    totalAttempted = _totalAttempted,
+                    totalAttempted = _crawlSM?.TotalAttempted ?? _totalAttempted,
                     processedStores = processedStores,
                     totalStores = totalStores,
-                    isCompleted = _shouldStop || (totalStores > 0 && (currentCount >= TARGET_PRODUCT_COUNT || processedStores >= totalStores))
+                    isCompleted = _shouldStop || (totalStores > 0 && (processedStores >= totalStores))
                 });
                 context.Response.ContentType = "application/json; charset=utf-8";
                 await context.Response.WriteAsync(json);

@@ -726,31 +726,18 @@ namespace Gumaedaehang
                     var root = doc.RootElement;
                     
                     int count = root.GetProperty("currentCount").GetInt32();
-                    int attempted = root.TryGetProperty("totalAttempted", out var att) ? att.GetInt32() : count;
                     int processed = root.GetProperty("processedStores").GetInt32();
                     int total = root.GetProperty("totalStores").GetInt32();
                     bool completed = root.GetProperty("isCompleted").GetBoolean();
                     
-                    double pct = Math.Min(attempted, 100);
-                    int failed = attempted - count;
-                    
-                    if (attempted > 0)
-                    {
-                        if (progressBar != null) progressBar.Value = pct;
-                        if (titleText != null) titleText.Text = $"크롤링 중... {attempted}/100개 진행 ({pct:F0}%)";
-                        if (detailText != null) detailText.Text = $"스토어 {Math.Min(processed + 1, total)}/{total} · 성공 {count}개" + (failed > 0 ? $", 스킵 {failed}개" : "");
-                    }
-                    else if (total > 0)
-                    {
-                        if (titleText != null) titleText.Text = $"스토어 탐색 중... ({Math.Min(processed + 1, total)}/{total})";
-                        if (detailText != null) detailText.Text = "적합한 스토어 찾는 중";
-                    }
+                    if (titleText != null) titleText.Text = $"크롤링 중... {count}개 진행";
+                    if (detailText != null) detailText.Text = $"스토어 {Math.Min(processed + 1, total)}/{total}";
                     
                     if (completed)
                     {
-                        if (progressBar != null) progressBar.Value = 100;
-                        if (titleText != null) titleText.Text = $"크롤링 완료! 성공 {count}개 / {attempted}개 진행";
-                        if (detailText != null) detailText.Text = $"스토어 {total}/{total} 완료 · 성공 {count}개, 스킵 {failed}개";
+                        if (progressBar != null) progressBar.IsIndeterminate = false;
+                        if (titleText != null) titleText.Text = $"크롤링 완료! {count}개 수집";
+                        if (detailText != null) detailText.Text = $"스토어 {total}/{total} 완료";
                         StopCrawlingPoll();
                         // 3초 후 로딩창 자동 숨김
                         _ = Task.Run(async () =>

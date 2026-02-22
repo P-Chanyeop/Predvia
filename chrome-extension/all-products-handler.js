@@ -90,23 +90,40 @@ if (window.__ALL_PRODUCTS_HANDLER_RUNNING__) {
           if (allProducts.length > 0) break;
         }
         
-        // 마지막 리뷰 상품 rank 찾기
+        // 마지막 리뷰 상품 rank 찾기 - 각 <li> 안에서 XPath로 리뷰 DOM 구조 확인
+        // 구조: <span>리뷰 <span>2,374</span></span>
         let lastReviewRank = -1;
         for (let i = 0; i < allProducts.length; i++) {
           const rank = parseInt(allProducts[i].getAttribute('data-shp-contents-rank'));
-          if (rank > 40) continue;
-          const parent = allProducts[i].closest('[class]')?.parentElement;
-          if (parent && parent.textContent.includes('리뷰')) {
-            lastReviewRank = Math.max(lastReviewRank, rank);
+          if (rank > 39) continue;
+          const li = allProducts[i].closest('li');
+          if (!li) continue;
+          const spans = document.evaluate(
+            ".//span[contains(text(), '리뷰')]",
+            li, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null
+          );
+          for (let j = 0; j < spans.snapshotLength; j++) {
+            const span = spans.snapshotItem(j);
+            const childSpan = span.querySelector('span');
+            if (childSpan && /[\d,]+/.test(childSpan.textContent.trim())) {
+              lastReviewRank = Math.max(lastReviewRank, rank);
+              break;
+            }
           }
         }
-        console.log(`[v2] 마지막 리뷰 rank: ${lastReviewRank}`);
+        localFetch('http://localhost:8080/api/smartstore/log', { method: 'POST', body: JSON.stringify({ message: `[v2] ${storeId}: 상품 ${allProducts.length}개, 마지막 리뷰 rank: ${lastReviewRank}` }) }).catch(() => {});
+        
+        if (lastReviewRank === -1) {
+          localFetch('http://localhost:8080/api/smartstore/log', { method: 'POST', body: JSON.stringify({ message: `[v2] ${storeId}: 리뷰 상품 없음 - 스킵` }) }).catch(() => {});
+          v2ReportProductList(storeId, []);
+          return;
+        }
         
         const productIds = [];
         const seenIds = new Set();
         for (let i = 0; i < allProducts.length && productIds.length < 40; i++) {
           const rank = parseInt(allProducts[i].getAttribute('data-shp-contents-rank'));
-          if (lastReviewRank > 0 && rank > lastReviewRank) continue;
+          if (rank > lastReviewRank) continue;
           const pid = allProducts[i].getAttribute('data-shp-contents-id');
           if (pid && /^\d{5,}$/.test(pid) && !seenIds.has(pid)) {
             seenIds.add(pid);
@@ -350,59 +367,49 @@ async function updateProgress(storeId, runId, inc = 1) {
 // 상품 데이터 수집 (40개 상품 중 마지막 리뷰 상품 찾기)
 async function collectProductData(storeId, runId) {
   try {
-    const debugMsg = `🔍 ${storeId}: 리뷰 span 검색 시작`;
-    sendLogToServer(debugMsg);
+    sendLogToServer(`🔍 ${storeId}: 리뷰 상품 검색 시작`);
     
-    // 정확히 "리뷰" 텍스트를 가진 span 찾기
-    const reviewSpans = document.evaluate("//span[normalize-space(text())='리뷰']", document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-    
-    const spanMsg = `📝 ${storeId}: ${reviewSpans.snapshotLength}개 "리뷰" span 발견`;
-    sendLogToServer(spanMsg);
-    
-    if (reviewSpans.snapshotLength === 0) {
-      const noSpanMsg = `❌ ${storeId}: "리뷰" span 없음 - 즉시 완료 처리`;
-      await sendLogToServer(noSpanMsg);
-      
-      // ⭐ 즉시 완료 상태로 설정
-      await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
-      await sendLogToServer(`✅ ${storeId}: 리뷰 없음으로 완료 처리됨`);
-      
-      // ⭐ 해당 스토어의 모든 앱 창 닫기
-      chrome.runtime.sendMessage({
-        action: 'closeAppWindows',
-        storeId: storeId
-      });
-      
-      return [];
+    // 1단계: 모든 상품 <li> 가져오기
+    const allItems = document.querySelectorAll('li[class]');
+    const productItems = [];
+    for (const li of allItems) {
+      if (li.querySelector('a[data-shp-contents-rank]')) productItems.push(li);
     }
+    sendLogToServer(`📝 ${storeId}: ${productItems.length}개 상품 카드 발견`);
     
-    // 1단계: 모든 상품 링크 가져오기
-    const allProducts = document.querySelectorAll('a[data-shp-contents-rank]');
-    
-    // 2단계: 처음 40개 상품에서 리뷰가 있는지 확인하여 마지막 리뷰 rank 찾기
+    // 2단계: 각 <li> 안에서 XPath로 "리뷰" 텍스트를 가진 span 중
+    //        자식 span에 숫자(리뷰 개수)가 있는 것만 진짜 리뷰로 판단
+    //        구조: <span>리뷰 <span>2,374</span></span>
     let lastReviewRank = -1;
     
-    for (let i = 0; i < allProducts.length; i++) {
-      const productLink = allProducts[i];
-      const rank = parseInt(productLink.getAttribute('data-shp-contents-rank'));
-      
-      // 40개까지만 확인
-      if (rank > 40) continue;
-      
-      // 상품 주변에서 리뷰 span 찾기
-      const parent = productLink.parentElement;
-      if (parent && parent.textContent.includes('리뷰')) {
-        lastReviewRank = Math.max(lastReviewRank, rank);
-        const reviewMsg = `🔢 ${storeId}: ${rank}번 상품에 리뷰 발견`;
-        sendLogToServer(reviewMsg);
+    for (let i = 0; i < productItems.length && i < 40; i++) {
+      const li = productItems[i];
+      // li 내부에서 "리뷰" 텍스트를 직접 포함하는 span 찾기
+      const spans = document.evaluate(
+        ".//span[contains(text(), '리뷰')]",
+        li, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null
+      );
+      for (let j = 0; j < spans.snapshotLength; j++) {
+        const span = spans.snapshotItem(j);
+        // 자식 span에 숫자가 있는지 확인 (리뷰 개수)
+        const childSpan = span.querySelector('span');
+        if (childSpan && /[\d,]+/.test(childSpan.textContent.trim())) {
+          lastReviewRank = i;
+          sendLogToServer(`🔢 ${storeId}: ${i}번 상품에 리뷰 발견 (${childSpan.textContent.trim()})`);
+          break;
+        }
       }
     }
     
     if (lastReviewRank === -1) {
-      const noRankMsg = `❌ ${storeId}: 리뷰 상품 없음`;
-      sendLogToServer(noRankMsg);
+      await sendLogToServer(`❌ ${storeId}: 리뷰 상품 없음 - 즉시 완료 처리`);
+      await setStoreStateFromHandler(storeId, runId, 'done', false, 0, 0);
+      chrome.runtime.sendMessage({ action: 'closeAppWindows', storeId: storeId });
       return [];
     }
+    
+    // 1단계b: 모든 상품 링크 가져오기
+    const allProducts = document.querySelectorAll('a[data-shp-contents-rank]');
     
     const rangeMsg = `✅ ${storeId}: 1번부터 ${lastReviewRank}번째 상품까지 수집 (총 ${lastReviewRank}개)`;
     sendLogToServer(rangeMsg);
