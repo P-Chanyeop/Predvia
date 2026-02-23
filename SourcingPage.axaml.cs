@@ -5860,24 +5860,61 @@ namespace Gumaedaehang
         {
             try
             {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
-                var jsonFilePath = System.IO.Path.Combine(predviaPath, "product_cards.json");
-
-                if (!File.Exists(jsonFilePath))
-                {
-                    return;
-                }
-
-                var json = File.ReadAllText(jsonFilePath);
-                _allProductCards = JsonSerializer.Deserialize<List<ProductCardData>>(json) ?? new();
-
-                if (_allProductCards.Count == 0)
-                {
-                    return;
-                }
+                // ⭐ DB에서 현재 유저의 상품 데이터 로드
+                var dbProducts = await DatabaseService.Instance.GetProductsAsync();
                 
-                LogWindow.AddLogStatic($"📂 JSON 파일에서 {_allProductCards.Count}개 상품 로드");
+                if (dbProducts.Count > 0)
+                {
+                    LogWindow.AddLogStatic($"📂 DB에서 {dbProducts.Count}개 상품 로드");
+                    
+                    _allProductCards = new List<ProductCardData>();
+                    int idx = 1;
+                    foreach (var p in dbProducts)
+                    {
+                        var card = new ProductCardData
+                        {
+                            ProductId = idx++,
+                            StoreId = p.StoreId,
+                            RealProductId = p.ProductId,
+                            ImageUrl = p.ImageUrl,
+                            ProductName = p.ProductName
+                        };
+                        
+                        // 타오바오 페어링 로드
+                        var pairings = await DatabaseService.Instance.GetTaobaoPairingsAsync(p.StoreId, p.ProductId);
+                        if (pairings.Count > 0)
+                        {
+                            card.IsTaobaoPaired = true;
+                            card.TaobaoProducts = pairings.Select(tp => new TaobaoProductData
+                            {
+                                Nid = tp.Nid,
+                                Title = tp.Title ?? "",
+                                Price = tp.Price.ToString("F2"),
+                                ImageUrl = tp.ImageUrl ?? "",
+                                ProductUrl = tp.Url ?? "",
+                                Sales = tp.Sales.ToString()
+                            }).ToList();
+                        }
+                        
+                        _allProductCards.Add(card);
+                    }
+                }
+                else
+                {
+                    // DB에 없으면 기존 JSON 파일 폴백
+                    LogWindow.AddLogStatic("📂 DB 데이터 없음 - JSON 파일 폴백 시도");
+                    var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                    var jsonFilePath = System.IO.Path.Combine(appDataPath, "Predvia", "product_cards.json");
+
+                    if (!File.Exists(jsonFilePath)) return;
+
+                    var json = File.ReadAllText(jsonFilePath);
+                    _allProductCards = JsonSerializer.Deserialize<List<ProductCardData>>(json) ?? new();
+                }
+
+                if (_allProductCards.Count == 0) return;
+                
+                LogWindow.AddLogStatic($"📂 총 {_allProductCards.Count}개 상품 카드 준비 완료");
                 
                 _currentPage = 1;
                 await LoadCurrentPage();
