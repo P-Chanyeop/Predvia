@@ -33,10 +33,18 @@ Write-Host "[1/3] Build..."
 dotnet publish $csprojPath -c Release -r win-x64 --self-contained -o publish-squirrel
 if ($LASTEXITCODE -ne 0) { Write-Host "Build failed!"; pause; exit 1 }
 
-# .env를 배포 폴더에 복사 (실행 시 환경변수 로드용)
+# .env → .env.enc 암호화 후 배포 폴더에 복사
 if (Test-Path ".env") {
-    Copy-Item ".env" "publish-squirrel\.env" -Force
-    Write-Host "  .env copied to publish-squirrel"
+    # 빌드된 exe로 암호화 실행
+    $encryptExe = "publish-squirrel\Gumaedaehang.exe"
+    if (Test-Path $encryptExe) {
+        & $encryptExe --encrypt-env ".env" "publish-squirrel\.env.enc"
+        Write-Host "  .env.enc created"
+    } else {
+        # 폴백: 평문 복사 (개발용)
+        Copy-Item ".env" "publish-squirrel\.env" -Force
+        Write-Host "  .env copied (fallback)"
+    }
 }
 
 Write-Host "[2/3] Squirrel pack v$newVer..."

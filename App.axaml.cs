@@ -13,6 +13,9 @@ namespace Gumaedaehang
     {
         public override void Initialize()
         {
+            // 🔥 시크릿 환경변수 로드 (가장 먼저 실행)
+            Gumaedaehang.Services.EnvLoader.Load();
+            
             AvaloniaXamlLoader.Load(this);
             
             // 테마 변경 이벤트 구독
