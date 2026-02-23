@@ -98,8 +98,8 @@ async function initProductHandler() {
       const statusResp = await localFetch('http://localhost:8080/api/smartstore/status');
       const statusData = await statusResp.json();
       v2Mode = statusData.v2Mode || false;
-      if (!statusData.isCrawlingActive && !v2Mode) {
-        console.log('ℹ️ 크롤링 비활성 - 핸들러 스킵');
+      if ((!statusData.isCrawlingActive && !v2Mode) || statusData.shouldStop) {
+        console.log('ℹ️ 크롤링 비활성 또는 중단 상태 - 핸들러 스킵');
         return;
       }
     } catch (e) {
