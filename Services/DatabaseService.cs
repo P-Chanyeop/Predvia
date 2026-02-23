@@ -182,6 +182,32 @@ namespace Gumaedaehang.Services
 
         // ========== 데이터 조회 (유저별) ==========
 
+        // 상품 및 관련 데이터 전체 삭제
+        public async Task DeleteProductAsync(string storeId, string productId)
+        {
+            try
+            {
+                using var conn = new MySqlConnection(ConnectionString);
+                await conn.OpenAsync();
+
+                var tables = new[] { "reviews", "taobao_pairings", "keywords", "products" };
+                foreach (var table in tables)
+                {
+                    using var cmd = new MySqlCommand(
+                        $"DELETE FROM {table} WHERE api_key = @apiKey AND store_id = @storeId AND product_id = @productId", conn);
+                    cmd.Parameters.AddWithValue("@apiKey", CurrentApiKey);
+                    cmd.Parameters.AddWithValue("@storeId", storeId);
+                    cmd.Parameters.AddWithValue("@productId", productId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                LogWindow.AddLogStatic($"✅ DB 삭제 완료: {storeId}/{productId}");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ DB 삭제 실패 [{storeId}/{productId}]: {ex.Message}");
+            }
+        }
+
         // 현재 유저의 모든 상품 조회
         public async Task<List<DbProduct>> GetProductsAsync()
         {

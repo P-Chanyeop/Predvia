@@ -1727,7 +1727,17 @@ namespace Gumaedaehang
                 foreach (var card in pageCards)
                 {
                     if (card.StoreId != null && card.RealProductId != null)
+                    {
                         DeleteProductFiles(predviaPath, card.StoreId, card.RealProductId);
+                        // 🔥 DB에서 삭제
+                        var sid = card.StoreId;
+                        var pid = card.RealProductId;
+                        _ = Task.Run(async () =>
+                        {
+                            try { await DatabaseService.Instance.DeleteProductAsync(sid, pid); }
+                            catch (Exception dbEx) { LogWindow.AddLogStatic($"⚠️ DB 삭제 실패: {dbEx.Message}"); }
+                        });
+                    }
                 }
                 
                 // _allProductCards에서 현재 페이지 항목 제거
@@ -1978,6 +1988,16 @@ namespace Gumaedaehang
                     
                     // JSON에서 해당 상품만 제거 (팝업 없이)
                     RemoveProductFromJson(storeId, realProductId);
+                    
+                    // 🔥 DB에서 삭제
+                    if (!string.IsNullOrEmpty(storeId) && !string.IsNullOrEmpty(realProductId))
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try { await DatabaseService.Instance.DeleteProductAsync(storeId!, realProductId!); }
+                            catch (Exception dbEx) { LogWindow.AddLogStatic($"⚠️ DB 삭제 실패: {dbEx.Message}"); }
+                        });
+                    }
                     
                     // 페이지 정보 업데이트 (개수 반영)
                     UpdatePageInfo();
@@ -5777,6 +5797,30 @@ namespace Gumaedaehang
                 File.WriteAllText(jsonFilePath, json);
 
                 LogWindow.AddLogStatic($"💾 상품 데이터 저장 완료: {productCards.Count}개 상품 ({jsonFilePath})");
+                
+                // 🔥 DB에도 최신 데이터 반영
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        foreach (var card in productCards)
+                        {
+                            if (card.StoreId == null || card.RealProductId == null) continue;
+                            await DatabaseService.Instance.SaveProductAsync(
+                                card.StoreId, card.RealProductId,
+                                card.ProductName, null, 0, null, null, null);
+                            
+                            if (card.TaobaoProducts?.Count > 0)
+                                await DatabaseService.Instance.SaveTaobaoPairingsAsync(
+                                    card.StoreId, card.RealProductId, card.TaobaoProducts);
+                        }
+                        LogWindow.AddLogStatic($"✅ DB 동기화 완료: {productCards.Count}개");
+                    }
+                    catch (Exception dbEx)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ DB 동기화 실패: {dbEx.Message}");
+                    }
+                });
                 
                 // ⭐ 저장 완료 피드백
                 await Dispatcher.UIThread.InvokeAsync(async () =>
