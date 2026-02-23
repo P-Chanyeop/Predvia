@@ -5,6 +5,11 @@ echo        Predvia 구매대행 시스템
 echo ========================================
 echo.
 
+REM .env 파일에서 환경변수 로드
+if exist ".env" (
+    for /f "usebackq tokens=1,* delims==" %%A in (".env") do set "%%A=%%B"
+)
+
 REM 현재 디렉토리 확인
 if exist "Predvia.exe" (
     echo ✓ 실행 파일 발견: Predvia.exe

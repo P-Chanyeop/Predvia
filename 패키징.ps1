@@ -13,6 +13,18 @@ Write-Host "========================================"
 Write-Host "  Predvia v$newVer packaging"
 Write-Host "========================================"
 
+# .env 파일에서 환경변수 로드
+if (Test-Path ".env") {
+    Get-Content ".env" | ForEach-Object {
+        if ($_ -match '^([^=]+)=(.*)$') {
+            [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], "Process")
+        }
+    }
+    Write-Host "  .env loaded"
+} else {
+    Write-Host "  WARNING: .env not found!"
+}
+
 $csproj = $csproj -replace '<AssemblyVersion>.*?</AssemblyVersion>', "<AssemblyVersion>$newVerFull</AssemblyVersion>"
 $csproj = $csproj -replace '<FileVersion>.*?</FileVersion>', "<FileVersion>$newVerFull</FileVersion>"
 [System.IO.File]::WriteAllText($csprojPath, $csproj, [System.Text.Encoding]::UTF8)
