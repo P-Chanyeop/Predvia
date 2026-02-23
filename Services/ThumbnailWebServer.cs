@@ -5461,6 +5461,23 @@ namespace Gumaedaehang.Services
                 
                 LogWindow.AddLogStatic($"✅ 이미지 저장 완료: {fileName} ({imageBytes.Length} bytes)");
 
+                // 🔥 S3 업로드 + DB에 S3 URL 저장
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var s3Url = await S3Service.Instance.UploadImageAsync(
+                            DatabaseService.CurrentApiKey, imageData.StoreId, imageData.ProductId, imageBytes);
+                        await DatabaseService.Instance.SaveProductAsync(
+                            imageData.StoreId, imageData.ProductId,
+                            null, null, 0, s3Url ?? imageData.ImageUrl, null, null);
+                    }
+                    catch (Exception dbEx)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 이미지 S3/DB 저장 실패: {dbEx.Message}");
+                    }
+                });
+
                 // ⭐ 이미지 저장할 때마다 JSON 파일도 업데이트
                 SaveProductCardsFromFiles();
 
@@ -5618,6 +5635,24 @@ namespace Gumaedaehang.Services
                 
                 LogWindow.AddLogStatic($"✅ 상품명 저장 완료: {fileName} - {nameData.ProductName}");
                 
+                // 🔥 DB 저장 (비동기, 실패해도 파일 저장은 이미 완료)
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await DatabaseService.Instance.SaveProductAsync(
+                            nameData.StoreId, nameData.ProductId,
+                            nameData.ProductName, nameData.ProductName,
+                            0, null,
+                            $"https://smartstore.naver.com/{nameData.StoreId}/products/{nameData.ProductId}",
+                            null);
+                    }
+                    catch (Exception dbEx)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 상품명 DB 저장 실패: {dbEx.Message}");
+                    }
+                });
+                
                 // 🔥 소싱 페이지에 실시간 카드 추가
                 try
                 {
@@ -5762,6 +5797,22 @@ namespace Gumaedaehang.Services
                 await File.WriteAllTextAsync(filePath, priceData.Price.ToString(), System.Text.Encoding.UTF8);
                 
                 LogWindow.AddLogStatic($"✅ 가격 저장 완료: {fileName} - {priceData.PriceText}");
+                
+                // 🔥 DB 가격 업데이트
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var priceValue = ExtractPriceValue(priceData.Price);
+                        await DatabaseService.Instance.SaveProductAsync(
+                            priceData.StoreId, priceData.ProductId,
+                            null, null, priceValue, null, null, null);
+                    }
+                    catch (Exception dbEx)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 가격 DB 저장 실패: {dbEx.Message}");
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -5860,6 +5911,21 @@ namespace Gumaedaehang.Services
                 {
                     var categoryNames = string.Join(", ", productCategoryData.Categories.Select(c => c.Name));
                     LogWindow.AddLogStatic($"📂 {productCategoryData.StoreId}: 상품 {productCategoryData.ProductId} 카테고리 수집 성공 - {categoryNames}");
+                    
+                    // 🔥 DB 카테고리 업데이트
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await DatabaseService.Instance.SaveProductAsync(
+                                productCategoryData.StoreId, productCategoryData.ProductId,
+                                null, null, 0, null, null, categoryNames);
+                        }
+                        catch (Exception dbEx)
+                        {
+                            LogWindow.AddLogStatic($"⚠️ 카테고리 DB 저장 실패: {dbEx.Message}");
+                        }
+                    });
                 }
                 else
                 {
@@ -6026,6 +6092,23 @@ namespace Gumaedaehang.Services
                 await File.WriteAllTextAsync(filePath, jsonString, System.Text.Encoding.UTF8);
                 
                 LogWindow.AddLogStatic($"✅ 리뷰 저장 완료: {fileName} - {reviewData.Reviews.Count}개 리뷰");
+                
+                // 🔥 DB 리뷰 저장
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var reviewList = reviewData.Reviews
+                            .Select(r => (int.TryParse(r.Rating, out var rt) ? rt : 0, (string?)r.Content))
+                            .ToList();
+                        await DatabaseService.Instance.SaveReviewsAsync(
+                            reviewData.StoreId, reviewData.ProductId, reviewList);
+                    }
+                    catch (Exception dbEx)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 리뷰 DB 저장 실패: {dbEx.Message}");
+                    }
+                });
             }
             catch (Exception ex)
             {

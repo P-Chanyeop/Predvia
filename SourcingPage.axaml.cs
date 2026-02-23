@@ -2305,6 +2305,23 @@ namespace Gumaedaehang
             product.IsTaobaoPaired = taobaoList.Count > 0;
             LogWindow.AddLogStatic($"💾 상품 {productId}에 타오바오 데이터 {taobaoList.Count}개 저장됨");
             
+            // 🔥 DB에 타오바오 페어링 저장
+            if (taobaoList.Count > 0 && !string.IsNullOrEmpty(product.StoreId) && !string.IsNullOrEmpty(product.RealProductId))
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await DatabaseService.Instance.SaveTaobaoPairingsAsync(
+                            product.StoreId!, product.RealProductId!, taobaoList);
+                    }
+                    catch (Exception dbEx)
+                    {
+                        LogWindow.AddLogStatic($"⚠️ 타오바오 페어링 DB 저장 실패: {dbEx.Message}");
+                    }
+                });
+            }
+            
             int count = 0;
             foreach (var item in products.EnumerateArray())
             {
