@@ -11,17 +11,15 @@ namespace Gumaedaehang.Services
         private static DatabaseService? _instance;
         public static DatabaseService Instance => _instance ??= new DatabaseService();
 
-        private static readonly string ConnectionString =
-            $"Server={Env("DB_HOST", "ls-b8620b4ccbdc824c0cb2bb974b1b68d676f10035.c1wq6m02cidt.ap-northeast-2.rds.amazonaws.com")};" +
-            $"Port=3306;" +
-            $"Database=predvia;" +
-            $"User={Env("DB_USER", "dbmasteruser")};" +
-            $"Password={Env("DB_PASSWORD", "")};" +
-            "SslMode=Required;" +
-            "ConnectionTimeout=10;";
+        private static readonly string ConnectionString = BuildConnectionString();
 
-        private static string Env(string key, string fallback) =>
-            Environment.GetEnvironmentVariable(key) ?? fallback;
+        private static string BuildConnectionString()
+        {
+            var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "";
+            return $"Server=ls-b8620b4ccbdc824c0cb2bb974b1b68d676f10035.c1wq6m02cidt.ap-northeast-2.rds.amazonaws.com;" +
+                   $"Port=3306;Database=predvia;User=dbmasteruser;Password={password};" +
+                   "SslMode=Required;ConnectionTimeout=10;";
+        }
 
         // 현재 로그인된 유저의 API 키
         public static string CurrentApiKey => AuthManager.Instance.Token ?? "UNKNOWN";

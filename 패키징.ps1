@@ -33,6 +33,12 @@ Write-Host "[1/3] Build..."
 dotnet publish $csprojPath -c Release -r win-x64 --self-contained -o publish-squirrel
 if ($LASTEXITCODE -ne 0) { Write-Host "Build failed!"; pause; exit 1 }
 
+# .env를 배포 폴더에 복사 (실행 시 환경변수 로드용)
+if (Test-Path ".env") {
+    Copy-Item ".env" "publish-squirrel\.env" -Force
+    Write-Host "  .env copied to publish-squirrel"
+}
+
 Write-Host "[2/3] Squirrel pack v$newVer..."
 $squirrelExe = Join-Path $env:USERPROFILE ".nuget\packages\clowd.squirrel\2.11.1\tools\Squirrel.exe"
 & $squirrelExe pack --packId Predvia --packVersion $newVer --packDir publish-squirrel --releaseDir releases --allowUnaware
