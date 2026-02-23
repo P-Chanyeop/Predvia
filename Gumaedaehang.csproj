@@ -65,4 +65,8 @@
       <DependentUpon>실행.bat</DependentUpon>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <None Include=".env" Condition="Exists('.env')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include=".env.enc" Condition="Exists('.env.enc')" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
