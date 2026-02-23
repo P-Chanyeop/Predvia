@@ -5901,15 +5901,8 @@ namespace Gumaedaehang
                 }
                 else
                 {
-                    // DB에 없으면 기존 JSON 파일 폴백
-                    LogWindow.AddLogStatic("📂 DB 데이터 없음 - JSON 파일 폴백 시도");
-                    var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                    var jsonFilePath = System.IO.Path.Combine(appDataPath, "Predvia", "product_cards.json");
-
-                    if (!File.Exists(jsonFilePath)) return;
-
-                    var json = File.ReadAllText(jsonFilePath);
-                    _allProductCards = JsonSerializer.Deserialize<List<ProductCardData>>(json) ?? new();
+                    LogWindow.AddLogStatic("📂 DB 데이터 없음");
+                    _allProductCards = new List<ProductCardData>();
                 }
 
                 if (_allProductCards.Count == 0) return;
