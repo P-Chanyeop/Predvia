@@ -1999,8 +1999,10 @@ namespace Gumaedaehang
                         });
                     }
                     
-                    // 페이지 정보 업데이트 (개수 반영)
-                    UpdatePageInfo();
+                    // 🔥 페이지 재계산 + 현재 페이지 다시 로드
+                    var totalPages = Math.Max(1, (int)Math.Ceiling((double)_allProductCards.Count / _itemsPerPage));
+                    if (_currentPage > totalPages) _currentPage = totalPages;
+                    await LoadCurrentPage();
                     
                     LogWindow.AddLogStatic($"🗑️ 상품 {productId} 삭제 완료");
                 }
