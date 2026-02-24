@@ -1999,7 +1999,7 @@ namespace Gumaedaehang
                         });
                     }
                     
-                    // 🔥 페이지 재계산 + 현재 페이지 다시 로드
+                    // 삭제 후 페이지 재로드 (인덱스 정합성 유지)
                     var totalPages = Math.Max(1, (int)Math.Ceiling((double)_allProductCards.Count / _itemsPerPage));
                     if (_currentPage > totalPages) _currentPage = totalPages;
                     await LoadCurrentPage();
