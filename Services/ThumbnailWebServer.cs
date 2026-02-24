@@ -5885,6 +5885,27 @@ namespace Gumaedaehang.Services
                     await SaveCategories(categoryData, productId);
                     LogWindow.AddLogStatic($"✅ {categoryData.StoreId}: {categoryData.Categories.Count}개 카테고리 저장 완료");
                     
+                    // 🔥 DB 카테고리 업데이트
+                    if (!string.IsNullOrEmpty(productId))
+                    {
+                        var categoryNames = string.Join(" > ", categoryData.Categories
+                            .Where(c => !string.IsNullOrEmpty(c.Name) && c.Name != "전체상품" && c.Name != "홈" && c.Name != "Home")
+                            .Select(c => c.Name));
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await DatabaseService.Instance.SaveProductAsync(
+                                    categoryData.StoreId, productId,
+                                    null, null, 0, null, null, categoryNames);
+                            }
+                            catch (Exception dbEx)
+                            {
+                                LogWindow.AddLogStatic($"⚠️ 카테고리 DB 저장 실패: {dbEx.Message}");
+                            }
+                        });
+                    }
+                    
                     // 소싱 페이지에 카테고리 데이터 실시간 표시
                     await UpdateSourcingPageCategories(categoryData);
                 }

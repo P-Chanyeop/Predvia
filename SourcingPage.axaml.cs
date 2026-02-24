@@ -668,6 +668,11 @@ namespace Gumaedaehang
         // ⭐ 크롤링된 가격 데이터 읽기
         private string GetOriginalProductPrice(string storeId, string productId)
         {
+            // DB 캐시에서 먼저 확인
+            var dbCard = _allProductCards.FirstOrDefault(c => c.StoreId == storeId && c.RealProductId == productId);
+            if (dbCard != null && dbCard.Price > 0)
+                return $"{dbCard.Price:N0}원";
+
             try
             {
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -690,6 +695,19 @@ namespace Gumaedaehang
         private List<string> GetProductReviews(string storeId, string productId)
         {
             var reviews = new List<string>();
+            
+            // DB 캐시에서 먼저 확인
+            var dbCard = _allProductCards.FirstOrDefault(c => c.StoreId == storeId && c.RealProductId == productId);
+            if (dbCard != null && dbCard.Reviews.Count > 0)
+            {
+                foreach (var r in dbCard.Reviews)
+                {
+                    if (!string.IsNullOrEmpty(r.Content))
+                        reviews.Add($"⭐{r.Rating} {r.Content}");
+                }
+                if (reviews.Count > 0) return reviews;
+            }
+
             try
             {
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -779,8 +797,14 @@ namespace Gumaedaehang
         
         private StackPanel? FindReviewPanel(Control parent)
         {
+            // review-panel 클래스로 찾기
             if (parent is StackPanel sp && sp.Classes.Contains("review-panel"))
                 return sp;
+            
+            // Border > StackPanel 구조에서 리뷰 패널 찾기 (주황색 테두리 Border 안)
+            if (parent is Border border && border.BorderBrush is SolidColorBrush brush 
+                && brush.Color.ToString() == "#FFFF8A46" && border.Child is StackPanel reviewSp)
+                return reviewSp;
             
             if (parent is Panel panel)
             {
@@ -789,6 +813,31 @@ namespace Gumaedaehang
                     if (child is Control ctrl)
                     {
                         var result = FindReviewPanel(ctrl);
+                        if (result != null) return result;
+                    }
+                }
+            }
+            return null;
+        }
+        
+        private StackPanel? FindOriginalNamePanel(Control parent)
+        {
+            // 원상품명 패널: StackPanel(Horizontal) 안에 파란색 밑줄 TextBlock이 있는 것
+            if (parent is StackPanel sp && sp.Orientation == Avalonia.Layout.Orientation.Horizontal)
+            {
+                foreach (var child in sp.Children)
+                {
+                    if (child is TextBlock tb && tb.TextDecorations == TextDecorations.Underline)
+                        return sp;
+                }
+            }
+            if (parent is Panel panel)
+            {
+                foreach (var child in panel.Children)
+                {
+                    if (child is Control ctrl)
+                    {
+                        var result = FindOriginalNamePanel(ctrl);
                         if (result != null) return result;
                     }
                 }
@@ -5885,19 +5934,20 @@ namespace Gumaedaehang
         // ⭐ 유효한 이미지 경로 반환 (동적 생성)
         private string GetValidImagePath(string? imageUrl, string storeId, string productId)
         {
+            // S3 URL이면 그대로 사용
+            if (!string.IsNullOrEmpty(imageUrl) && imageUrl.StartsWith("http"))
+                return imageUrl;
+
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var imagesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Images");
             var localPath = System.IO.Path.Combine(imagesPath, $"{storeId}_{productId}_main.jpg");
             
-            // 로컬 파일이 있으면 사용
             if (File.Exists(localPath))
                 return localPath;
             
-            // imageUrl이 유효하고 파일이 있으면 사용
             if (!string.IsNullOrEmpty(imageUrl) && File.Exists(imageUrl))
                 return imageUrl;
             
-            // 없으면 로컬 경로 반환 (LazyImage에서 처리)
             return localPath;
         }
 
@@ -5923,8 +5973,14 @@ namespace Gumaedaehang
                             StoreId = p.StoreId,
                             RealProductId = p.ProductId,
                             ImageUrl = p.ImageUrl,
-                            ProductName = p.ProductName
+                            ProductName = p.ProductName,
+                            OriginalName = p.OriginalName,
+                            Price = p.Price,
+                            Category = p.Category
                         };
+                        
+                        // 리뷰 로드
+                        card.Reviews = await DatabaseService.Instance.GetReviewsAsync(p.StoreId, p.ProductId);
                         
                         // 타오바오 페어링 로드
                         var pairings = await DatabaseService.Instance.GetTaobaoPairingsAsync(p.StoreId, p.ProductId);
@@ -6006,9 +6062,9 @@ namespace Gumaedaehang
                     // 타오바오 매칭 데이터 복원
                     if (card.TaobaoProducts != null && card.TaobaoProducts.Count > 0)
                     {
-                        if (_productElements.TryGetValue(count, out var elem))
+                        if (_productElements.TryGetValue(count, out var tpElem))
                         {
-                            elem.SelectedTaobaoIndex = card.SelectedTaobaoIndex;
+                            tpElem.SelectedTaobaoIndex = card.SelectedTaobaoIndex;
                         }
                         UpdateTaobaoProductBoxes(count, card.TaobaoProducts);
                     }
@@ -6512,6 +6568,18 @@ namespace Gumaedaehang
 
         [JsonPropertyName("productName")]
         public string? ProductName { get; set; }
+        
+        [JsonPropertyName("originalName")]
+        public string? OriginalName { get; set; }
+        
+        [JsonPropertyName("price")]
+        public int Price { get; set; }
+        
+        [JsonPropertyName("category")]
+        public string? Category { get; set; }
+        
+        [JsonPropertyName("reviews")]
+        public List<DbReview> Reviews { get; set; } = new();
 
         [JsonPropertyName("productNameKeywords")]
         public List<string> ProductNameKeywords { get; set; } = new();
