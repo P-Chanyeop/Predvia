@@ -5979,6 +5979,8 @@ namespace Gumaedaehang
         {
             try
             {
+                ShowLoadingOverlay("상품 데이터 로드 중...");
+                
                 // ⭐ DB에서 현재 유저의 상품 데이터 로드
                 var dbProducts = await DatabaseService.Instance.GetProductsAsync();
                 
@@ -6033,7 +6035,11 @@ namespace Gumaedaehang
                     _allProductCards = new List<ProductCardData>();
                 }
 
-                if (_allProductCards.Count == 0) return;
+                if (_allProductCards.Count == 0)
+                {
+                    HideLoadingOverlay();
+                    return;
+                }
                 
                 LogWindow.AddLogStatic($"📂 총 {_allProductCards.Count}개 상품 카드 준비 완료");
                 
@@ -6050,6 +6056,8 @@ namespace Gumaedaehang
                     _selectAllCheckBox.Click -= SelectAllCheckBox_Click;
                     _selectAllCheckBox.Click += SelectAllCheckBox_Click;
                 }
+                
+                HideLoadingOverlay();
             }
             catch (Exception ex)
             {
