@@ -24,7 +24,7 @@ namespace Gumaedaehang.Services
 {
     public class ThumbnailWebServer
     {
-        // ⭐ 싱글톤 인스턴스
+        // ⭐ 싱글톤 인스턴스 * from 
         public static ThumbnailWebServer? Instance { get; private set; }
 
         private WebApplication? _app;
@@ -2315,13 +2315,15 @@ namespace Gumaedaehang.Services
                     _totalAttempted = _crawlSM.TotalAttempted;
                     LogWindow.AddLogStatic($"🏁 [v2] 크롤링 완료: 성공 {_crawlSM.SuccessCount}, 시도 {_crawlSM.TotalAttempted}");
                     
-                    // 로딩창 숨김 + Chrome 닫기 (비동기)
+                    // 로딩창 숨김 + Chrome 닫기 + 팝업
+                    var finalCount = _crawlSM.SuccessCount;
                     var server = this;
                     _ = Task.Run(async () =>
                     {
                         await Task.Delay(1000);
                         LoadingHelper.HideLoadingFromSourcingPage();
                         await server.CloseAllChromeApps();
+                        ShowCrawlingResultPopup(finalCount, "크롤링 완료");
                     });
                 }
                 
