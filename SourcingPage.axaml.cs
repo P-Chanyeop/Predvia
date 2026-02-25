@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
@@ -5822,7 +5822,7 @@ namespace Gumaedaehang
                     var card = _allProductCards.FirstOrDefault(c => c.StoreId == p.StoreId && c.RealProductId == p.RealProductId);
                     if (card != null)
                     {
-                        card.ProductName = p.NameInputBox?.Text ?? card.ProductName;
+                        card.ProductName = !string.IsNullOrEmpty(p.NameInputBox?.Text) ? p.NameInputBox!.Text : card.ProductName;
                         card.IsTaobaoPaired = p.IsTaobaoPaired || card.IsTaobaoPaired;
                         card.TaobaoProducts = p.TaobaoProducts?.Count > 0 ? p.TaobaoProducts : card.TaobaoProducts;
                         card.SelectedTaobaoIndex = p.SelectedTaobaoIndex;
@@ -5857,9 +5857,10 @@ namespace Gumaedaehang
                         foreach (var card in productCards)
                         {
                             if (card.StoreId == null || card.RealProductId == null) continue;
+                            var nameToSave = string.IsNullOrEmpty(card.ProductName) ? null : card.ProductName;
                             await DatabaseService.Instance.SaveProductAsync(
                                 card.StoreId, card.RealProductId,
-                                card.ProductName, null, 0, null, null, null);
+                                nameToSave, null, 0, null, null, null);
                             
                             if (card.TaobaoProducts?.Count > 0)
                                 await DatabaseService.Instance.SaveTaobaoPairingsAsync(
@@ -5974,7 +5975,7 @@ namespace Gumaedaehang
                             RealProductId = p.ProductId,
                             ImageUrl = p.ImageUrl,
                             ProductName = p.ProductName,
-                            OriginalName = p.OriginalName,
+                            OriginalName = !string.IsNullOrEmpty(p.OriginalName) ? p.OriginalName : p.ProductName,
                             Price = p.Price,
                             Category = p.Category
                         };
@@ -6056,7 +6057,7 @@ namespace Gumaedaehang
             {
                 if (card.StoreId != null && card.RealProductId != null)
                 {
-                    AddProductImageCard(card.StoreId, card.RealProductId, card.ImageUrl ?? "", card.ProductName);
+                    AddProductImageCard(card.StoreId, card.RealProductId, card.ImageUrl ?? "", card.OriginalName);
                     count++;
                     
                     // 타오바오 매칭 데이터 복원
@@ -6069,9 +6070,11 @@ namespace Gumaedaehang
                         UpdateTaobaoProductBoxes(count, card.TaobaoProducts);
                     }
                     
-                    // ⭐ 배대지 비용 + 보스메시지 복원
+                    // ⭐ 배대지 비용 + 보스메시지 + 사용자 상품명 복원
                     if (_productElements.TryGetValue(count, out var el))
                     {
+                        if (el.NameInputBox != null && !string.IsNullOrEmpty(card.ProductName))
+                            el.NameInputBox.Text = card.ProductName;
                         if (el.ShippingCostInput != null && card.ShippingCost > 0)
                             el.ShippingCostInput.Text = card.ShippingCost.ToString();
                         if (el.BossMessageInput != null && !string.IsNullOrEmpty(card.BossMessage))

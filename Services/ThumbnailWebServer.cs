@@ -5560,7 +5560,7 @@ namespace Gumaedaehang.Services
                     {
                         await DatabaseService.Instance.SaveProductAsync(
                             nameData.StoreId, nameData.ProductId,
-                            nameData.ProductName, nameData.ProductName,
+                            null, nameData.ProductName,
                             0, null,
                             $"https://smartstore.naver.com/{nameData.StoreId}/products/{nameData.ProductId}",
                             null);
