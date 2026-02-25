@@ -2170,20 +2170,15 @@ namespace Gumaedaehang
                     product.TaobaoPairingButton.Content = "검색 중...";
                 }
                 
-                // 이미지 파일 경로 - storeId_realProductId_main.jpg 패턴으로 찾기
-                var imagesPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "Images");
-                var imagePath = System.IO.Path.Combine(imagesPath, $"{product.StoreId}_{product.RealProductId}_main.jpg");
+                // 이미지 바이트 가져오기 (로컬 또는 S3)
+                var imageBytes = await GetProductImageBytes(product.StoreId!, product.RealProductId!);
                 
-                LogWindow.AddLogStatic($"📷 이미지 경로: {imagePath}");
-                
-                if (!File.Exists(imagePath))
+                if (imageBytes == null || imageBytes.Length == 0)
                 {
-                    LogWindow.AddLogStatic($"❌ 이미지 파일 없음: {product.StoreId}_{product.RealProductId}_main.jpg");
+                    LogWindow.AddLogStatic($"❌ 이미지 없음: {product.StoreId}_{product.RealProductId}");
                     return;
                 }
                 
-                // 이미지를 Base64로 변환
-                var imageBytes = await File.ReadAllBytesAsync(imagePath);
                 var base64Image = Convert.ToBase64String(imageBytes);
                 
                 // 서버에 구글렌즈 검색 요청
@@ -2294,24 +2289,24 @@ namespace Gumaedaehang
                 if (product.TaobaoPairingButton != null)
                     product.TaobaoPairingButton.Content = "검색 중...";
                 
-                // 1. 이미지 경로 가져오기
-                string? imagePath = null;
+                // 1. 이미지 바이트 가져오기 (로컬 또는 S3)
+                byte[]? imageBytes = null;
                 if (product.StoreId != null && product.RealProductId != null)
-                    imagePath = FindProductImagePath(product.StoreId, product.RealProductId);
+                    imageBytes = await GetProductImageBytes(product.StoreId, product.RealProductId);
                 
-                if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+                if (imageBytes == null || imageBytes.Length == 0)
                 {
                     LogWindow.AddLogStatic($"❌ 이미지 없음");
                     return;
                 }
                 
-                LogWindow.AddLogStatic($"📷 이미지: {System.IO.Path.GetFileName(imagePath)}");
+                LogWindow.AddLogStatic($"📷 이미지: {imageBytes.Length} bytes");
                 
-                // 2. 프록시 기반 서버 측 검색 요청
+                // 2. 프록시 기반 서버 측 검색 요청 (Base64로 전송)
                 using var client = new HttpClient();
                 client.Timeout = TimeSpan.FromSeconds(60);
                 
-                var requestData = new { imagePath = imagePath, productId = productId };
+                var requestData = new { imageBase64 = Convert.ToBase64String(imageBytes), productId = productId };
                 var json = JsonSerializer.Serialize(requestData);
                 var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
                 
@@ -2662,16 +2657,30 @@ namespace Gumaedaehang
                     }
 
                     // 상품 이미지 경로 찾기
+                    // 이미지 바이트 가져오기 (로컬 또는 S3)
+                    byte[]? imgBytes = null;
                     string? imagePath = null;
                     if (product.StoreId != null && product.RealProductId != null)
                     {
                         imagePath = FindProductImagePath(product.StoreId, product.RealProductId);
+                        if (imagePath == null)
+                        {
+                            imgBytes = await GetProductImageBytes(product.StoreId, product.RealProductId);
+                            if (imgBytes != null)
+                            {
+                                // S3에서 받은 이미지를 임시 로컬 파일로 저장 (Python용)
+                                var tempDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Predvia", "Images");
+                                Directory.CreateDirectory(tempDir);
+                                imagePath = System.IO.Path.Combine(tempDir, $"{product.StoreId}_{product.RealProductId}_main.jpg");
+                                await File.WriteAllBytesAsync(imagePath, imgBytes);
+                                LogWindow.AddLogStatic($"📥 S3 이미지 로컬 캐시 저장: {imagePath}");
+                            }
+                        }
                     }
                     
                     if (string.IsNullOrEmpty(imagePath))
                     {
                         LogWindow.AddLogStatic($"❌ 상품 {productId} 이미지를 찾을 수 없습니다");
-                        
                         if (product.TaobaoPairingButton != null)
                         {
                             product.TaobaoPairingButton.Content = "이미지 없음";
@@ -2681,23 +2690,6 @@ namespace Gumaedaehang
                     }
                     
                     LogWindow.AddLogStatic($"📷 상품 {productId} 이미지 경로: {imagePath}");
-
-                    // 이미지 파일 존재 여부 확인
-                    if (!File.Exists(imagePath))
-                    {
-                        LogWindow.AddLogStatic($"❌ [디버그] 이미지 파일이 존재하지 않음: {imagePath}");
-                        if (product.TaobaoPairingButton != null)
-                        {
-                            product.TaobaoPairingButton.Content = "파일 없음";
-                            await Task.Delay(2000);
-                        }
-                        return;
-                    }
-                    else
-                    {
-                        var fileInfo = new FileInfo(imagePath);
-                        LogWindow.AddLogStatic($"✅ [디버그] 이미지 파일 확인 - 크기: {fileInfo.Length} bytes, 수정시간: {fileInfo.LastWriteTime}");
-                    }
 
                     // 1. 먼저 파이썬 실행
                     LogWindow.AddLogStatic("🐍 파이썬 run.py 실행 중...");
@@ -3040,20 +3032,45 @@ namespace Gumaedaehang
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 var imagesPath = System.IO.Path.Combine(appDataPath, "Predvia", "Images");
                 
-                if (!Directory.Exists(imagesPath))
-                    return null;
-                
-                // {storeId}_{productId}_main.jpg 정확한 파일명으로 검색
+                // 로컬 파일 먼저 확인
                 var fileName = $"{storeId}_{productId}_main.jpg";
                 var fullPath = System.IO.Path.Combine(imagesPath, fileName);
+                if (File.Exists(fullPath)) return fullPath;
                 
-                return File.Exists(fullPath) ? fullPath : null;
+                return null;
             }
             catch (Exception ex)
             {
                 LogWindow.AddLogStatic($"❌ 이미지 경로 찾기 오류: {ex.Message}");
                 return null;
             }
+        }
+        
+        // S3 URL 또는 로컬에서 이미지 바이트 가져오기
+        private async Task<byte[]?> GetProductImageBytes(string storeId, string productId)
+        {
+            // 1. 로컬 파일
+            var localPath = FindProductImagePath(storeId, productId);
+            if (localPath != null) return await File.ReadAllBytesAsync(localPath);
+            
+            // 2. _allProductCards에서 S3 URL 찾기
+            var card = _allProductCards.FirstOrDefault(c => c.StoreId == storeId && c.RealProductId == productId);
+            var imageUrl = card?.ImageUrl;
+            if (!string.IsNullOrEmpty(imageUrl) && imageUrl.StartsWith("http"))
+            {
+                try
+                {
+                    using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+                    var bytes = await client.GetByteArrayAsync(imageUrl);
+                    LogWindow.AddLogStatic($"📥 S3에서 이미지 다운로드 완료: {bytes.Length} bytes");
+                    return bytes;
+                }
+                catch (Exception ex)
+                {
+                    LogWindow.AddLogStatic($"❌ S3 이미지 다운로드 실패: {ex.Message}");
+                }
+            }
+            return null;
         }
         
         // 상품명 키워드 표시 업데이트
