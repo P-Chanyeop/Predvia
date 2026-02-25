@@ -531,6 +531,14 @@ namespace Gumaedaehang.Services
         // 스마트스토어 링크 수집 API
         private async Task<IResult> HandleSmartStoreLinks(HttpContext context)
         {
+            // ⭐ 새 크롤링 세션 시작 - 이전 세션 상태 리셋
+            _shouldStop = false;
+            _completionPopupShown = false;
+            _saveCompleted = false;
+            _productCount = 0;
+            _totalAttempted = 0;
+            _sessionStartFileCount = GetRawFileCount();
+            
             LogWindow.AddLogStatic("🔥🔥🔥 HandleSmartStoreLinks 메서드 진입!");
             LogWindow.AddLogStatic($"🔥 요청 메서드: {context.Request.Method}");
             LogWindow.AddLogStatic($"🔥 요청 경로: {context.Request.Path}");
