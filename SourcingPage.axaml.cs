@@ -5874,10 +5874,15 @@ namespace Gumaedaehang
                         foreach (var card in productCards)
                         {
                             if (card.StoreId == null || card.RealProductId == null) continue;
-                            var nameToSave = string.IsNullOrEmpty(card.ProductName) ? null : card.ProductName;
+                            var userNameToSave = string.IsNullOrEmpty(card.ProductName) ? null : card.ProductName;
+                            var bossMsg = string.IsNullOrEmpty(card.BossMessage) ? null : card.BossMessage;
                             await DatabaseService.Instance.SaveProductAsync(
                                 card.StoreId, card.RealProductId,
-                                nameToSave, null, 0, null, null, null);
+                                null, null, 0, null, null, null,
+                                userProductName: userNameToSave,
+                                shippingCost: card.ShippingCost,
+                                bossMessage: bossMsg,
+                                selectedTaobaoIndex: card.SelectedTaobaoIndex);
                             
                             if (card.TaobaoProducts?.Count > 0)
                                 await DatabaseService.Instance.SaveTaobaoPairingsAsync(
@@ -5991,10 +5996,13 @@ namespace Gumaedaehang
                             StoreId = p.StoreId,
                             RealProductId = p.ProductId,
                             ImageUrl = p.ImageUrl,
-                            ProductName = p.ProductName,
+                            ProductName = p.UserProductName,
                             OriginalName = !string.IsNullOrEmpty(p.OriginalName) ? p.OriginalName : p.ProductName,
                             Price = p.Price,
-                            Category = p.Category
+                            Category = p.Category,
+                            ShippingCost = p.ShippingCost,
+                            BossMessage = p.BossMessage ?? "",
+                            SelectedTaobaoIndex = p.SelectedTaobaoIndex
                         };
                         
                         // 리뷰 로드

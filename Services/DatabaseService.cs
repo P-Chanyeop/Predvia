@@ -42,22 +42,27 @@ namespace Gumaedaehang.Services
         }
 
         // 상품 저장 (UPSERT) - api_key로 유저 구분
-        public async Task SaveProductAsync(string storeId, string productId, string? productName, string? originalName, int price, string? imageUrl, string? productUrl, string? category)
+        public async Task SaveProductAsync(string storeId, string productId, string? productName, string? originalName, int price, string? imageUrl, string? productUrl, string? category,
+            string? userProductName = null, int shippingCost = 0, string? bossMessage = null, int selectedTaobaoIndex = -1)
         {
             try
             {
                 using var conn = new MySqlConnection(ConnectionString);
                 await conn.OpenAsync();
                 using var cmd = new MySqlCommand(@"
-                    INSERT INTO products (api_key, store_id, product_id, product_name, original_name, price, image_url, product_url, category)
-                    VALUES (@apiKey, @storeId, @productId, @productName, @originalName, @price, @imageUrl, @productUrl, @category)
+                    INSERT INTO products (api_key, store_id, product_id, product_name, original_name, user_product_name, price, image_url, product_url, category, shipping_cost, boss_message, selected_taobao_index)
+                    VALUES (@apiKey, @storeId, @productId, @productName, @originalName, @userProductName, @price, @imageUrl, @productUrl, @category, @shippingCost, @bossMessage, @selectedTaobaoIndex)
                     ON DUPLICATE KEY UPDATE
                         product_name = COALESCE(@productName, product_name),
                         original_name = COALESCE(@originalName, original_name),
+                        user_product_name = COALESCE(@userProductName, user_product_name),
                         price = IF(@price > 0, @price, price),
                         image_url = COALESCE(@imageUrl, image_url),
                         product_url = COALESCE(@productUrl, product_url),
                         category = COALESCE(@category, category),
+                        shipping_cost = IF(@shippingCost > 0, @shippingCost, shipping_cost),
+                        boss_message = COALESCE(@bossMessage, boss_message),
+                        selected_taobao_index = IF(@selectedTaobaoIndex >= 0, @selectedTaobaoIndex, selected_taobao_index),
                         updated_at = CURRENT_TIMESTAMP", conn);
 
                 cmd.Parameters.AddWithValue("@apiKey", CurrentApiKey);
@@ -65,10 +70,14 @@ namespace Gumaedaehang.Services
                 cmd.Parameters.AddWithValue("@productId", productId);
                 cmd.Parameters.AddWithValue("@productName", (object?)productName ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@originalName", (object?)originalName ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@userProductName", (object?)userProductName ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@price", price);
                 cmd.Parameters.AddWithValue("@imageUrl", (object?)imageUrl ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@productUrl", (object?)productUrl ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@category", (object?)category ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@shippingCost", shippingCost);
+                cmd.Parameters.AddWithValue("@bossMessage", (object?)bossMessage ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@selectedTaobaoIndex", selectedTaobaoIndex);
 
                 await cmd.ExecuteNonQueryAsync();
             }
@@ -218,9 +227,10 @@ namespace Gumaedaehang.Services
                 await conn.OpenAsync();
                 using var cmd = new MySqlCommand(@"
                     SELECT store_id, product_id, product_name, original_name, price, 
-                           image_url, product_url, category, created_at
+                           image_url, product_url, category, created_at,
+                           user_product_name, shipping_cost, boss_message, selected_taobao_index
                     FROM products WHERE api_key = @apiKey
-                    ORDER BY created_at DESC", conn);
+                    ORDER BY id ASC", conn);
                 cmd.Parameters.AddWithValue("@apiKey", CurrentApiKey);
 
                 using var reader = await cmd.ExecuteReaderAsync();
@@ -236,7 +246,11 @@ namespace Gumaedaehang.Services
                         ImageUrl = reader.IsDBNull(5) ? null : reader.GetString(5),
                         ProductUrl = reader.IsDBNull(6) ? null : reader.GetString(6),
                         Category = reader.IsDBNull(7) ? null : reader.GetString(7),
-                        CreatedAt = reader.IsDBNull(8) ? DateTime.MinValue : reader.GetDateTime(8)
+                        CreatedAt = reader.IsDBNull(8) ? DateTime.MinValue : reader.GetDateTime(8),
+                        UserProductName = reader.IsDBNull(9) ? null : reader.GetString(9),
+                        ShippingCost = reader.IsDBNull(10) ? 0 : reader.GetInt32(10),
+                        BossMessage = reader.IsDBNull(11) ? null : reader.GetString(11),
+                        SelectedTaobaoIndex = reader.IsDBNull(12) ? 0 : reader.GetInt32(12)
                     });
                 }
             }
@@ -351,10 +365,14 @@ namespace Gumaedaehang.Services
         public string ProductId { get; set; } = "";
         public string? ProductName { get; set; }
         public string? OriginalName { get; set; }
+        public string? UserProductName { get; set; }
         public int Price { get; set; }
         public string? ImageUrl { get; set; }
         public string? ProductUrl { get; set; }
         public string? Category { get; set; }
+        public int ShippingCost { get; set; }
+        public string? BossMessage { get; set; }
+        public int SelectedTaobaoIndex { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 
