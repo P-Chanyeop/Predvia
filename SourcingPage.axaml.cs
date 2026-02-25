@@ -5138,10 +5138,12 @@ namespace Gumaedaehang
                             if (response.IsSuccessStatusCode)
                             {
                                 LogWindow.AddLogStatic($"✅ 가격 필터 설정 완료: {minPrice:N0}원 ~ {maxPrice:N0}원");
+                                await ShowMessageBox(null, $"가격 필터 설정 완료\n{minPrice:N0}원 ~ {maxPrice:N0}원");
                             }
                             else
                             {
                                 LogWindow.AddLogStatic($"❌ 가격 필터 설정 실패: {response.StatusCode}");
+                                await ShowMessageBox(null, $"가격 필터 설정 실패: {response.StatusCode}");
                             }
                             return;
                         }
