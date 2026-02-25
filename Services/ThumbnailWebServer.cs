@@ -96,7 +96,7 @@ namespace Gumaedaehang.Services
         private readonly object _productDoneLock = new object();
         
         // ⭐ 크롤링 허용 플래그
-        private bool _crawlingAllowed = true;
+        private bool _crawlingAllowed = false;
         private readonly object _crawlingLock = new object();
 
         // ⭐ 서버 주도 크롤링 상태 머신
@@ -4953,6 +4953,7 @@ namespace Gumaedaehang.Services
             try
             {
                 _completionPopupShown = true;
+                _crawlingAllowed = false; // 크롤링 완료 → 플래그 리셋
                 LoadingHelper.HideLoadingFromSourcingPage();
                 
                 // 상품데이터 페이지 캐시 무효화 → 다음 탭 진입 시 DB 재로드
