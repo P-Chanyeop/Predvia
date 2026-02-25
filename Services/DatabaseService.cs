@@ -50,8 +50,8 @@ namespace Gumaedaehang.Services
                 using var conn = new MySqlConnection(ConnectionString);
                 await conn.OpenAsync();
                 using var cmd = new MySqlCommand(@"
-                    INSERT INTO products (api_key, store_id, product_id, product_name, original_name, user_product_name, price, image_url, product_url, category, shipping_cost, boss_message, selected_taobao_index)
-                    VALUES (@apiKey, @storeId, @productId, @productName, @originalName, @userProductName, @price, @imageUrl, @productUrl, @category, @shippingCost, @bossMessage, @selectedTaobaoIndex)
+                    INSERT INTO products (api_key, store_id, product_id, product_name, original_name, user_product_name, price, image_url, product_url, category, shipping_cost, boss_message, selected_taobao_index, created_at)
+                    VALUES (@apiKey, @storeId, @productId, @productName, @originalName, @userProductName, @price, @imageUrl, @productUrl, @category, @shippingCost, @bossMessage, @selectedTaobaoIndex, CONVERT_TZ(NOW(), '+00:00', '+09:00'))
                     ON DUPLICATE KEY UPDATE
                         product_name = COALESCE(@productName, product_name),
                         original_name = COALESCE(@originalName, original_name),
@@ -63,7 +63,7 @@ namespace Gumaedaehang.Services
                         shipping_cost = IF(@shippingCost > 0, @shippingCost, shipping_cost),
                         boss_message = COALESCE(@bossMessage, boss_message),
                         selected_taobao_index = IF(@selectedTaobaoIndex >= 0, @selectedTaobaoIndex, selected_taobao_index),
-                        updated_at = CURRENT_TIMESTAMP", conn);
+                        updated_at = CONVERT_TZ(NOW(), '+00:00', '+09:00')", conn);
 
                 cmd.Parameters.AddWithValue("@apiKey", CurrentApiKey);
                 cmd.Parameters.AddWithValue("@storeId", storeId);
