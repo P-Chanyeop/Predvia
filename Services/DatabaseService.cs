@@ -230,7 +230,7 @@ namespace Gumaedaehang.Services
                            image_url, product_url, category, created_at,
                            user_product_name, shipping_cost, boss_message, selected_taobao_index
                     FROM products WHERE api_key = @apiKey
-                    ORDER BY id ASC", conn);
+                    ORDER BY store_id ASC, product_id ASC", conn);
                 cmd.Parameters.AddWithValue("@apiKey", CurrentApiKey);
 
                 using var reader = await cmd.ExecuteReaderAsync();
