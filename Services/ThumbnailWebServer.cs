@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -1063,9 +1063,6 @@ namespace Gumaedaehang.Services
                                 // ⭐ 크롤링 완료 처리
                                 if (!_completionPopupShown)
                                 {
-                                    _completionPopupShown = true;
-                                    LoadingHelper.HideLoadingFromSourcingPage();
-                                    _ = Task.Run(async () => await CloseAllChromeApps());
                                     var finalCount = GetCurrentProductCount();
                                     ShowCrawlingResultPopup(finalCount, $"{totalStores}개 스토어 모두 완료");
                                 }
@@ -1356,11 +1353,7 @@ namespace Gumaedaehang.Services
                             {
                                 var finalCount = GetCurrentProductCount();
                                 ShowCrawlingResultPopup(finalCount, $"{totalStores}개 스토어 모두 완료");
-                                _completionPopupShown = true;
                             }
-
-                            LoadingHelper.HideLoadingFromSourcingPage();
-                            _ = Task.Run(async () => await CloseAllChromeApps());
 
                             var currentCount = GetCurrentProductCount();
                             return Results.Json(new {
@@ -1430,7 +1423,6 @@ namespace Gumaedaehang.Services
                         {
                             var finalCount = GetCurrentProductCount();
                             ShowCrawlingResultPopup(finalCount, "10개 스토어 모두 완료");
-                            _completionPopupShown = true;
                         }
                     }
                 }
@@ -2158,7 +2150,6 @@ namespace Gumaedaehang.Services
                     // ⭐ 크롤링 완전 중단 신호 설정
                     _shouldStop = true;
                     _isCrawlingActive = false;
-                    _completionPopupShown = true; // 팝업 플래그 설정
                     
                     // ⭐ 모든 스토어를 done 상태로 변경하여 Chrome 중단
                     lock (_statesLock)
@@ -2177,12 +2168,6 @@ namespace Gumaedaehang.Services
                             }
                         }
                     }
-                    
-                    // 🔄 로딩창 숨김
-                    LoadingHelper.HideLoadingFromSourcingPage();
-                    
-                    // ⭐ Chrome 앱 창들 닫기
-                    _ = Task.Run(async () => await CloseAllChromeApps());
                     
                     // ⭐ 팝업창으로 최종 결과 표시
                     ShowCrawlingResultPopup(actualCount, "목표 달성");
@@ -4950,36 +4935,19 @@ namespace Gumaedaehang.Services
         {
             try
             {
-                // ⭐ 이미 팝업이 표시되었으면 중복 실행 방지
-                if (_completionPopupShown)
-                {
-                    LogWindow.AddLogStatic("⚠️ 완료 팝업 이미 표시됨 - 중복 실행 방지");
-                    return;
-                }
-                
-                _completionPopupShown = true; // 플래그 설정
-                
+                _completionPopupShown = true;
                 LoadingHelper.HideLoadingFromSourcingPage();
-                
-                // ⭐ Chrome 앱 프로세스 종료 (크롤링 브라우저 + 가격비교 브라우저)
+
                 _ = Task.Run(async () =>
                 {
-                    await Task.Delay(1000); // 1초 후 앱 창들만 닫기
+                    await Task.Delay(1000);
                     try
                     {
-                        // 1. 크롤링 스마트스토어 창들 종료
                         await ChromeExtensionService.CloseSmartStoreCrawlingWindows();
-
-                        // 2. 네이버 가격비교 창 종료 (창 제목으로 찾기)
                         await ChromeExtensionService.CloseNaverPriceComparisonWindowByTitle();
                     }
-                    catch (Exception ex)
-                    {
-                        LogWindow.AddLogStatic($"❌ 앱 프로세스 종료 실패: {ex.Message}");
-                    }
+                    catch { }
                 });
-
-                var failedCount = 100 - count;
 
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
@@ -4987,104 +4955,53 @@ namespace Gumaedaehang.Services
                         ? desktop.MainWindow
                         : null;
 
-                    if (mainWindow != null)
+                    if (mainWindow == null) return;
+
+                    var messageBox = new Avalonia.Controls.Window
                     {
-                        var messageBox = new Avalonia.Controls.Window
+                        Title = "크롤링 완료",
+                        Width = 420,
+                        Height = 200,
+                        WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
+                        CanResize = false,
+                        Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F8F9FA")),
+                        Content = new Avalonia.Controls.StackPanel
                         {
-                            Title = "크롤링 완료",
-                            Width = 450,
-                            Height = 320,
-                            WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
-                            CanResize = false,
-                            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F8F9FA")),
-                            Content = new Avalonia.Controls.Border
+                            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                            Spacing = 20,
+                            Children =
                             {
-                                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White),
-                                CornerRadius = new Avalonia.CornerRadius(12),
-                                Margin = new Avalonia.Thickness(20),
-                                Child = new Avalonia.Controls.StackPanel
+                                new Avalonia.Controls.TextBlock
                                 {
-                                    Margin = new Avalonia.Thickness(30),
-                                    Spacing = 15,
-                                    Children =
-                                    {
-                                        new Avalonia.Controls.TextBlock
-                                        {
-                                            Text = "크롤링이 완료되었습니다",
-                                            FontSize = 24,
-                                            FontWeight = Avalonia.Media.FontWeight.Bold,
-                                            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2C3E50")),
-                                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
-                                        },
-                                        new Avalonia.Controls.Border
-                                        {
-                                            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E67E22")),
-                                            CornerRadius = new Avalonia.CornerRadius(8),
-                                            Padding = new Avalonia.Thickness(20, 15),
-                                            Child = new Avalonia.Controls.StackPanel
-                                            {
-                                                Spacing = 8,
-                                                Children =
-                                                {
-                                                    new Avalonia.Controls.TextBlock
-                                                    {
-                                                        Text = $"수집 성공: {count}개",
-                                                        FontSize = 18,
-                                                        FontWeight = Avalonia.Media.FontWeight.SemiBold,
-                                                        Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White),
-                                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
-                                                    },
-                                                    new Avalonia.Controls.TextBlock
-                                                    {
-                                                        Text = $"수집 실패: {failedCount}개",
-                                                        FontSize = 18,
-                                                        FontWeight = Avalonia.Media.FontWeight.SemiBold,
-                                                        Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White),
-                                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
-                                                    },
-                                                    new Avalonia.Controls.TextBlock
-                                                    {
-                                                        Text = $"전체 시도: 100개",
-                                                        FontSize = 16,
-                                                        Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White),
-                                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        new Avalonia.Controls.TextBlock
-                                        {
-                                            Text = reason,
-                                            FontSize = 14,
-                                            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#666666")),
-                                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
-                                        },
-                                        new Avalonia.Controls.Button
-                                        {
-                                            Content = "확인",
-                                            FontSize = 16,
-                                            FontWeight = Avalonia.Media.FontWeight.Medium,
-                                            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3498DB")),
-                                            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White),
-                                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                            Padding = new Avalonia.Thickness(40, 12),
-                                            CornerRadius = new Avalonia.CornerRadius(6),
-                                            BorderThickness = new Avalonia.Thickness(0)
-                                        }
-                                    }
+                                    Text = $"상품 {count}개 크롤링 완료!\n상품데이터탭에서 확인하세요.",
+                                    FontSize = 18,
+                                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                                    Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2C3E50")),
+                                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                    TextAlignment = Avalonia.Media.TextAlignment.Center
+                                },
+                                new Avalonia.Controls.Button
+                                {
+                                    Content = "확인",
+                                    FontSize = 16,
+                                    Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E67E22")),
+                                    Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White),
+                                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                    Padding = new Avalonia.Thickness(40, 10),
+                                    CornerRadius = new Avalonia.CornerRadius(6),
+                                    BorderThickness = new Avalonia.Thickness(0)
                                 }
                             }
-                        };
-
-                        var button = ((Avalonia.Controls.Border)messageBox.Content).Child as Avalonia.Controls.StackPanel;
-                        var confirmButton = button?.Children[3] as Avalonia.Controls.Button;
-                        if (confirmButton != null)
-                        {
-                            confirmButton.Click += (s, e) => messageBox.Close();
                         }
+                    };
 
-                        messageBox.Show();
-                    }
+                    var panel = messageBox.Content as Avalonia.Controls.StackPanel;
+                    var confirmButton = panel?.Children[1] as Avalonia.Controls.Button;
+                    if (confirmButton != null)
+                        confirmButton.Click += (s, e) => messageBox.Close();
+
+                    messageBox.Show(mainWindow);
                 });
             }
             catch (Exception ex)
@@ -5092,6 +5009,7 @@ namespace Gumaedaehang.Services
                 LogWindow.AddLogStatic($"❌ 팝업창 표시 오류: {ex.Message}");
             }
         }
+
 
         // ⭐ 현재 상품 개수 가져오기
         private int GetCurrentProductCount()
