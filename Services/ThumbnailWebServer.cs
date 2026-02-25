@@ -4939,6 +4939,18 @@ namespace Gumaedaehang.Services
             {
                 _completionPopupShown = true;
                 LoadingHelper.HideLoadingFromSourcingPage();
+                
+                // 상품데이터 페이지 캐시 무효화 → 다음 탭 진입 시 DB 재로드
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+                    {
+                        var mw = desktop.MainWindow;
+                        var pdContent = mw?.FindControl<Avalonia.Controls.ContentControl>("ProductDataContent");
+                        if (pdContent?.Content is ProductDataPage pdPage)
+                            pdPage.ForceReloadProductCards();
+                    }
+                });
 
                 _ = Task.Run(async () =>
                 {

@@ -6178,6 +6178,13 @@ namespace Gumaedaehang
             LogWindow.AddLogStatic("📂 상품데이터 페이지 진입 - 저장된 상품 데이터 로드 중...");
             LoadProductCardsFromJson();
         }
+        
+        // ⭐ 강제 재로드 (크롤링 완료 후 호출)
+        public void ForceReloadProductCards()
+        {
+            _allProductCards = new List<ProductCardData>();
+            _productElements.Clear();
+        }
 
         // 📊 Excel 내보내기 버튼 클릭 이벤트
         protected async void ExportExcelButton_Click(object? sender, RoutedEventArgs e)
