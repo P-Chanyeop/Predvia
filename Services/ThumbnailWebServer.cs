@@ -531,6 +531,13 @@ namespace Gumaedaehang.Services
         // 스마트스토어 링크 수집 API
         private async Task<IResult> HandleSmartStoreLinks(HttpContext context)
         {
+            // ⭐ 프로그램에서 소싱 버튼 눌렀을 때만 크롤링 허용
+            if (!_crawlingAllowed)
+            {
+                LogWindow.AddLogStatic("🚫 크롤링 미허용 상태 - 링크 수신 무시");
+                return Results.Json(new { success = false, message = "크롤링이 허용되지 않았습니다." });
+            }
+            
             // ⭐ 새 크롤링 세션 시작 - 이전 세션 상태 리셋
             _shouldStop = false;
             _completionPopupShown = false;
