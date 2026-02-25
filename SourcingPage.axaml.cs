@@ -6169,6 +6169,12 @@ namespace Gumaedaehang
         // ⭐ 외부에서 JSON 로드를 호출할 수 있는 public 메서드
         public void LoadProductCardsFromJsonPublic()
         {
+            // 이미 로드된 데이터가 있으면 재로드 안 함
+            if (_allProductCards != null && _allProductCards.Count > 0)
+            {
+                LogWindow.AddLogStatic($"📂 이미 {_allProductCards.Count}개 상품 로드됨 - 재로드 생략");
+                return;
+            }
             LogWindow.AddLogStatic("📂 상품데이터 페이지 진입 - 저장된 상품 데이터 로드 중...");
             LoadProductCardsFromJson();
         }
