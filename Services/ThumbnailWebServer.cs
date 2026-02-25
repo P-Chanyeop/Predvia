@@ -5015,7 +5015,14 @@ namespace Gumaedaehang.Services
                     if (confirmButton != null)
                         confirmButton.Click += (s, e) => messageBox.Close();
 
-                    messageBox.Show(mainWindow);
+                    if (mainWindow == null || !mainWindow.IsVisible)
+                    {
+                        messageBox.Show();
+                    }
+                    else
+                    {
+                        messageBox.Show(mainWindow);
+                    }
                 });
             }
             catch (Exception ex)
