@@ -2293,6 +2293,7 @@ namespace Gumaedaehang.Services
                 _totalAttempted = 0;
                 _currentStoreIndex = 0;
                 _v2Mode = true;
+                _sessionStartFileCount = GetRawFileCount();
                 _selectedStores = stores.Select(s => new SmartStoreLink { StoreId = s.StoreId, Url = s.Url, Title = s.Title }).ToList();
                 
                 LogWindow.AddLogStatic($"🚀 [v2] 크롤링 시작: {stores.Count}개 스토어");
@@ -5051,7 +5052,9 @@ namespace Gumaedaehang.Services
         // ⭐ 현재 상품 개수 가져오기
         private int GetCurrentProductCount()
         {
-            // ⭐ 이번 세션에서 추가된 개수만 반환 (기존 파일 제외)
+            if (_crawlSM != null)
+                return _crawlSM.SuccessCount;
+            
             var totalFiles = GetRawFileCount();
             var sessionCount = totalFiles - _sessionStartFileCount;
             return Math.Max(0, sessionCount);
