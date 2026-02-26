@@ -1635,6 +1635,10 @@ namespace Gumaedaehang
             if (product.KeywordInputBox != null)
             {
                 product.KeywordInputBox.KeyDown += (s, e) => KeywordInputBox_KeyDown(product.ProductId, e);
+                product.KeywordInputBox.KeyUp += (s, e) =>
+                {
+                    if (e.Key == Key.Enter) { AddKeywordFromInput(product.ProductId); e.Handled = true; }
+                };
                 
                 // 한글 입력 처리를 위한 PropertyChanged 이벤트
                 product.KeywordInputBox.PropertyChanged += (s, e) =>
@@ -2016,16 +2020,17 @@ namespace Gumaedaehang
                 product.KeywordInputBox != null && 
                 !string.IsNullOrWhiteSpace(product.KeywordInputBox.Text))
             {
-                // 한글 조합 문자를 완성된 문자로 정규화
                 var rawText = product.KeywordInputBox.Text.Trim();
                 var keyword = rawText.Normalize(System.Text.NormalizationForm.FormC);
                 
                 if (!string.IsNullOrEmpty(keyword))
                 {
-                    product.KeywordInputBox.Text = "";
-                    _mainKeyword = keyword; // 메인키워드 저장
+                    // ⭐ 키워드 소스 키 설정 (버튼 클릭과 동일하게)
+                    _keywordSourceProductKey = $"{product.StoreId}_{product.RealProductId}";
                     
-                    // 🔍 네이버 가격비교에서 키워드 검색만 (UI 표시 안 함)
+                    product.KeywordInputBox.Text = "";
+                    _mainKeyword = keyword;
+                    
                     await SearchNaverPriceComparison(keyword);
                 }
             }
