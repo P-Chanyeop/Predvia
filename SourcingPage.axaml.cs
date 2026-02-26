@@ -6139,6 +6139,45 @@ namespace Gumaedaehang
             {
                 _pageInfoText.Text = $"{_currentPage} / {totalPages} 페이지 (총 {_allProductCards.Count}개)";
             }
+            
+            // ⭐ 페이지 번호 버튼 생성 (현재 페이지 중심 5개)
+            var pageNumberPanel = this.FindControl<StackPanel>("PageNumberPanel");
+            if (pageNumberPanel != null)
+            {
+                pageNumberPanel.Children.Clear();
+                
+                int half = 2;
+                int start = Math.Max(1, _currentPage - half);
+                int end = Math.Min(totalPages, start + 4);
+                start = Math.Max(1, end - 4); // end 기준으로 재조정
+                
+                for (int i = start; i <= end; i++)
+                {
+                    var page = i;
+                    var btn = new Button
+                    {
+                        Content = i.ToString(),
+                        FontSize = 14,
+                        MinWidth = 38,
+                        Padding = new Thickness(8, 6),
+                        CornerRadius = new CornerRadius(6),
+                        HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        Background = i == _currentPage 
+                            ? new SolidColorBrush(Color.Parse("#E67E22")) 
+                            : new SolidColorBrush(Color.Parse("#F0F0F0")),
+                        Foreground = i == _currentPage 
+                            ? Brushes.White 
+                            : new SolidColorBrush(Color.Parse("#333333")),
+                        FontWeight = i == _currentPage ? FontWeight.Bold : FontWeight.Normal
+                    };
+                    btn.Click += async (s, e) =>
+                    {
+                        _currentPage = page;
+                        await LoadCurrentPage();
+                    };
+                    pageNumberPanel.Children.Add(btn);
+                }
+            }
         }
         
         // ⭐ 이전 페이지
