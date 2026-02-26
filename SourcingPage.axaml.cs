@@ -1063,7 +1063,13 @@ namespace Gumaedaehang
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0),
-                    IsReadOnly = true
+                    IsReadOnly = true,
+                    IsVisible = false // 숨김 - 데이터 동기화용
+                };
+                
+                var nameTagWrapPanel = new WrapPanel
+                {
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
                 
                 // ⭐ 초기 바이트 계산
@@ -1085,8 +1091,10 @@ namespace Gumaedaehang
                 };
 
                 Grid.SetColumn(nameInputText, 0);
+                Grid.SetColumn(nameTagWrapPanel, 0);
                 Grid.SetColumn(byteCountText, 1);
                 nameInputGrid.Children.Add(nameInputText);
+                nameInputGrid.Children.Add(nameTagWrapPanel);
                 nameInputGrid.Children.Add(byteCountText);
                 nameInputBorder.Child = nameInputGrid;
 
@@ -1520,6 +1528,7 @@ namespace Gumaedaehang
                     NameStatusIndicator = greenDot, // ⭐ 상품명 점
                     TaobaoPairingStatusIndicator = redDot2, // ⭐ 타오바오 페어링 점
                     NameInputBox = nameInputText,
+                    NameTagWrapPanel = nameTagWrapPanel,
                     ByteCountTextBlock = byteCountText,
                     KeywordPanel = keywordPanel,
                     KeywordInputBox = keywordInput,
@@ -2047,34 +2056,32 @@ namespace Gumaedaehang
                 _productElements.TryGetValue(productId, out var product))
             {
                 var keywordText = textBlock.Text;
-                if (keywordText == null || product.NameInputBox == null) return;
+                if (keywordText == null || product.NameInputBox == null || product.NameTagWrapPanel == null) return;
                 
-                var currentText = product.NameInputBox.Text ?? "";
                 var isUsed = product.SelectedKeywords.Contains(keywordText);
                 
                 if (isUsed)
                 {
-                    // ⭐ 이미 사용 중 → 상품명에서 제거 + 주황색으로 복원
+                    // ⭐ 이미 사용 중 → 태그 제거 + 주황색으로 복원
                     product.SelectedKeywords.Remove(keywordText);
                     
-                    // 상품명에서 키워드 제거
-                    var newText = currentText.Replace(keywordText, "").Replace("  ", " ").Trim();
-                    product.NameInputBox.Text = newText;
+                    // NameTagWrapPanel에서 해당 태그 제거
+                    var tagToRemove = product.NameTagWrapPanel.Children
+                        .OfType<Border>()
+                        .FirstOrDefault(b => b.Child is StackPanel sp && sp.Children.Count > 0 && sp.Children[0] is TextBlock tb && tb.Text == keywordText);
+                    if (tagToRemove != null)
+                        product.NameTagWrapPanel.Children.Remove(tagToRemove);
+                    SyncNameTagsToTextBox(product);
                     
-                    // 태그 주황색으로 복원
                     border.Background = new SolidColorBrush(Color.Parse("#FF8A46"));
                     textBlock.Foreground = Brushes.White;
                 }
                 else
                 {
-                    // ⭐ 미사용 → 상품명에 추가 + 회색으로 변경
+                    // ⭐ 미사용 → 태그 추가 + 회색으로 변경
                     product.SelectedKeywords.Add(keywordText);
+                    AddNameTag(product, keywordText);
                     
-                    // 상품명에 키워드 추가
-                    var newText = string.IsNullOrEmpty(currentText) ? keywordText : $"{currentText} {keywordText}";
-                    product.NameInputBox.Text = newText;
-                    
-                    // 태그 회색으로 변경
                     border.Background = new SolidColorBrush(Color.Parse("#CCCCCC"));
                     textBlock.Foreground = new SolidColorBrush(Color.Parse("#666666"));
                 }
@@ -5093,25 +5100,14 @@ namespace Gumaedaehang
             try
             {
                 if (_productElements.TryGetValue(productId, out var product) && 
-                    product.NameInputBox != null)
+                    product.NameInputBox != null && product.NameTagWrapPanel != null)
                 {
                     var inputText = nameDirectInput.Text?.Trim() ?? "";
                     if (!string.IsNullOrEmpty(inputText))
                     {
-                        // 상품명 입력박스에 추가 (기존 내용 보존)
-                        var existingText = product.NameInputBox.Text?.Trim() ?? "";
-                        product.NameInputBox.Text = string.IsNullOrEmpty(existingText) 
-                            ? inputText 
-                            : $"{existingText} {inputText}";
-                        
-                        // 입력박스 내용 지우기
+                        AddNameTag(product, inputText);
                         nameDirectInput.Text = "";
-                        
                         LogWindow.AddLogStatic($"📎 상품명 '{inputText}' 첨부됨 - 상품 ID: {productId}");
-                    }
-                    else
-                    {
-                        LogWindow.AddLogStatic("❌ 첨부할 내용이 없습니다.");
                     }
                 }
             }
@@ -5119,6 +5115,66 @@ namespace Gumaedaehang
             {
                 LogWindow.AddLogStatic($"❌ 첨부 버튼 처리 오류: {ex.Message}");
             }
+        }
+        
+        private void AddNameTag(ProductUIElements product, string keyword)
+        {
+            if (product.NameTagWrapPanel == null || product.NameInputBox == null) return;
+            
+            var xButton = new TextBlock
+            {
+                Text = "✕",
+                FontSize = 10,
+                Foreground = Brushes.White,
+                Cursor = new Cursor(StandardCursorType.Hand),
+                Margin = new Thickness(4, 0, 0, 0),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+            };
+            
+            var tag = new Border
+            {
+                Background = new SolidColorBrush(Color.Parse("#E67E22")),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(8, 3),
+                Margin = new Thickness(0, 2, 4, 2),
+                Child = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = keyword,
+                            Foreground = Brushes.White,
+                            FontSize = 12,
+                            FontFamily = new FontFamily("Malgun Gothic"),
+                            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                        },
+                        xButton
+                    }
+                }
+            };
+            
+            xButton.PointerPressed += (s, e) =>
+            {
+                product.NameTagWrapPanel!.Children.Remove(tag);
+                SyncNameTagsToTextBox(product);
+            };
+            
+            product.NameTagWrapPanel.Children.Add(tag);
+            SyncNameTagsToTextBox(product);
+        }
+        
+        private void SyncNameTagsToTextBox(ProductUIElements product)
+        {
+            if (product.NameInputBox == null || product.NameTagWrapPanel == null) return;
+            var words = new List<string>();
+            foreach (var child in product.NameTagWrapPanel.Children)
+            {
+                if (child is Border b && b.Child is StackPanel sp && sp.Children.Count > 0 && sp.Children[0] is TextBlock tb)
+                    words.Add(tb.Text);
+            }
+            product.NameInputBox.Text = string.Join(" ", words);
         }
 
         // ⭐ 39.png 스타일의 키워드 태그 생성
@@ -6250,7 +6306,19 @@ namespace Gumaedaehang
                     if (_productElements.TryGetValue(count, out var el))
                     {
                         if (el.NameInputBox != null && !string.IsNullOrEmpty(card.ProductName))
-                            el.NameInputBox.Text = card.ProductName;
+                        {
+                            // 태그 UI로 복원
+                            if (el.NameTagWrapPanel != null)
+                            {
+                                el.NameTagWrapPanel.Children.Clear();
+                                foreach (var word in card.ProductName.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                                    AddNameTag(el, word);
+                            }
+                            else
+                            {
+                                el.NameInputBox.Text = card.ProductName;
+                            }
+                        }
                         if (el.ShippingCostInput != null && card.ShippingCost > 0)
                             el.ShippingCostInput.Text = card.ShippingCost.ToString();
                         if (el.BossMessageInput != null && !string.IsNullOrEmpty(card.BossMessage))
@@ -6864,7 +6932,8 @@ namespace Gumaedaehang
         public Ellipse? CategoryStatusIndicator { get; set; }
         public Ellipse? NameStatusIndicator { get; set; }
         public WrapPanel? NameKeywordPanel { get; set; }
-        public TextBox? NameInputBox { get; set; } // 상품명 입력박스 추가
+        public TextBox? NameInputBox { get; set; } // 상품명 입력박스 추가 (숨김, 데이터 동기화용)
+        public WrapPanel? NameTagWrapPanel { get; set; } // 상품명 태그 UI
         public TextBlock? ByteCountTextBlock { get; set; }
         public WrapPanel? KeywordPanel { get; set; }
         public TextBox? KeywordInputBox { get; set; }
