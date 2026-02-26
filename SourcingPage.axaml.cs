@@ -4713,26 +4713,28 @@ namespace Gumaedaehang
                         if (s is Border border && border.Child is TextBlock tb)
                         {
                             var product = _productElements.Values.FirstOrDefault(p => $"{p.StoreId}_{p.RealProductId}" == targetProductKey);
-                            if (product?.NameInputBox == null) return;
+                            if (product?.NameInputBox == null || product.NameTagWrapPanel == null) return;
                             
                             var kw = tb.Text ?? "";
                             var isUsed = (bool)(border.Tag ?? false);
-                            var currentText = product.NameInputBox.Text ?? "";
                             
                             if (isUsed)
                             {
-                                // 사용 중 → 제거 + 주황색 복원
-                                var newText = currentText.Replace(kw, "").Replace("  ", " ").Trim();
-                                product.NameInputBox.Text = newText;
+                                // 사용 중 → 태그 제거 + 주황색 복원
+                                var tagToRemove = product.NameTagWrapPanel.Children
+                                    .OfType<Border>()
+                                    .FirstOrDefault(b => b.Child is StackPanel sp && sp.Children.Count > 0 && sp.Children[0] is TextBlock t && t.Text == kw);
+                                if (tagToRemove != null)
+                                    product.NameTagWrapPanel.Children.Remove(tagToRemove);
+                                SyncNameTagsToTextBox(product);
                                 border.Background = new SolidColorBrush(Color.Parse("#E67E22"));
                                 tb.Foreground = Brushes.White;
                                 border.Tag = false;
                             }
                             else
                             {
-                                // 미사용 → 추가 + 회색 변경
-                                var newText = string.IsNullOrEmpty(currentText) ? kw : $"{currentText} {kw}";
-                                product.NameInputBox.Text = newText;
+                                // 미사용 → 태그 추가 + 회색 변경
+                                AddNameTag(product, kw);
                                 border.Background = new SolidColorBrush(Color.Parse("#CCCCCC"));
                                 tb.Foreground = new SolidColorBrush(Color.Parse("#666666"));
                                 border.Tag = true;
@@ -5171,6 +5173,8 @@ namespace Gumaedaehang
             {
                 product.NameTagWrapPanel!.Children.Remove(tag);
                 SyncNameTagsToTextBox(product);
+                // 아래 키워드 태그 색상 복원
+                RestoreKeywordTagColor(product, keyword);
             };
             
             product.NameTagWrapPanel.Children.Add(tag);
@@ -5187,6 +5191,32 @@ namespace Gumaedaehang
                     words.Add(tb.Text);
             }
             product.NameInputBox.Text = string.Join(" ", words);
+        }
+        
+        private void RestoreKeywordTagColor(ProductUIElements product, string keyword)
+        {
+            // KeywordTagPanel에서 해당 키워드 Border 찾아서 주황색 복원
+            var productKey = $"{product.StoreId}_{product.RealProductId}";
+            var container = this.FindControl<StackPanel>("RealDataContainer");
+            var card = container?.Children.OfType<StackPanel>().FirstOrDefault(sp => sp.Tag?.ToString() == productKey);
+            var panel = card?.Children.OfType<StackPanel>().FirstOrDefault(sp => sp.Name == "KeywordTagPanel");
+            if (panel == null) return;
+            
+            foreach (var row in panel.Children.OfType<Border>().SelectMany(b => b.Child is ScrollViewer sv && sv.Content is StackPanel vp ? vp.Children.OfType<StackPanel>() : Enumerable.Empty<StackPanel>()))
+            {
+                foreach (var border in row.Children.OfType<Border>())
+                {
+                    if (border.Child is TextBlock tb && tb.Text == keyword)
+                    {
+                        border.Background = new SolidColorBrush(Color.Parse("#E67E22"));
+                        tb.Foreground = Brushes.White;
+                        border.Tag = false;
+                        product.SelectedKeywords.Remove(keyword);
+                        return;
+                    }
+                }
+            }
+            product.SelectedKeywords.Remove(keyword);
         }
 
         // ⭐ 39.png 스타일의 키워드 태그 생성
