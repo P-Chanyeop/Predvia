@@ -1040,6 +1040,19 @@ namespace Gumaedaehang
                 };
                 nameLabel.Children.Add(greenDot);
                 nameLabel.Children.Add(nameText);
+                
+                var byteWarningText = new TextBlock
+                {
+                    Text = "⚠ 상품명 길이가 50byte를 초과했습니다.",
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Malgun Gothic"),
+                    Foreground = new SolidColorBrush(Color.Parse("#E6A817")),
+                    FontWeight = FontWeight.SemiBold,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    Margin = new Thickness(10, 0, 0, 0),
+                    IsVisible = false
+                };
+                nameLabel.Children.Add(byteWarningText);
 
                 // 상품명 입력박스 (주황색 테두리, 넓게)
                 var nameInputBorder = new Border
@@ -1530,6 +1543,7 @@ namespace Gumaedaehang
                     NameInputBox = nameInputText,
                     NameTagWrapPanel = nameTagWrapPanel,
                     ByteCountTextBlock = byteCountText,
+                    ByteWarningText = byteWarningText,
                     KeywordPanel = keywordPanel,
                     KeywordInputBox = keywordInput,
                     ShippingCostInput = shippingInput, // ⭐ 배대지 비용 입력박스
@@ -5089,6 +5103,10 @@ namespace Gumaedaehang
                 {
                     byteCountText.Foreground = new SolidColorBrush(Colors.Gray);
                 }
+                
+                // 경고 텍스트 토글
+                if (_productElements.TryGetValue(productId, out var p) && p.ByteWarningText != null)
+                    p.ByteWarningText.IsVisible = byteCount > 50;
             }
             catch (Exception ex)
             {
@@ -6579,8 +6597,8 @@ namespace Gumaedaehang
                 LogWindow.AddLogStatic($"📊 Excel 내보내기 시작... (선택된 상품: {selectedCards.Count}개)");
                 
                 // 현재 날짜+시간으로 파일명 자동 생성
-                var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-                var defaultFileName = $"{timestamp}_결과물추출.xlsx";
+                var timestamp = DateTime.Now.ToString("yyyy년MM월dd일_HHmmss");
+                var defaultFileName = $"{timestamp}_추출{selectedCards.Count}개_Predvia.xlsx";
                 
                 var saveDialog = new SaveFileDialog
                 {
@@ -6972,6 +6990,7 @@ namespace Gumaedaehang
         public TextBox? NameInputBox { get; set; } // 상품명 입력박스 추가 (숨김, 데이터 동기화용)
         public WrapPanel? NameTagWrapPanel { get; set; } // 상품명 태그 UI
         public TextBlock? ByteCountTextBlock { get; set; }
+        public TextBlock? ByteWarningText { get; set; }
         public WrapPanel? KeywordPanel { get; set; }
         public TextBox? KeywordInputBox { get; set; }
         public TextBox? ShippingCostInput { get; set; } // ⭐ 배대지 비용 입력박스
