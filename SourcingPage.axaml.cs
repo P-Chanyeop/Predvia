@@ -82,6 +82,7 @@ namespace Gumaedaehang
         private Button? _testDataButton2;
         private CheckBox? _selectAllCheckBox;
         private Button? _deleteSelectedButton;
+        private bool _showingHeld = false; // 보류함 보기 모드
         private Button? _saveDataButton;
         protected ToggleSwitch? _taobaoSearchModeSwitch; // 타오바오 검색 방식 스위치
         private bool _hasData = false;
@@ -1299,13 +1300,13 @@ namespace Gumaedaehang
                 };
                 var holdButton = new Button 
                 { 
-                    Content = "상품 보류", 
+                    Content = _showingHeld ? "보류 해제" : "상품 보류", 
                     Width = 120, 
                     Height = 35,
                     FontSize = 13,
                     FontFamily = new FontFamily("Malgun Gothic"),
-                    Background = new SolidColorBrush(Color.Parse("#CCCCCC")),
-                    Foreground = new SolidColorBrush(Colors.Black),
+                    Background = _showingHeld ? new SolidColorBrush(Color.Parse("#3498DB")) : new SolidColorBrush(Color.Parse("#CCCCCC")),
+                    Foreground = _showingHeld ? new SolidColorBrush(Colors.White) : new SolidColorBrush(Colors.Black),
                     HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
                 };
 
@@ -1603,6 +1604,12 @@ namespace Gumaedaehang
             if (deleteCheckedButton != null)
             {
                 deleteCheckedButton.Click += DeleteCheckedButton_Click;
+            }
+
+            var holdListButton = this.FindControl<Button>("HoldListButton");
+            if (holdListButton != null)
+            {
+                holdListButton.Click += HoldListButton_Click;
             }
 
             if (_saveDataButton != null)
@@ -2162,10 +2169,52 @@ namespace Gumaedaehang
             }
         }
         
-        // 상품 보류 버튼 클릭 이벤트
-        private void HoldButton_Click(int productId)
+        // 보류함 토글 버튼
+        private async void HoldListButton_Click(object? sender, RoutedEventArgs e)
         {
-            Debug.WriteLine($"상품 {productId} 상품 보류 버튼 클릭됨");
+            _showingHeld = !_showingHeld;
+            _currentPage = 1;
+            
+            var btn = sender as Button;
+            if (btn != null)
+                btn.Content = _showingHeld ? "📋 소싱 목록" : "📦 보류함";
+            
+            await LoadCurrentPage();
+            LogWindow.AddLogStatic(_showingHeld ? "📦 보류함 보기" : "📋 소싱 목록 보기");
+        }
+
+        // 상품 보류 버튼 클릭 이벤트
+        private async void HoldButton_Click(int productId)
+        {
+            if (!_productElements.TryGetValue(productId, out var product)) return;
+            
+            // 현재 페이지에서 해당 카드의 실제 데이터 찾기
+            var startIndex = (_currentPage - 1) * _itemsPerPage;
+            var activeCards = _showingHeld ? _allProductCards.Where(c => c.IsHeld).ToList() : _allProductCards.Where(c => !c.IsHeld).ToList();
+            var pageCards = activeCards.Skip(startIndex).Take(_itemsPerPage).ToList();
+            var cardIndex = productId - 1; // 1-based → 0-based
+            if (cardIndex < 0 || cardIndex >= pageCards.Count) return;
+            
+            var card = pageCards[cardIndex];
+            card.IsHeld = !card.IsHeld;
+            
+            var action = card.IsHeld ? "보류" : "보류 해제";
+            LogWindow.AddLogStatic($"📦 상품 {action}: {card.StoreId}/{card.RealProductId}");
+            
+            // DB 업데이트
+            if (card.StoreId != null && card.RealProductId != null)
+            {
+                var sid = card.StoreId;
+                var pid = card.RealProductId;
+                var held = card.IsHeld;
+                _ = Task.Run(async () =>
+                {
+                    try { await DatabaseService.Instance.UpdateHoldStatusAsync(sid, pid, held); }
+                    catch (Exception ex) { LogWindow.AddLogStatic($"⚠️ DB 보류 상태 변경 실패: {ex.Message}"); }
+                });
+            }
+            
+            await LoadCurrentPage();
         }
         
         // 타오바오 페어링 버튼 클릭 이벤트
@@ -6081,7 +6130,8 @@ namespace Gumaedaehang
                             Category = p.Category,
                             ShippingCost = p.ShippingCost,
                             BossMessage = p.BossMessage ?? "",
-                            SelectedTaobaoIndex = p.SelectedTaobaoIndex
+                            SelectedTaobaoIndex = p.SelectedTaobaoIndex,
+                            IsHeld = p.IsHeld
                         };
                         
                         // 리뷰 로드
@@ -6153,9 +6203,13 @@ namespace Gumaedaehang
             container.Children.Clear();
             _productElements.Clear();
             
-            // 현재 페이지 데이터 가져오기
-            var totalPages = (int)Math.Ceiling((double)_allProductCards.Count / _itemsPerPage);
-            var pageCards = _allProductCards
+            // 현재 페이지 데이터 가져오기 (보류 필터링 적용)
+            var activeCards = _showingHeld 
+                ? _allProductCards.Where(c => c.IsHeld).ToList() 
+                : _allProductCards.Where(c => !c.IsHeld).ToList();
+            var totalPages = Math.Max(1, (int)Math.Ceiling((double)activeCards.Count / _itemsPerPage));
+            if (_currentPage > totalPages) _currentPage = totalPages;
+            var pageCards = activeCards
                 .Skip((_currentPage - 1) * _itemsPerPage)
                 .Take(_itemsPerPage)
                 .ToList();
@@ -6208,11 +6262,15 @@ namespace Gumaedaehang
         // ⭐ 페이지 정보 업데이트
         private void UpdatePageInfo()
         {
-            var totalPages = Math.Max(1, (int)Math.Ceiling((double)_allProductCards.Count / _itemsPerPage));
+            var activeCards = _showingHeld 
+                ? _allProductCards.Where(c => c.IsHeld).ToList() 
+                : _allProductCards.Where(c => !c.IsHeld).ToList();
+            var totalPages = Math.Max(1, (int)Math.Ceiling((double)activeCards.Count / _itemsPerPage));
             _pageInfoText = this.FindControl<TextBlock>("PageInfoText");
             if (_pageInfoText != null)
             {
-                _pageInfoText.Text = $"{_currentPage} / {totalPages} 페이지 (총 {_allProductCards.Count}개)";
+                var label = _showingHeld ? "보류함" : "페이지";
+                _pageInfoText.Text = $"{_currentPage} / {totalPages} {label} (총 {activeCards.Count}개)";
             }
             
             // ⭐ 페이지 번호 버튼 생성 (현재 페이지 중심 5개)
@@ -6776,6 +6834,9 @@ namespace Gumaedaehang
         
         [JsonPropertyName("bossMessage")]
         public string BossMessage { get; set; } = ""; // 보스 메시지
+        
+        [JsonPropertyName("isHeld")]
+        public bool IsHeld { get; set; } = false; // 보류 상태
     }
 
     // 상품별 UI 요소들을 관리하는 클래스

@@ -192,6 +192,26 @@ namespace Gumaedaehang.Services
         // ========== 데이터 조회 (유저별) ==========
 
         // 상품 및 관련 데이터 전체 삭제
+        public async Task UpdateHoldStatusAsync(string storeId, string productId, bool isHeld)
+        {
+            try
+            {
+                using var conn = new MySqlConnection(ConnectionString);
+                await conn.OpenAsync();
+                using var cmd = new MySqlCommand(
+                    "UPDATE products SET is_held = @isHeld WHERE api_key = @apiKey AND store_id = @storeId AND product_id = @productId", conn);
+                cmd.Parameters.AddWithValue("@isHeld", isHeld ? 1 : 0);
+                cmd.Parameters.AddWithValue("@apiKey", CurrentApiKey);
+                cmd.Parameters.AddWithValue("@storeId", storeId);
+                cmd.Parameters.AddWithValue("@productId", productId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 보류 상태 변경 실패: {ex.Message}");
+            }
+        }
+
         public async Task DeleteProductAsync(string storeId, string productId)
         {
             try
@@ -228,7 +248,7 @@ namespace Gumaedaehang.Services
                 using var cmd = new MySqlCommand(@"
                     SELECT store_id, product_id, product_name, original_name, price, 
                            image_url, product_url, category, created_at,
-                           user_product_name, shipping_cost, boss_message, selected_taobao_index
+                           user_product_name, shipping_cost, boss_message, selected_taobao_index, is_held
                     FROM products WHERE api_key = @apiKey
                     ORDER BY store_id ASC, product_id ASC", conn);
                 cmd.Parameters.AddWithValue("@apiKey", CurrentApiKey);
@@ -250,7 +270,8 @@ namespace Gumaedaehang.Services
                         UserProductName = reader.IsDBNull(9) ? null : reader.GetString(9),
                         ShippingCost = reader.IsDBNull(10) ? 0 : reader.GetInt32(10),
                         BossMessage = reader.IsDBNull(11) ? null : reader.GetString(11),
-                        SelectedTaobaoIndex = reader.IsDBNull(12) ? 0 : reader.GetInt32(12)
+                        SelectedTaobaoIndex = reader.IsDBNull(12) ? 0 : reader.GetInt32(12),
+                        IsHeld = reader.IsDBNull(13) ? false : reader.GetBoolean(13)
                     });
                 }
             }
@@ -373,6 +394,7 @@ namespace Gumaedaehang.Services
         public int ShippingCost { get; set; }
         public string? BossMessage { get; set; }
         public int SelectedTaobaoIndex { get; set; }
+        public bool IsHeld { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 

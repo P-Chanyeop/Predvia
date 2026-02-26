@@ -127,6 +127,10 @@
                         Background="#E67E22" Foreground="White"
                         Padding="15,8" CornerRadius="6"
                         VerticalAlignment="Center"/>
+                <Button x:Name="HoldListButton" Content="📦 보류함" FontSize="14"
+                        Background="#3498DB" Foreground="White"
+                        Padding="15,8" CornerRadius="6"
+                        VerticalAlignment="Center"/>
                 <Button x:Name="SaveDataButton" Content="💾 저장" FontSize="14"
                         Background="#27AE60" Foreground="White"
                         Padding="20,8" CornerRadius="6"
