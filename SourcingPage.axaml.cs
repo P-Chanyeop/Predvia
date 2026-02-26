@@ -1057,12 +1057,13 @@ namespace Gumaedaehang
 
                 var nameInputText = new TextBox 
                 { 
-                    Text = "", // ⭐ 사용자가 직접 입력하는 부분 - 비워둠
+                    Text = "",
                     FontSize = 14,
                     FontFamily = new FontFamily("Malgun Gothic"),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
                     Background = Brushes.Transparent,
-                    BorderThickness = new Thickness(0)
+                    BorderThickness = new Thickness(0),
+                    IsReadOnly = true
                 };
                 
                 // ⭐ 초기 바이트 계산
@@ -1262,6 +1263,9 @@ namespace Gumaedaehang
                 attachButton.Click += (s, e) => {
                     LogWindow.AddLogStatic($"📎 첨부 버튼 클릭 감지됨! CardId: {cardId}");
                     AttachNameButton_Click(cardId, nameDirectInput);
+                };
+                nameDirectInput.KeyDown += (s, e) => {
+                    if (e.Key == Key.Enter) { AttachNameButton_Click(cardId, nameDirectInput); e.Handled = true; }
                 };
                 
                 nameDirectInputPanel.Children.Add(nameDirectInput);
