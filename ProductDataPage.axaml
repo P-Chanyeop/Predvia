@@ -115,10 +115,8 @@
     <ScrollViewer x:Name="DataScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Spacing="20" Margin="30,20,30,30">
 
-            <!-- 전체선택 및 삭제, 저장 영역 -->
+            <!-- 버튼 영역 (상단) -->
             <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
-                <CheckBox x:Name="SelectAllCheckBox" Content="전체선택" FontSize="14"
-                          IsEnabled="True" />
                 <Button x:Name="DeleteCheckedButton" Content="선택 삭제" FontSize="14"
                         Background="#E67E22" Foreground="White"
                         Padding="15,8" CornerRadius="6"
@@ -156,6 +154,14 @@
                                       FontSize="12"/>
                     </StackPanel>
                 </Border>
+            </StackPanel>
+
+            <!-- 선택 체크박스 영역 -->
+            <StackPanel Orientation="Horizontal" Spacing="20" VerticalAlignment="Center">
+                <CheckBox x:Name="SelectAllCheckBox" Content="페이지 전체선택" FontSize="14"
+                          IsEnabled="True" />
+                <CheckBox x:Name="SelectAllProductsCheckBox" Content="모든상품 전체선택" FontSize="14"
+                          IsEnabled="True" />
             </StackPanel>
 
             <!-- 실제 상품 데이터가 여기에 동적으로 추가됩니다 -->

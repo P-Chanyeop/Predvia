@@ -80,7 +80,8 @@ namespace Gumaedaehang
         private TextBlock? _addMoreLink;
         private Button? _testDataButton;
         private Button? _testDataButton2;
-        private CheckBox? _selectAllCheckBox;
+        protected CheckBox? _selectAllCheckBox;
+        private CheckBox? _selectAllProductsCheckBox;
         private Button? _deleteSelectedButton;
         private bool _showingHeld = false; // 보류함 보기 모드
         private Button? _saveDataButton;
@@ -106,7 +107,7 @@ namespace Gumaedaehang
         protected Dictionary<int, ProductUIElements> _productElements = new Dictionary<int, ProductUIElements>();
         
         // ⭐ 페이지네이션 변수
-        private List<ProductCardData> _allProductCards = new(); // 전체 상품 데이터
+        protected List<ProductCardData> _allProductCards = new(); // 전체 상품 데이터
         private int _currentPage = 1;
         private const int _itemsPerPage = 10;
         private TextBlock? _pageInfoText;
@@ -195,6 +196,9 @@ namespace Gumaedaehang
                 _testDataButton2 = this.FindControl<Button>("TestDataButton2");
                 _selectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
                 LogWindow.AddLogStatic($"🔍 SelectAllCheckBox 찾기 결과: {(_selectAllCheckBox != null ? "성공" : "실패")}");
+                _selectAllProductsCheckBox = this.FindControl<CheckBox>("SelectAllProductsCheckBox");
+                if (_selectAllProductsCheckBox != null)
+                    _selectAllProductsCheckBox.IsCheckedChanged += SelectAllProductsCheckBox_Changed;
                 _deleteSelectedButton = this.FindControl<Button>("DeleteSelectedButton");
                 _saveDataButton = this.FindControl<Button>("SaveDataButton");
 
@@ -557,6 +561,13 @@ namespace Gumaedaehang
                         _selectAllCheckBox.IsCheckedChanged -= SelectAllCheckBox_Changed;
                         _selectAllCheckBox.IsCheckedChanged += SelectAllCheckBox_Changed;
                         LogWindow.AddLogStatic($"✅ 전체선택 체크박스 이벤트 연결 완료 (상품 {_productElements.Count}개)");
+                    }
+                    if (_selectAllProductsCheckBox == null)
+                        _selectAllProductsCheckBox = this.FindControl<CheckBox>("SelectAllProductsCheckBox");
+                    if (_selectAllProductsCheckBox != null)
+                    {
+                        _selectAllProductsCheckBox.IsCheckedChanged -= SelectAllProductsCheckBox_Changed;
+                        _selectAllProductsCheckBox.IsCheckedChanged += SelectAllProductsCheckBox_Changed;
                     }
                 });
             }
@@ -1719,6 +1730,25 @@ namespace Gumaedaehang
         private void SelectAllCheckBox_Changed(object? sender, RoutedEventArgs e)
         {
             SelectAllCheckBox_Click(sender, e);
+        }
+        
+        private void SelectAllProductsCheckBox_Changed(object? sender, RoutedEventArgs e)
+        {
+            if (_selectAllProductsCheckBox == null) return;
+            bool isChecked = _selectAllProductsCheckBox.IsChecked ?? false;
+            
+            // 현재 페이지 체크
+            foreach (var p in _productElements.Values)
+                if (p.CheckBox != null) p.CheckBox.IsChecked = isChecked;
+            
+            // 모든 카드 데이터에도 반영 (페이지 전환 시 유지)
+            foreach (var card in _allProductCards)
+                card.IsChecked = isChecked;
+            
+            if (_selectAllCheckBox != null)
+                _selectAllCheckBox.IsChecked = isChecked;
+            
+            LogWindow.AddLogStatic($"✅ 모든상품 전체선택: {isChecked} ({_allProductCards.Count}개)");
         }
         
         private void SelectAllCheckBox_Click(object? sender, RoutedEventArgs e)
@@ -6327,6 +6357,15 @@ namespace Gumaedaehang
             var container = this.FindControl<StackPanel>("RealDataContainer");
             if (container == null) return;
             
+            // 기존 체크 상태 저장
+            foreach (var kvp in _productElements)
+            {
+                var key = $"{kvp.Value.StoreId}_{kvp.Value.RealProductId}";
+                var card = _allProductCards.FirstOrDefault(c => $"{c.StoreId}_{c.RealProductId}" == key);
+                if (card != null && kvp.Value.CheckBox != null)
+                    card.IsChecked = kvp.Value.CheckBox.IsChecked ?? false;
+            }
+            
             // 기존 카드 초기화
             container.Children.Clear();
             _productElements.Clear();
@@ -6343,6 +6382,12 @@ namespace Gumaedaehang
                 .ToList();
             
             LogWindow.AddLogStatic($"📄 페이지 {_currentPage}/{totalPages} 로드 중... ({pageCards.Count}개)");
+            
+            // ⭐ 체크 복원 중 전체선택 이벤트 일시 해제
+            if (_selectAllCheckBox == null)
+                _selectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
+            if (_selectAllCheckBox != null)
+                _selectAllCheckBox.IsCheckedChanged -= SelectAllCheckBox_Changed;
             
             int count = 0;
             foreach (var card in pageCards)
@@ -6383,12 +6428,21 @@ namespace Gumaedaehang
                             el.ShippingCostInput.Text = card.ShippingCost.ToString();
                         if (el.BossMessageInput != null && !string.IsNullOrEmpty(card.BossMessage))
                             el.BossMessageInput.Text = card.BossMessage;
+                        if (el.CheckBox != null && card.IsChecked)
+                            el.CheckBox.IsChecked = true;
                     }
                 }
             }
             
             // 페이지 정보 업데이트
             UpdatePageInfo();
+            
+            // 페이지 전체선택 체크박스 - 해제 상태로 리셋 후 이벤트 재연결
+            if (_selectAllCheckBox != null)
+            {
+                _selectAllCheckBox.IsChecked = false;
+                _selectAllCheckBox.IsCheckedChanged += SelectAllCheckBox_Changed;
+            }
             LogWindow.AddLogStatic($"✅ 페이지 {_currentPage}/{totalPages} 로드 완료");
             
             // 스크롤 맨 위로 (카드 로드 완료 후)
@@ -6954,6 +7008,9 @@ namespace Gumaedaehang
 
         [JsonPropertyName("selectedKeywords")]
         public List<string> SelectedKeywords { get; set; } = new();
+        
+        [JsonIgnore]
+        public bool IsChecked { get; set; }
 
         [JsonPropertyName("isTaobaoPaired")]
         public bool IsTaobaoPaired { get; set; }

@@ -8,6 +8,7 @@ namespace Gumaedaehang
     public partial class ProductDataPage : SourcingPage
     {
         private CheckBox? _pdSelectAllCheckBox;
+        private CheckBox? _pdSelectAllProductsCheckBox;
         private Button? _pdSaveButton;
         private ToggleSwitch? _pdTaobaoSearchModeSwitch;
         
@@ -17,10 +18,14 @@ namespace Gumaedaehang
             
             // 전체선택 체크박스 찾기 및 이벤트 연결
             _pdSelectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
+            _selectAllCheckBox = _pdSelectAllCheckBox; // 부모 클래스 변수에도 할당
             if (_pdSelectAllCheckBox != null)
-            {
                 _pdSelectAllCheckBox.Click += PDSelectAllCheckBox_Click;
-            }
+            
+            // 모든상품 전체선택
+            _pdSelectAllProductsCheckBox = this.FindControl<CheckBox>("SelectAllProductsCheckBox");
+            if (_pdSelectAllProductsCheckBox != null)
+                _pdSelectAllProductsCheckBox.Click += PDSelectAllProductsCheckBox_Click;
             
             // 저장 버튼 이벤트 연결
             _pdSaveButton = this.FindControl<Button>("SaveDataButton");
@@ -51,9 +56,13 @@ namespace Gumaedaehang
                 {
                     _pdSelectAllCheckBox = this.FindControl<CheckBox>("SelectAllCheckBox");
                     if (_pdSelectAllCheckBox != null)
-                    {
                         _pdSelectAllCheckBox.Click += PDSelectAllCheckBox_Click;
-                    }
+                }
+                if (_pdSelectAllProductsCheckBox == null)
+                {
+                    _pdSelectAllProductsCheckBox = this.FindControl<CheckBox>("SelectAllProductsCheckBox");
+                    if (_pdSelectAllProductsCheckBox != null)
+                        _pdSelectAllProductsCheckBox.Click += PDSelectAllProductsCheckBox_Click;
                 }
                 
                 if (_pdSaveButton == null)
@@ -89,6 +98,25 @@ namespace Gumaedaehang
             }
             
             LogWindow.AddLogStatic($"✅ [상품데이터] {count}개 체크박스 {(isChecked ? "선택" : "해제")} 완료");
+        }
+        
+        private void PDSelectAllProductsCheckBox_Click(object? sender, RoutedEventArgs e)
+        {
+            bool isChecked = _pdSelectAllProductsCheckBox?.IsChecked ?? false;
+            
+            // 현재 페이지 체크
+            foreach (var kvp in _productElements)
+                if (kvp.Value.CheckBox != null) kvp.Value.CheckBox.IsChecked = isChecked;
+            
+            // 모든 카드 데이터에도 반영
+            foreach (var card in _allProductCards)
+                card.IsChecked = isChecked;
+            
+            // 페이지 전체선택도 동기화
+            if (_pdSelectAllCheckBox != null)
+                _pdSelectAllCheckBox.IsChecked = isChecked;
+            
+            LogWindow.AddLogStatic($"✅ [상품데이터] 모든상품 전체선택: {isChecked} ({_allProductCards.Count}개)");
         }
         
         private void PDSaveButton_Click(object? sender, RoutedEventArgs e)
