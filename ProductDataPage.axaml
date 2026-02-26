@@ -122,15 +122,18 @@
                 <Button x:Name="DeleteCheckedButton" Content="선택 삭제" FontSize="14"
                         Background="#E67E22" Foreground="White"
                         Padding="15,8" CornerRadius="6"
-                        VerticalAlignment="Center"/>
+                        VerticalAlignment="Center"
+                        Click="DeleteCheckedButton_Click"/>
                 <Button x:Name="DeleteSelectedButton" Content="전체 삭제" FontSize="14"
                         Background="#E67E22" Foreground="White"
                         Padding="15,8" CornerRadius="6"
-                        VerticalAlignment="Center"/>
+                        VerticalAlignment="Center"
+                        Click="DeleteSelectedButton_Click"/>
                 <Button x:Name="HoldListButton" Content="📦 보류함" FontSize="14"
                         Background="#3498DB" Foreground="White"
                         Padding="15,8" CornerRadius="6"
-                        VerticalAlignment="Center"/>
+                        VerticalAlignment="Center"
+                        Click="HoldListButton_Click"/>
                 <Button x:Name="SaveDataButton" Content="💾 저장" FontSize="14"
                         Background="#27AE60" Foreground="White"
                         Padding="20,8" CornerRadius="6"

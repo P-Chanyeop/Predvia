@@ -1599,18 +1599,6 @@ namespace Gumaedaehang
             {
                 _deleteSelectedButton.Click += DeleteSelectedButton_Click;
             }
-            
-            var deleteCheckedButton = this.FindControl<Button>("DeleteCheckedButton");
-            if (deleteCheckedButton != null)
-            {
-                deleteCheckedButton.Click += DeleteCheckedButton_Click;
-            }
-
-            var holdListButton = this.FindControl<Button>("HoldListButton");
-            if (holdListButton != null)
-            {
-                holdListButton.Click += HoldListButton_Click;
-            }
 
             if (_saveDataButton != null)
             {
@@ -2170,7 +2158,7 @@ namespace Gumaedaehang
         }
         
         // 보류함 토글 버튼
-        private async void HoldListButton_Click(object? sender, RoutedEventArgs e)
+        protected async void HoldListButton_Click(object? sender, RoutedEventArgs e)
         {
             _showingHeld = !_showingHeld;
             _currentPage = 1;
@@ -2188,20 +2176,21 @@ namespace Gumaedaehang
         {
             if (!_productElements.TryGetValue(productId, out var product)) return;
             
-            // 현재 페이지에서 해당 카드의 실제 데이터 찾기
             var startIndex = (_currentPage - 1) * _itemsPerPage;
             var activeCards = _showingHeld ? _allProductCards.Where(c => c.IsHeld).ToList() : _allProductCards.Where(c => !c.IsHeld).ToList();
             var pageCards = activeCards.Skip(startIndex).Take(_itemsPerPage).ToList();
-            var cardIndex = productId - 1; // 1-based → 0-based
+            var cardIndex = productId - 1;
             if (cardIndex < 0 || cardIndex >= pageCards.Count) return;
             
             var card = pageCards[cardIndex];
+            var action = card.IsHeld ? "보류 해제" : "보류";
+            
+            if (!await ShowConfirmDialog($"이 상품을 {action}하시겠습니까?")) return;
+            
             card.IsHeld = !card.IsHeld;
             
-            var action = card.IsHeld ? "보류" : "보류 해제";
             LogWindow.AddLogStatic($"📦 상품 {action}: {card.StoreId}/{card.RealProductId}");
             
-            // DB 업데이트
             if (card.StoreId != null && card.RealProductId != null)
             {
                 var sid = card.StoreId;
