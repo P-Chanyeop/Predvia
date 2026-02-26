@@ -6658,13 +6658,8 @@ namespace Gumaedaehang
                     if (File.Exists(categoryPath)) File.Delete(categoryPath);
                     
                     // DB 삭제
-                    var sid = storeId;
-                    var pid = productId;
-                    _ = Task.Run(async () =>
-                    {
-                        try { await DatabaseService.Instance.DeleteProductAsync(sid, pid); }
-                        catch (Exception dbEx) { LogWindow.AddLogStatic($"⚠️ DB 삭제 실패: {dbEx.Message}"); }
-                    });
+                    try { await DatabaseService.Instance.DeleteProductAsync(storeId, productId); }
+                    catch (Exception dbEx) { LogWindow.AddLogStatic($"⚠️ DB 삭제 실패: {dbEx.Message}"); }
                 }
                 
                 // ⭐ JSON 파일 업데이트 (내보낸 상품 제외)
