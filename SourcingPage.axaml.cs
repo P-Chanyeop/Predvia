@@ -5121,22 +5121,33 @@ namespace Gumaedaehang
         {
             if (product.NameTagWrapPanel == null || product.NameInputBox == null) return;
             
-            var xButton = new TextBlock
+            var xButton = new Border
             {
-                Text = "✕",
-                FontSize = 10,
-                Foreground = Brushes.White,
+                Background = new SolidColorBrush(Color.Parse("#00000030")),
+                CornerRadius = new CornerRadius(7),
+                Width = 14,
+                Height = 14,
+                Margin = new Thickness(5, 0, 0, 0),
                 Cursor = new Cursor(StandardCursorType.Hand),
-                Margin = new Thickness(4, 0, 0, 0),
-                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = "✕",
+                    FontSize = 8,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                }
             };
             
             var tag = new Border
             {
-                Background = new SolidColorBrush(Color.Parse("#E67E22")),
-                CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(8, 3),
-                Margin = new Thickness(0, 2, 4, 2),
+                Background = new SolidColorBrush(Color.Parse("#F5E6D3")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#E67E22")),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(14),
+                Padding = new Thickness(10, 4, 6, 4),
+                Margin = new Thickness(0, 2, 5, 2),
                 Child = new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
@@ -5145,8 +5156,9 @@ namespace Gumaedaehang
                         new TextBlock
                         {
                             Text = keyword,
-                            Foreground = Brushes.White,
+                            Foreground = new SolidColorBrush(Color.Parse("#D35400")),
                             FontSize = 12,
+                            FontWeight = FontWeight.Medium,
                             FontFamily = new FontFamily("Malgun Gothic"),
                             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                         },
