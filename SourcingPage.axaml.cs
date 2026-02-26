@@ -1598,6 +1598,12 @@ namespace Gumaedaehang
             {
                 _deleteSelectedButton.Click += DeleteSelectedButton_Click;
             }
+            
+            var deleteCheckedButton = this.FindControl<Button>("DeleteCheckedButton");
+            if (deleteCheckedButton != null)
+            {
+                deleteCheckedButton.Click += DeleteCheckedButton_Click;
+            }
 
             if (_saveDataButton != null)
             {
@@ -1751,6 +1757,75 @@ namespace Gumaedaehang
         }
         
         // 선택된 카드 삭제 버튼 클릭
+        // ⭐ 선택(체크된) 상품만 삭제
+        protected async void DeleteCheckedButton_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 체크된 상품 찾기
+                var checkedCards = new List<(int cardId, ProductCardData card)>();
+                var startIndex = (_currentPage - 1) * _itemsPerPage;
+                var pageCards = _allProductCards.Skip(startIndex).Take(_itemsPerPage).ToList();
+                
+                for (int i = 0; i < pageCards.Count; i++)
+                {
+                    var elemId = i + 1;
+                    if (_productElements.TryGetValue(elemId, out var elem) && elem.CheckBox?.IsChecked == true)
+                        checkedCards.Add((i, pageCards[i]));
+                }
+                
+                if (checkedCards.Count == 0)
+                {
+                    LogWindow.AddLogStatic("❌ 선택된 상품이 없습니다.");
+                    return;
+                }
+                
+                if (!await ShowConfirmDialog($"선택된 {checkedCards.Count}개 상품을 삭제하시겠습니까?")) return;
+                
+                LogWindow.AddLogStatic($"🗑️ 선택된 {checkedCards.Count}개 상품 삭제 시작");
+                
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var predviaPath = System.IO.Path.Combine(appDataPath, "Predvia");
+                
+                // 역순으로 삭제 (인덱스 꼬임 방지)
+                foreach (var (idx, card) in checkedCards.OrderByDescending(c => c.cardId))
+                {
+                    if (card.StoreId != null && card.RealProductId != null)
+                    {
+                        DeleteProductFiles(predviaPath, card.StoreId, card.RealProductId);
+                        var sid = card.StoreId;
+                        var pid = card.RealProductId;
+                        _ = Task.Run(async () =>
+                        {
+                            try { await DatabaseService.Instance.DeleteProductAsync(sid, pid); }
+                            catch (Exception dbEx) { LogWindow.AddLogStatic($"⚠️ DB 삭제 실패: {dbEx.Message}"); }
+                        });
+                    }
+                    _allProductCards.RemoveAt(startIndex + idx);
+                }
+                
+                // JSON 파일 업데이트
+                var jsonPath = System.IO.Path.Combine(predviaPath, "product_cards.json");
+                if (_allProductCards.Count > 0)
+                    File.WriteAllText(jsonPath, JsonSerializer.Serialize(_allProductCards));
+                else if (File.Exists(jsonPath))
+                    File.Delete(jsonPath);
+                
+                var totalPages = Math.Max(1, (int)Math.Ceiling((double)_allProductCards.Count / _itemsPerPage));
+                if (_currentPage > totalPages) _currentPage = totalPages;
+                
+                if (_selectAllCheckBox != null) _selectAllCheckBox.IsChecked = false;
+                
+                await LoadCurrentPage();
+                LogWindow.AddLogStatic($"✅ {checkedCards.Count}개 상품 선택 삭제 완료 (남은 상품: {_allProductCards.Count}개)");
+            }
+            catch (Exception ex)
+            {
+                LogWindow.AddLogStatic($"❌ 선택 삭제 오류: {ex.Message}");
+            }
+        }
+        
+        // ⭐ 전체 삭제 (현재 페이지)
         protected async void DeleteSelectedButton_Click(object? sender, RoutedEventArgs e)
         {
             try

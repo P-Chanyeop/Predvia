@@ -119,6 +119,10 @@
             <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
                 <CheckBox x:Name="SelectAllCheckBox" Content="전체선택" FontSize="14"
                           IsEnabled="True" />
+                <Button x:Name="DeleteCheckedButton" Content="선택 삭제" FontSize="14"
+                        Background="#E67E22" Foreground="White"
+                        Padding="15,8" CornerRadius="6"
+                        VerticalAlignment="Center"/>
                 <Button x:Name="DeleteSelectedButton" Content="전체 삭제" FontSize="14"
                         Background="#E67E22" Foreground="White"
                         Padding="15,8" CornerRadius="6"
