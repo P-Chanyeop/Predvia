@@ -4894,8 +4894,22 @@ namespace Gumaedaehang
                 double currentRowWidth = 0;
                 const double maxRowWidth = 1100; // ⭐ 1150px - 패딩20px - 스크롤바30px
 
-                // 키워드 태그 생성 (전체)
-                foreach (var keyword in keywords)
+                // 키워드 태그 생성 (전체) - 첫 번째 제외 나머지 랜덤 순서
+                var shuffledKeywords = new List<string>();
+                if (keywords.Count > 0)
+                {
+                    shuffledKeywords.Add(keywords[0]); // 첫 번째(입력 키워드) 유지
+                    var rest = keywords.Skip(1).ToList();
+                    var rng = new Random();
+                    for (int n = rest.Count - 1; n > 0; n--)
+                    {
+                        int k = rng.Next(n + 1);
+                        (rest[n], rest[k]) = (rest[k], rest[n]);
+                    }
+                    shuffledKeywords.AddRange(rest);
+                }
+                
+                foreach (var keyword in shuffledKeywords)
                 {
                     var keywordTag = new Border
                     {
