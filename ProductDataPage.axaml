@@ -180,6 +180,15 @@
                         Background="#E67E22" Foreground="White"
                         Padding="15,8" CornerRadius="6"
                         Click="NextPage_Click"/>
+                
+                <TextBlock Text="  |  " FontSize="14" VerticalAlignment="Center" Foreground="#999"/>
+                <TextBlock Text="페이지당" FontSize="13" VerticalAlignment="Center" Foreground="#666" Margin="0,0,5,0"/>
+                <ComboBox x:Name="ItemsPerPageComboBox" FontSize="13" VerticalAlignment="Center" Width="75" SelectedIndex="0">
+                    <ComboBoxItem Content="10개"/>
+                    <ComboBoxItem Content="30개"/>
+                    <ComboBoxItem Content="50개"/>
+                    <ComboBoxItem Content="100개"/>
+                </ComboBox>
             </StackPanel>
             <TextBlock x:Name="PageInfoText" Text="1 / 1 페이지 (총 0개)" 
                        FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,30"

@@ -108,8 +108,8 @@ namespace Gumaedaehang
         
         // ⭐ 페이지네이션 변수
         protected List<ProductCardData> _allProductCards = new(); // 전체 상품 데이터
-        private int _currentPage = 1;
-        private const int _itemsPerPage = 10;
+        protected int _currentPage = 1;
+        protected int _itemsPerPage = 10;
         private TextBlock? _pageInfoText;
         
         // 카테고리 데이터 캐시
@@ -6352,7 +6352,7 @@ namespace Gumaedaehang
         }
         
         // ⭐ 현재 페이지 로드
-        private async Task LoadCurrentPage()
+        protected async Task LoadCurrentPage()
         {
             var container = this.FindControl<StackPanel>("RealDataContainer");
             if (container == null) return;

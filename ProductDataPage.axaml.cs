@@ -43,7 +43,23 @@ namespace Gumaedaehang
             
             // 타오바오 검색 모드 스위치
             _pdTaobaoSearchModeSwitch = this.FindControl<ToggleSwitch>("TaobaoSearchModeSwitch");
-            _taobaoSearchModeSwitch = _pdTaobaoSearchModeSwitch; // 부모 클래스 변수에도 할당
+            _taobaoSearchModeSwitch = _pdTaobaoSearchModeSwitch;
+            
+            // 페이지당 개수 선택
+            var itemsPerPageCombo = this.FindControl<ComboBox>("ItemsPerPageComboBox");
+            if (itemsPerPageCombo != null)
+            {
+                itemsPerPageCombo.SelectionChanged += (s, e) =>
+                {
+                    var counts = new[] { 10, 30, 50, 100 };
+                    if (itemsPerPageCombo.SelectedIndex >= 0 && itemsPerPageCombo.SelectedIndex < counts.Length)
+                    {
+                        _itemsPerPage = counts[itemsPerPageCombo.SelectedIndex];
+                        _currentPage = 1;
+                        _ = LoadCurrentPage();
+                    }
+                };
+            }
 
             // ⭐ UI 렌더링 후 JSON 데이터 로드
             Dispatcher.UIThread.Post(() =>
